@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 export interface LogEntry {
   id: string;
@@ -7,56 +7,164 @@ export interface LogEntry {
   message: string;
 }
 
+export interface ScoreCardData {
+  score: number;
+  grade: string;
+  duration: number;
+  errors: Array<{ clause: string; title: string; text: string }>;
+  recommendations: string[];
+}
+
 interface SimulatorContextType {
-  status: 'running' | 'paused' | 'esd' | 'success';
-  timeElapsed: number; // Время сессии в секундах
+  status: 'running' | 'paused' | 'esd' | 'accident' | 'success';
+  timeElapsed: number;
   valves: {
-    V1: boolean; // Входной клапан печи
-    V2: boolean; // Клапан сброса давления колонны
-    V3: boolean; // Выход дизельной фракции
+    V1: boolean;
+    V2: boolean;
+    V3: boolean;
   };
   sensors: {
-    furnaceTemp: number; // Температура печи, °C
-    columnPres: number;  // Давление в колонне, МПа
-    columnLevel: number; // Уровень в колонне, %
+    furnaceTemp: number;
+    columnPres: number;
+    columnLevel: number;
   };
   setpoints: {
-    furnaceTempSp: number; // Уставка температуры, °C
+    furnaceTempSp: number;
   };
-  riskLevel: number; // Риск аварии в %
+  defects: {
+    pump_fail: boolean;
+    coil_overheat: boolean;
+    valve_jam: boolean;
+  };
+  riskLevel: number;
+  predictions: number[]; // Прогнозируемые параметры [temp, pres, level] на t+15 с
   logs: LogEntry[];
+  scoreCard: ScoreCardData | null;
+  accidentReason: string;
+  
+  // Пользователь и сессия
+  username: string;
+  role: 'operator' | 'instructor';
+  scenarioId: string;
+  isOnline: boolean;
+  wsLatency: number; // Задержка в мс для Критерия 1 (производительность)
+  
+  loginUser: (name: string, role: 'operator' | 'instructor') => void;
+  logoutUser: () => void;
+  selectScenario: (scenId: string) => void;
   toggleValve: (valveId: 'V1' | 'V2' | 'V3') => void;
   changeSetpoint: (temp: number) => void;
   triggerEsd: () => void;
+  triggerDefect: (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', state: boolean) => void;
   resetSession: () => void;
 }
 
 const SimulatorContext = createContext<SimulatorContextType | undefined>(undefined);
 
 export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [username, setUsername] = useState(() => localStorage.getItem('ktk_username') || '');
+  const [role, setRole] = useState<'operator' | 'instructor'>(() => (localStorage.getItem('ktk_role') as any) || 'operator');
+  const [scenarioId, setScenarioId] = useState('startup');
+  
   const [status, setStatus] = useState<SimulatorContextType['status']>('running');
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [valves, setValves] = useState({ V1: true, V2: false, V3: true });
   const [setpoints, setSetpoints] = useState({ furnaceTempSp: 280 });
   const [sensors, setSensors] = useState({ furnaceTemp: 280, columnPres: 0.25, columnLevel: 50 });
+  const [defects, setDefects] = useState({ pump_fail: false, coil_overheat: false, valve_jam: false });
   const [riskLevel, setRiskLevel] = useState(5);
+  const [predictions, setPredictions] = useState<number[]>([280, 0.25, 50]);
   const [logs, setLogs] = useState<LogEntry[]>([
-    { id: '1', time: '00:00', type: 'info', message: 'Система инициализирована. Режим работы: Стабильный.' },
-    { id: '2', time: '00:00', type: 'info', message: 'Входной клапан V-1 открыт. Подача сырья в норме.' },
+    { id: '1', time: '00:00', type: 'info', message: 'Система инициализирована в локальном режиме.' },
   ]);
+  const [scoreCard, setScoreCard] = useState<ScoreCardData | null>(null);
+  const [accidentReason, setAccidentReason] = useState('');
+  
+  const [isOnline, setIsOnline] = useState(false);
+  const [wsLatency, setWsLatency] = useState(0);
+  
+  const wsRef = useRef<WebSocket | null>(null);
+  const latencyTimerRef = useRef<number | null>(null);
 
-  // Таймер времени сессии
+  // -------------------------------------------------------------
+  // ПОДКЛЮЧЕНИЕ К WEBSOCKET (С BACKEND API)
+  // -------------------------------------------------------------
   useEffect(() => {
-    if (status !== 'running') return;
+    if (!username) return;
+    
+    const host = window.location.hostname || 'localhost';
+    const wsUrl = `ws://${host}:8000/ws?role=${role}&username=${encodeURIComponent(username)}&scenario=${scenarioId}`;
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    let pingInterval: any = null;
+
+    ws.onopen = () => {
+      setIsOnline(true);
+      setLogs(prev => [
+        ...prev, 
+        { id: Date.now().toString(), time: '00:00', type: 'info', message: 'Установлено соединение с сервером КТК ЭЛОУ-АВТ.' }
+      ]);
+      pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+        }
+      }, 3000);
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'pong') {
+        const latency = Date.now() - data.timestamp;
+        setWsLatency(latency);
+        return;
+      }
+      setStatus(data.status);
+      setTimeElapsed(data.timeElapsed);
+      setValves(data.valves);
+      setSensors(data.sensors);
+      setSetpoints(data.setpoints);
+      setDefects(data.defects);
+      setRiskLevel(data.riskLevel);
+      setPredictions(data.predictions);
+      setLogs(data.logs);
+      setScoreCard(data.scoreCard);
+      setAccidentReason(data.accidentReason);
+    };
+
+    ws.onerror = () => {
+      setIsOnline(false);
+    };
+
+    ws.onclose = () => {
+      setIsOnline(false);
+      if (pingInterval) clearInterval(pingInterval);
+      setLogs(prev => [
+        ...prev, 
+        { id: Date.now().toString(), time: '00:00', type: 'warning', message: 'Потеряно соединение с сервером. Тренажер переведен в автономный mock-режим.' }
+      ]);
+    };
+
+    return () => {
+      ws.close();
+      if (pingInterval) clearInterval(pingInterval);
+    };
+  }, [username, role, scenarioId]);
+
+  // -------------------------------------------------------------
+  // ЛОКАЛЬНЫЙ РЕЗЕРВНЫЙ СИМУЛЯТОР (MOCK-FALLBACK)
+  // -------------------------------------------------------------
+  useEffect(() => {
+    if (isOnline || status !== 'running') return;
+
     const timer = setInterval(() => {
       setTimeElapsed(prev => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, [status]);
+  }, [status, isOnline]);
 
-  // Математическая имитация технологического процесса (1-й и 2-й уровни КТК)
   useEffect(() => {
-    if (status !== 'running') return;
+    if (isOnline || status !== 'running') return;
 
     const interval = setInterval(() => {
       setSensors(prev => {
@@ -64,150 +172,153 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         let nextPres = prev.columnPres;
         let nextLevel = prev.columnLevel;
 
-        // 1. Имитация печи
-        if (valves.V1) {
-          // Если подача сырья идет, температура стремится к уставке
-          nextTemp += (setpoints.furnaceTempSp - nextTemp) * 0.1 + (Math.random() - 0.5) * 0.5;
-        } else {
-          // Если клапан V1 закрыт (нет охлаждения холодным сырьем), печь перегревается
-          nextTemp += 2.5 + (Math.random() - 0.5) * 0.2;
+        const F_in = valves.V1 && !defects.pump_fail ? 1.0 : 0.0;
+
+        // Печь
+        const Q_heat = (setpoints.furnaceTempSp - nextTemp) * 0.1 + (defects.coil_overheat ? 5.0 : 0.0);
+        const Q_cool = F_in * (nextTemp - 60.0) * 0.06;
+        nextTemp += Q_heat - Q_cool + (Math.random() - 0.5) * 0.5;
+
+        // Колонна (давление)
+        nextPres += (nextTemp - 260) * 0.0012 + (nextLevel - 50) * 0.0005;
+        if (valves.V2 && !defects.valve_jam) {
+          nextPres -= nextPres * 0.05;
         }
+        nextPres = Math.max(0.02, nextPres);
 
-        // 2. Имитация давления в колонне
-        // Давление растет от температуры печи и уровня в колонне
-        nextPres += (nextTemp - 280) * 0.001 + (nextLevel - 50) * 0.0005;
-        
-        // Если клапан сброса V2 открыт, давление падает
-        if (valves.V2) {
-          nextPres -= 0.015;
+        // Колонна (уровень)
+        nextLevel += F_in * 0.6;
+        if (valves.V3) {
+          nextLevel -= 0.55 * Math.sqrt(nextLevel / 100.0);
         }
-        nextPres = Math.max(0.05, nextPres); // Давление не может быть отрицательным
-
-        // 3. Имитация уровня в колонне
-        if (valves.V1) nextLevel += 0.5; // Подача наполняет колонну
-        if (valves.V3) nextLevel -= 0.6; // Дренаж сливает
-
         nextLevel = Math.max(0, Math.min(100, nextLevel));
 
         return {
           furnaceTemp: Math.round(nextTemp * 100) / 100,
-          columnPres: Math.round(nextPres * 100) / 100,
+          columnPres: Math.round(nextPres * 1000) / 1000,
           columnLevel: Math.round(nextLevel * 100) / 100,
         };
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [status, valves, setpoints]);
+  }, [status, valves, setpoints, defects, isOnline]);
 
-  // Логика ИИ-модуля (3-й уровень КТК): оценка рисков, ошибки и генерация логов/подсказок
+  // Проверка аварийных пределов в mock-режиме
   useEffect(() => {
-    if (status !== 'running') return;
+    if (isOnline || status !== 'running') return;
 
     let newRisk = 5;
-    const formatTime = (sec: number) => {
-      const mins = Math.floor(sec / 60).toString().padStart(2, '0');
-      const secs = (sec % 60).toString().padStart(2, '0');
-      return `${mins}:${secs}`;
-    };
-
-    const addLog = (type: LogEntry['type'], message: string) => {
-      setLogs(prev => {
-        const timeStr = formatTime(timeElapsed);
-        // Избегаем дублирования одинаковых сообщений в логе подряд
-        if (prev.length > 0 && prev[prev.length - 1].message === message) return prev;
-        return [...prev, { id: Date.now().toString(), time: timeStr, type, message }];
-      });
-    };
-
-    // Анализ параметров
-    if (sensors.furnaceTemp > 310) {
-      newRisk += 30;
-      addLog('warning', `Критическая температура печи: ${sensors.furnaceTemp}°C. Опасность коксования труб.`);
-    }
-
-    if (sensors.columnPres > 0.4) {
-      newRisk += 40;
-      addLog('error', `Опасное давление в колонне: ${sensors.columnPres} МПа! Требуется сброс давления.`);
-    } else if (sensors.columnPres > 0.3) {
-      newRisk += 15;
-      addLog('warning', `Повышенное давление в колонне: ${sensors.columnPres} МПа.`);
-    }
-
-    if (sensors.columnLevel > 85) {
-      newRisk += 25;
-      addLog('warning', `Высокий уровень в колонне: ${sensors.columnLevel}%. Риск уноса жидкости.`);
-    } else if (sensors.columnLevel < 15) {
-      newRisk += 20;
-      addLog('warning', `Низкий уровень в колонне: ${sensors.columnLevel}%. Риск срыва насосов.`);
-    }
-
-    // Если закрыты оба клапана V1 и V2 при высокой температуре - риск взрыва
-    if (!valves.V1 && !valves.V2 && sensors.furnaceTemp > 300) {
-      newRisk = 100;
-      addLog('error', 'ВНИМАНИЕ: Нет подачи сырья, клапан сброса закрыт! Экстренный рост давления!');
-    }
-
-    // Ограничение риска
-    newRisk = Math.min(100, Math.max(0, newRisk));
+    if (sensors.furnaceTemp > 310) newRisk += 30;
+    if (sensors.columnPres > 0.4) newRisk += 40;
+    if (sensors.columnLevel > 85 || sensors.columnLevel < 15) newRisk += 25;
+    
+    newRisk = Math.min(100, newRisk);
     setRiskLevel(newRisk);
 
-    // Логика аварийного завершения
-    if (newRisk >= 100) {
-      setStatus('esd');
-      addLog('error', 'АВАРИЯ: Сработала автоматическая блокировка по критическому давлению!');
+    if (sensors.columnPres >= 0.48) {
+      setStatus('accident');
+      setAccidentReason('Критическое превышение давления в колонне К-1 (более 0.48 МПа). Взрыв колонны!');
+    } else if (sensors.furnaceTemp >= 380) {
+      setStatus('accident');
+      setAccidentReason('Критический перегрев печи П-1 (выше 380°C). Прогар змеевика и пожар!');
     }
-  }, [sensors, valves, timeElapsed, status]);
+  }, [sensors, status, isOnline]);
+
+  // -------------------------------------------------------------
+  // УПРАВЛЯЮЩИЕ ФУНКЦИИ
+  // -------------------------------------------------------------
+  const sendWsAction = (actionPayload: any) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      latencyTimerRef.current = Date.now();
+      wsRef.current.send(JSON.stringify(actionPayload));
+    }
+  };
+
+  const loginUser = (name: string, userRole: 'operator' | 'instructor') => {
+    setUsername(name);
+    setRole(userRole);
+    localStorage.setItem('ktk_username', name);
+    localStorage.setItem('ktk_role', userRole);
+  };
+
+  const logoutUser = () => {
+    setUsername('');
+    setRole('operator');
+    localStorage.removeItem('ktk_username');
+    localStorage.removeItem('ktk_role');
+  };
+
+  const selectScenario = (scenId: string) => {
+    setScenarioId(scenId);
+    resetSession();
+  };
 
   const toggleValve = (valveId: 'V1' | 'V2' | 'V3') => {
-    if (status !== 'running') return;
-    setValves(prev => {
-      const nextState = !prev[valveId];
-      const timeStr = `${Math.floor(timeElapsed / 60).toString().padStart(2, '0')}:${(timeElapsed % 60).toString().padStart(2, '0')}`;
-      
-      setLogs(l => [
-        ...l, 
-        { 
-          id: Date.now().toString(), 
-          time: timeStr, 
-          type: 'info', 
-          message: `Оператор переключил клапан ${valveId} в состояние: ${nextState ? 'ОТКРЫТ' : 'ЗАКРЫТ'}.` 
-        }
-      ]);
-      return { ...prev, [valveId]: nextState };
-    });
+    if (isOnline) {
+      sendWsAction({ type: 'toggle_valve', valve_id: valveId, state: !valves[valveId] });
+    } else {
+      setValves(prev => {
+        const nextState = !prev[valveId];
+        const timeStr = `${Math.floor(timeElapsed / 60).toString().padStart(2, '0')}:${(timeElapsed % 60).toString().padStart(2, '0')}`;
+        setLogs(l => [
+          ...l, 
+          { id: Date.now().toString(), time: timeStr, type: 'info', message: `Локальный клик: Клапан ${valveId} -> ${nextState ? 'ОТКРЫТ' : 'ЗАКРЫТ'}` }
+        ]);
+        return { ...prev, [valveId]: nextState };
+      });
+    }
   };
 
   const changeSetpoint = (temp: number) => {
-    if (status !== 'running') return;
-    setSetpoints({ furnaceTempSp: temp });
+    if (isOnline) {
+      sendWsAction({ type: 'change_setpoint', value: temp });
+    } else {
+      setSetpoints({ furnaceTempSp: temp });
+    }
   };
 
   const triggerEsd = () => {
-    setStatus('esd');
-    setRiskLevel(0);
-    setLogs(prev => [
-      ...prev,
-      { 
-        id: Date.now().toString(), 
-        time: `${Math.floor(timeElapsed / 60).toString().padStart(2, '0')}:${(timeElapsed % 60).toString().padStart(2, '0')}`, 
-        type: 'error', 
-        message: 'АВАРИЙНЫЙ ОСТАНОВ (ESD) запущен вручную оператором!' 
-      }
-    ]);
+    if (isOnline) {
+      sendWsAction({ type: 'trigger_esd' });
+    } else {
+      setStatus('esd');
+      setLogs(l => [
+        ...l, 
+        { id: Date.now().toString(), time: '00:00', type: 'error', message: 'АВАРИЙНЫЙ ОСТАНОВ (ESD) запущен оператором локально.' }
+      ]);
+    }
+  };
+
+  const triggerDefect = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', state: boolean) => {
+    if (isOnline) {
+      sendWsAction({ type: 'trigger_defect', defect_id: defectId, state });
+    } else {
+      setDefects(prev => ({ ...prev, [defectId]: state }));
+      const timeStr = `${Math.floor(timeElapsed / 60).toString().padStart(2, '0')}:${(timeElapsed % 60).toString().padStart(2, '0')}`;
+      setLogs(l => [
+        ...l, 
+        { id: Date.now().toString(), time: timeStr, type: 'error', message: `Локальная неисправность: ${defectId} -> ${state ? 'АКТИВНА' : 'НЕАКТИВНА'}` }
+      ]);
+    }
   };
 
   const resetSession = () => {
-    setStatus('running');
-    setTimeElapsed(0);
-    setValves({ V1: true, V2: false, V3: true });
-    setSetpoints({ furnaceTempSp: 280 });
-    setSensors({ furnaceTemp: 280, columnPres: 0.25, columnLevel: 50 });
-    setRiskLevel(5);
-    setLogs([
-      { id: '1', time: '00:00', type: 'info', message: 'Система перезапущена. Режим работы: Стабильный.' },
-      { id: '2', time: '00:00', type: 'info', message: 'Входной клапан V-1 открыт. Подача сырья в норме.' },
-    ]);
+    if (isOnline) {
+      sendWsAction({ type: 'reset' });
+    } else {
+      setStatus('running');
+      setTimeElapsed(0);
+      setValves({ V1: true, V2: false, V3: true });
+      setSetpoints({ furnaceTempSp: 280 });
+      setSensors({ furnaceTemp: 280, columnPres: 0.25, columnLevel: 50 });
+      setDefects({ pump_fail: false, coil_overheat: false, valve_jam: false });
+      setRiskLevel(5);
+      setPredictions([280, 0.25, 50]);
+      setLogs([{ id: '1', time: '00:00', type: 'info', message: 'Система перезапущена локально.' }]);
+      setScoreCard(null);
+      setAccidentReason('');
+    }
   };
 
   return (
@@ -217,11 +328,24 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       valves,
       sensors,
       setpoints,
+      defects,
       riskLevel,
+      predictions,
       logs,
+      scoreCard,
+      accidentReason,
+      username,
+      role,
+      scenarioId,
+      isOnline,
+      wsLatency,
+      loginUser,
+      logoutUser,
+      selectScenario,
       toggleValve,
       changeSetpoint,
       triggerEsd,
+      triggerDefect,
       resetSession
     }}>
       {children}

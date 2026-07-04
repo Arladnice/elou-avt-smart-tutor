@@ -195,3 +195,21 @@ cython_debug/
 # OS specific files
 [Dd]esktop.ini
 .DS_Store
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Vite cache
+.vite/
+
+# ML models and weights
+*.pt
+*.pth
+*.h5
+*.bin
+*.onnx
+*.pb
+*.pkl
+*.joblib

@@ -37,7 +37,7 @@ const Title = styled.h1`
   }
 `;
 
-const StatusIndicator = styled.div<{ status: 'running' | 'paused' | 'esd' | 'success' }>`
+const StatusIndicator = styled.div<{ status: 'running' | 'paused' | 'esd' | 'accident' | 'success' }>`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -58,14 +58,16 @@ const StatusIndicator = styled.div<{ status: 'running' | 'paused' | 'esd' | 'suc
     background-color: ${props => {
       if (props.status === 'running') return props.theme.colors.success;
       if (props.status === 'esd') return props.theme.colors.danger;
+      if (props.status === 'accident') return props.theme.colors.danger;
       return props.theme.colors.offline;
     }};
     box-shadow: 0 0 8px ${props => {
       if (props.status === 'running') return props.theme.colors.success;
       if (props.status === 'esd') return props.theme.colors.danger;
+      if (props.status === 'accident') return props.theme.colors.danger;
       return 'transparent';
     }};
-    animation: ${props => (props.status === 'running' || props.status === 'esd' ? pulse : 'none')} 1.5s infinite;
+    animation: ${props => (props.status === 'running' || props.status === 'esd' || props.status === 'accident' ? pulse : 'none')} 1.5s infinite;
   }
 `;
 
@@ -144,7 +146,7 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
 `;
 
 const Header: React.FC = () => {
-  const { status, timeElapsed, triggerEsd, resetSession } = useSimulator();
+  const { status, timeElapsed, triggerEsd, resetSession, username, logoutUser } = useSimulator();
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -155,6 +157,7 @@ const Header: React.FC = () => {
   const getStatusText = () => {
     if (status === 'running') return 'Работа';
     if (status === 'esd') return 'Аварийный Останов';
+    if (status === 'accident') return 'Авария';
     return 'Пауза';
   };
 
@@ -169,7 +172,7 @@ const Header: React.FC = () => {
       <InfoPanel>
         <InfoItem>
           <User size={14} />
-          Оператор: <strong>Денис Арлаков</strong>
+          Оператор: <strong>{username}</strong>
         </InfoItem>
         <InfoItem>
           <Play size={14} />
@@ -185,6 +188,9 @@ const Header: React.FC = () => {
         <Button onClick={triggerEsd} variant="danger" disabled={status === 'esd'}>
           <ShieldAlert size={12} />
           Авария (ESD)
+        </Button>
+        <Button onClick={logoutUser} variant="secondary">
+          Выход
         </Button>
       </Actions>
     </HeaderContainer>

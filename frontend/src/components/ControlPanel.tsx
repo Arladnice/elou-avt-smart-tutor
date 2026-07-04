@@ -5,31 +5,31 @@ import { Slider, Switch, Card } from 'antd';
 import { Settings, Thermometer, Radio } from 'lucide-react';
 
 const PanelContainer = styled(Card)`
-  background-color: ${props => props.theme.colors.surface} !important;
-  border-color: ${props => props.theme.colors.border} !important;
-  color: ${props => props.theme.colors.text} !important;
-  border-radius: 6px !important;
+  background-color: ${props => props.theme.colors.surface};
+  border-color: ${props => props.theme.colors.border};
+  color: ${props => props.theme.colors.text};
+  border-radius: 6px;
   overflow: hidden;
 
   .ant-card-head {
-    border-bottom: 1px solid ${props => props.theme.colors.border} !important;
-    padding: 0 16px !important;
-    min-height: 40px !important;
+    border-bottom: 1px solid ${props => props.theme.colors.border};
+    padding: 0 16px;
+    min-height: 40px;
   }
 
   .ant-card-head-title {
-    color: ${props => props.theme.colors.textMuted} !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
+    color: ${props => props.theme.colors.textMuted};
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 0 !important;
+    padding: 10px 0;
   }
 
   .ant-card-body {
-    padding: 16px !important;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 16px;

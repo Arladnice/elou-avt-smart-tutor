@@ -47,4 +47,22 @@ export const GlobalStyle = createGlobalStyle<{ theme: ScadaThemeType }>`
     background: none;
     color: inherit;
   }
+
+  /* Глобальное переопределение стилей модальных окон Ant Design (без !important) */
+  div.ant-modal-content {
+    background-color: #111620;
+    border: 1px solid #222c3e;
+    color: #e1e7f0;
+    padding: 24px;
+  }
+  div.ant-modal-header {
+    background-color: #111620;
+    border-bottom: 1px solid #222c3e;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+  .ant-modal-title {
+    color: #e1e7f0;
+    background-color: #111620;
+  }
 `;

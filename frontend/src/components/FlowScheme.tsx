@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styledComponents, { keyframes } from 'styled-components';
 import { useSimulator } from '../context/SimulatorContext';
-import { Activity, Flame } from 'lucide-react';
+import { Activity, Flame, TrendingUp } from 'lucide-react';
 
 const flowAnimation = keyframes`
   0% { stroke-dashoffset: 24; }
@@ -21,7 +21,7 @@ const SchemeContainer = styledComponents.div`
 const SchemeHeader = styledComponents.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
   padding: 10px 16px;
   border-bottom: 1px solid ${props => props.theme.colors.border};
   font-size: 13px;
@@ -40,7 +40,7 @@ const SVGCanvas = styledComponents.svg`
 
 // Стилизованные датчики
 const SensorBox = styledComponents.g<{ isWarning?: boolean; isDanger?: boolean }>`
-  rect {
+  rect.bg {
     fill: #131924;
     stroke: ${props => {
       if (props.isDanger) return props.theme.colors.danger;
@@ -106,19 +106,62 @@ const PipeFlow = styledComponents.path<{ isActive?: boolean; speed?: string }>`
   animation: ${flowAnimation} ${props => props.speed || '1.5s'} linear infinite;
 `;
 
+const SparklinePath = styledComponents.path<{ strokeColor: string }>`
+  fill: none;
+  stroke: ${props => props.strokeColor};
+  stroke-width: 1.2;
+`;
+
 const FlowScheme: React.FC = () => {
-  const { sensors, valves, toggleValve, status } = useSimulator();
+  const { sensors, valves, toggleValve, status, isOnline, wsLatency } = useSimulator();
+
+  // Локальная история для sparklines (К2: тренды и "инженерная интуиция")
+  const [tempHistory, setTempHistory] = useState<number[]>([]);
+  const [presHistory, setPresHistory] = useState<number[]>([]);
+  const [levelHistory, setLevelHistory] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (status !== 'running') return;
+    
+    setTempHistory(prev => [...prev.slice(-14), sensors.furnaceTemp]);
+    setPresHistory(prev => [...prev.slice(-14), sensors.columnPres]);
+    setLevelHistory(prev => [...prev.slice(-14), sensors.columnLevel]);
+  }, [sensors, status]);
 
   const handleValveClick = (valveId: 'V1' | 'V2' | 'V3') => {
     if (status !== 'running') return;
     toggleValve(valveId);
   };
 
+  // Метод генерации пути SVG для sparkline внутри прямоугольника
+  // x: старт, y: старт, w: ширина, h: высота
+  const generateSparklineD = (history: number[], x: number, y: number, w: number, h: number, minVal: number, maxVal: number) => {
+    if (history.length < 2) return '';
+    const points = history.map((val, idx) => {
+      const px = x + (idx / (history.length - 1)) * w;
+      // Нормируем y в пределах высоты прямоугольника
+      const range = maxVal - minVal;
+      const normalizedVal = range > 0 ? (val - minVal) / range : 0.5;
+      const py = y + h - normalizedVal * h;
+      return `${px},${py}`;
+    });
+    return `M ${points.join(' L ')}`;
+  };
+
   return (
     <SchemeContainer>
       <SchemeHeader>
-        <Activity size={14} />
-        Мнемосхема процесса: ЭЛОУ-АВТ-1
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Activity size={14} />
+          Мнемосхема процесса: ЭЛОУ-АВТ-1
+        </div>
+        <div style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <TrendingUp size={12} color="#00e5ff" />
+          <span>Спарклайны трендов активны</span>
+          <span style={{ color: isOnline ? '#00ff66' : '#7c8ba1', marginLeft: '10px' }}>
+            {isOnline ? `Online (ping ${wsLatency}ms)` : 'Offline (Mock)'}
+          </span>
+        </div>
       </SchemeHeader>
       
       <SVGCanvas viewBox="0 0 800 450">
@@ -208,39 +251,63 @@ const FlowScheme: React.FC = () => {
           <text x="0" y="-16" fill="#e1e7f0" fontSize="9" textAnchor="middle">V-3</text>
         </ValveGroup>
 
-        {/* ИНФОРМАТОРЫ ДАТЧИКОВ */}
+        {/* ИНФОРМАТОРЫ ДАТЧИКОВ И ИХ СПАРКЛАЙНЫ */}
         {/* Датчик T-1 (Температура печи) */}
-        <SensorBox 
-          transform="translate(230, 230)" 
-          isWarning={sensors.furnaceTemp > 310} 
-          isDanger={sensors.furnaceTemp > 325}
-        >
-          <rect x="-35" y="-10" width="70" height="28" rx="4" />
-          <text className="value" x="0" y="8" textAnchor="middle">{sensors.furnaceTemp}°C</text>
-          <text className="label" x="0" y="-15" textAnchor="middle">T-1 (ПЕЧЬ)</text>
-        </SensorBox>
+        <g transform="translate(230, 230)">
+          <SensorBox 
+            isWarning={sensors.furnaceTemp > 310} 
+            isDanger={sensors.furnaceTemp > 325}
+          >
+            <rect className="bg" x="-35" y="-10" width="70" height="28" rx="4" />
+            <text className="value" x="0" y="8" textAnchor="middle">{sensors.furnaceTemp}°C</text>
+            <text className="label" x="0" y="-15" textAnchor="middle">T-1 (ПЕЧЬ)</text>
+          </SensorBox>
+          
+          {/* Спарклайн под датчиком */}
+          <rect x="-35" y="22" width="70" height="15" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
+          <SparklinePath 
+            d={generateSparklineD(tempHistory, -35, 22, 70, 15, 240, 340)} 
+            strokeColor={sensors.furnaceTemp > 310 ? "#ff3333" : "#00ff66"} 
+          />
+        </g>
 
         {/* Датчик P-1 (Давление в колонне) */}
-        <SensorBox 
-          transform="translate(630, 90)" 
-          isWarning={sensors.columnPres > 0.3} 
-          isDanger={sensors.columnPres > 0.4}
-        >
-          <rect x="-35" y="-10" width="70" height="28" rx="4" />
-          <text className="value" x="0" y="8" textAnchor="middle">{sensors.columnPres} МПа</text>
-          <text className="label" x="0" y="-15" textAnchor="middle">P-1 (КОЛОННА)</text>
-        </SensorBox>
+        <g transform="translate(630, 90)">
+          <SensorBox 
+            isWarning={sensors.columnPres > 0.3} 
+            isDanger={sensors.columnPres > 0.4}
+          >
+            <rect className="bg" x="-35" y="-10" width="70" height="28" rx="4" />
+            <text className="value" x="0" y="8" textAnchor="middle">{sensors.columnPres} МПа</text>
+            <text className="label" x="0" y="-15" textAnchor="middle">P-1 (КОЛОННА)</text>
+          </SensorBox>
+          
+          {/* Спарклайн под датчиком */}
+          <rect x="-35" y="22" width="70" height="15" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
+          <SparklinePath 
+            d={generateSparklineD(presHistory, -35, 22, 70, 15, 0.05, 0.5)} 
+            strokeColor={sensors.columnPres > 0.3 ? "#ffcc00" : "#00ff66"} 
+          />
+        </g>
 
         {/* Датчик L-1 (Уровень в колонне) */}
-        <SensorBox 
-          transform="translate(460, 310)" 
-          isWarning={sensors.columnLevel > 85 || sensors.columnLevel < 15} 
-          isDanger={sensors.columnLevel > 95 || sensors.columnLevel < 5}
-        >
-          <rect x="-35" y="-10" width="70" height="28" rx="4" />
-          <text className="value" x="0" y="8" textAnchor="middle">{sensors.columnLevel}%</text>
-          <text className="label" x="0" y="-15" textAnchor="middle">L-1 (УРОВЕНЬ)</text>
-        </SensorBox>
+        <g transform="translate(460, 310)">
+          <SensorBox 
+            isWarning={sensors.columnLevel > 85 || sensors.columnLevel < 15} 
+            isDanger={sensors.columnLevel > 95 || sensors.columnLevel < 5}
+          >
+            <rect className="bg" x="-35" y="-10" width="70" height="28" rx="4" />
+            <text className="value" x="0" y="8" textAnchor="middle">{sensors.columnLevel}%</text>
+            <text className="label" x="0" y="-15" textAnchor="middle">L-1 (УРОВЕНЬ)</text>
+          </SensorBox>
+          
+          {/* Спарклайн под датчиком */}
+          <rect x="-35" y="22" width="70" height="15" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
+          <SparklinePath 
+            d={generateSparklineD(levelHistory, -35, 22, 70, 15, 0, 100)} 
+            strokeColor={(sensors.columnLevel > 85 || sensors.columnLevel < 15) ? "#ffcc00" : "#00ff66"} 
+          />
+        </g>
       </SVGCanvas>
     </SchemeContainer>
   );
