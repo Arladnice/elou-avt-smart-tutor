@@ -205,7 +205,7 @@ const FlowScheme: React.FC = () => {
           <text x="50" y="30" fill="#ff4444" fontSize="11" fontWeight="700" textAnchor="middle">ПЕЧЬ П-1</text>
           
           {/* Пламя печи */}
-          <g transform="translate(35, 80)">
+          <g transform="translate(35, 112)">
             <Flame size={30} color={valves.V1 ? "#ff6600" : "#ff3333"} style={{ opacity: valves.V1 ? 0.8 : 0.2 }} />
           </g>
         </g>
