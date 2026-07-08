@@ -30,8 +30,8 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_risk_predictor(self):
         """Проверяет корректность расчета рисков и прогноза параметров."""
-        # Генерируем стабильный временной ряд (30 отчетов)
-        dummy_window = [[280.0, 0.25, 50.0] for _ in range(30)]
+        # Генерируем стабильный временной ряд (30 отчетов по 7 фичей)
+        dummy_window = [[1.0, 0.0, 1.0, 280.0, 278.0, 0.24, 50.0] for _ in range(30)]
         pred_vals, risk = self.predictor.predict_risk(dummy_window)
         
         # Проверяем размерности и типы
@@ -62,6 +62,13 @@ class TestKTKComponents(unittest.TestCase):
         # Проверяем, что в ошибках есть ссылка на пункт техрегламента
         has_dry_heat_clause = any("7.9.1" in err["clause"] for err in errors)
         self.assertTrue(has_dry_heat_clause)
+
+    def test_error_analyzer_no_actions(self):
+        """Проверяет оценку сессии без совершенных действий."""
+        score, errors, recs = self.analyzer.evaluate_session([], "startup")
+        self.assertEqual(score, 0)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]["title"], "Регламентные операции не начаты")
 
 if __name__ == "__main__":
     unittest.main()
