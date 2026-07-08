@@ -57,6 +57,7 @@ interface SimulatorContextType {
   triggerEsd: () => void;
   triggerDefect: (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', state: boolean) => void;
   resetSession: () => void;
+  completeSession: () => void;
 }
 
 const SimulatorContext = createContext<SimulatorContextType | undefined>(undefined);
@@ -303,6 +304,21 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const completeSession = () => {
+    if (isOnline) {
+      sendWsAction({ type: 'complete' });
+    } else {
+      setStatus('success');
+      setScoreCard({
+        score: 100,
+        grade: 'A',
+        duration: timeElapsed,
+        errors: [],
+        recommendations: ['Сценарий успешно выполнен в локальном режиме.']
+      });
+    }
+  };
+
   const resetSession = () => {
     if (isOnline) {
       sendWsAction({ type: 'reset' });
@@ -346,7 +362,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       changeSetpoint,
       triggerEsd,
       triggerDefect,
-      resetSession
+      resetSession,
+      completeSession
     }}>
       {children}
     </SimulatorContext.Provider>

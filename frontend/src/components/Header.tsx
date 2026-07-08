@@ -1,7 +1,7 @@
 import React from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useSimulator } from '../context/SimulatorContext';
-import { Play, RotateCcw, ShieldAlert, User } from 'lucide-react';
+import { Play, RotateCcw, ShieldAlert, User, CheckCircle } from 'lucide-react';
 
 const pulse = keyframes`
   0% { opacity: 0.3; }
@@ -146,7 +146,7 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
 `;
 
 const Header: React.FC = () => {
-  const { status, timeElapsed, triggerEsd, resetSession, username, logoutUser } = useSimulator();
+  const { status, timeElapsed, triggerEsd, resetSession, username, logoutUser, role, completeSession } = useSimulator();
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -176,11 +176,17 @@ const Header: React.FC = () => {
         </InfoItem>
         <InfoItem>
           <Play size={14} />
-          Сессия: <strong>{formatTime(timeElapsed)}</strong>
+          Сессия: <strong>{formatTime(timeElapsed)} / 05:00</strong>
         </InfoItem>
       </InfoPanel>
 
       <Actions>
+        {role === 'operator' && status === 'running' && (
+          <Button onClick={completeSession} variant="primary" style={{ borderColor: '#00ff66', color: '#00ff66', backgroundColor: 'rgba(0, 255, 102, 0.1)' }}>
+            <CheckCircle size={12} />
+            Завершить
+          </Button>
+        )}
         <Button onClick={resetSession} variant="primary">
           <RotateCcw size={12} />
           Сброс

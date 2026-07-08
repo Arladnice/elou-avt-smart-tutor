@@ -266,7 +266,7 @@ class ConnectionManager:
             score = 0
             
         score_card = None
-        if sim_state["status"] in ["accident", "esd"] or sim_state["timeElapsed"] >= 150:
+        if sim_state["status"] in ["accident", "esd", "success"] or sim_state["timeElapsed"] >= 300:
             score_card = {
                 "score": score,
                 "grade": safety_grade,
@@ -404,6 +404,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 status_ru = "АКТИВИРОВАНА" if state else "ДЕАКТИВИРОВАНА"
                 manager.add_log("error" if state else "info", f"ИНСТРУКТОР: Неисправность '{defect_names_ru.get(defect_id, defect_id)}' {status_ru}!")
                 log_audit_event("INSTRUCTOR", "DEFECT_TRIGGER", f"Неисправность {defect_id} -> {state}")
+                
+            elif action_type == "complete":
+                manager.simulator.status = "success"
+                manager.add_log("info", "ТРЕНИРОВКА ЗАВЕРШЕНА: Оператор успешно сдал отчет о сессии.")
+                log_audit_event(manager.active_operator_name, "SESSION_COMPLETE", "Оператор успешно завершил тренировку вручную")
                 
             elif action_type == "ping":
                 await websocket.send_json({"type": "pong", "timestamp": cmd.get("timestamp")})
