@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useSimulator } from '../context/SimulatorContext';
 import { Brain, User } from 'lucide-react';
-import { Input, Select, Button, Card, message } from 'antd';
+import { Input, Select, Button, Card, App } from 'antd';
 
 const glow = keyframes`
   0% { box-shadow: 0 0 10px rgba(0, 229, 255, 0.1); }
@@ -110,6 +110,7 @@ const InfoText = styled.div`
 `;
 
 const Login: React.FC = () => {
+  const { message } = App.useApp();
   const { loginUser } = useSimulator();
   const [name, setName] = useState('');
   const [role, setRole] = useState<'operator' | 'instructor'>('operator');

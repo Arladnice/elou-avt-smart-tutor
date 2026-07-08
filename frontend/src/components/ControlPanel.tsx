@@ -73,10 +73,11 @@ const SwitchLabel = styled.span`
 
 const ControlPanel: React.FC = () => {
   const { setpoints, valves, toggleValve, changeSetpoint, status } = useSimulator();
+  const [localTemp, setLocalTemp] = React.useState(setpoints.furnaceTempSp);
 
-  const handleTempChange = (value: number) => {
-    changeSetpoint(value);
-  };
+  React.useEffect(() => {
+    setLocalTemp(setpoints.furnaceTempSp);
+  }, [setpoints.furnaceTempSp]);
 
   return (
     <PanelContainer 
@@ -98,15 +99,16 @@ const ControlPanel: React.FC = () => {
           <Slider
             min={240}
             max={340}
-            value={setpoints.furnaceTempSp}
-            onChange={handleTempChange}
+            value={localTemp}
+            onChange={(v) => setLocalTemp(v)}
+            onAfterChange={(v) => changeSetpoint(v)}
             disabled={status !== 'running'}
             tooltip={{ formatter: (v) => `${v}°C` }}
           />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#7c8ba1' }}>
           <span>240°C</span>
-          <strong>Текущая: {setpoints.furnaceTempSp}°C</strong>
+          <strong>Текущая: {localTemp}°C</strong>
           <span>340°C</span>
         </div>
       </ControlGroup>

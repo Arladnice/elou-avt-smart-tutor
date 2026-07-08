@@ -1,4 +1,4 @@
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, theme, App as AntdApp } from 'antd';
 import { ThemeProvider } from 'styled-components';
 import { scadaTheme } from './styles/theme';
 import { GlobalStyle } from './styles/globalStyles';
@@ -44,12 +44,14 @@ function App() {
         }
       }}
     >
-      <ThemeProvider theme={scadaTheme}>
-        <GlobalStyle theme={scadaTheme} />
-        <SimulatorProvider>
-          <RootRouter />
-        </SimulatorProvider>
-      </ThemeProvider>
+      <AntdApp>
+        <ThemeProvider theme={scadaTheme}>
+          <GlobalStyle theme={scadaTheme} />
+          <SimulatorProvider>
+            <RootRouter />
+          </SimulatorProvider>
+        </ThemeProvider>
+      </AntdApp>
     </ConfigProvider>
   );
 }

@@ -184,6 +184,7 @@ class ConnectionManager:
         self.active_operator_name = "Денис Арлаков"
         self.active_scenario = "startup"
         self.actions_taken: List[str] = []
+        self.defects_triggered: Set[str] = set()
         self.telemetry_history: List[List[float]] = [] # Последние 30 секунд для LSTM
         self.logs: List[dict] = []
 
@@ -252,7 +253,7 @@ class ConnectionManager:
         pred_vals, risk = self.predictor.predict_risk(self.telemetry_history)
         
         # Запускаем оценку действий по DTW
-        score, errors, recs = self.analyzer.evaluate_session(self.actions_taken, self.active_scenario)
+        score, errors, recs = self.analyzer.evaluate_session(self.actions_taken, self.active_scenario, self.defects_triggered)
         
         # Определяем буквенную оценку безопасности (К2: Оценка квалификации)
         safety_grade = "A"
@@ -396,6 +397,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 defect_id = cmd.get("defect_id")
                 state = cmd.get("state")
                 manager.simulator.set_defect(defect_id, state)
+                if state:
+                    manager.defects_triggered.add(defect_id)
                 defect_names_ru = {
                     "pump_fail": "Отказ сырьевого насоса",
                     "coil_overheat": "Прогар змеевика печи П-1",
@@ -419,6 +422,7 @@ async def websocket_endpoint(websocket: WebSocket):
             elif action_type == "reset":
                 manager.simulator.reset()
                 manager.actions_taken.clear()
+                manager.defects_triggered.clear()
                 manager.telemetry_history.clear()
                 manager.logs.clear()
                 manager.add_log("info", "Система перезапущена. Режим работы: Стабильный.")

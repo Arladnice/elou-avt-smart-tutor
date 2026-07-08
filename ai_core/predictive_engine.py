@@ -251,6 +251,9 @@ class RiskPredictor:
             else:
                 return [280.0, 0.25, 50.0], 5.0
                 
+        # Рассчитываем математический прогноз по умолчанию (fallback)
+        pred_temp_math, pred_pres_math, pred_level_math = self._run_mathematical_fallback(window)
+
         # -------------------------------------------------------------
         # А. Использование нейросети (ONNX или PyTorch)
         # -------------------------------------------------------------
@@ -272,16 +275,25 @@ class RiskPredictor:
                         
                 # Денормируем предсказанные значения на t + 15 с (только 3 выходных)
                 pred = denormalize_output(pred_norm)
-                pred_temp, pred_pres, pred_level = float(pred[0]), float(pred[1]), float(pred[2])
+                pred_temp_nn, pred_pres_nn, pred_level_nn = float(pred[0]), float(pred[1]), float(pred[2])
+                
+                # Объединяем предсказания ИИ и физико-математической экстраполяции:
+                # Берём наиболее консервативный (опасный) сценарий для раннего предупреждения
+                pred_temp = max(pred_temp_nn, pred_temp_math)
+                pred_pres = max(pred_pres_nn, pred_pres_math)
+                
+                dev_nn = abs(pred_level_nn - 50.0)
+                dev_math = abs(pred_level_math - 50.0)
+                pred_level = pred_level_nn if dev_nn > dev_math else pred_level_math
             except Exception as e:
                 # В случае сбоя при инференсе, задействуем резервный метод
                 print(f"Ошибка инференса нейросети: {e}. Переходим на fallback.")
-                pred_temp, pred_pres, pred_level = self._run_mathematical_fallback(window)
+                pred_temp, pred_pres, pred_level = pred_temp_math, pred_pres_math, pred_level_math
         else:
             # -------------------------------------------------------------
             # Б. Резервный метод: Полиномиальная экстраполяция (NumPy)
             # -------------------------------------------------------------
-            pred_temp, pred_pres, pred_level = self._run_mathematical_fallback(window)
+            pred_temp, pred_pres, pred_level = pred_temp_math, pred_pres_math, pred_level_math
 
         # Ограничения предсказанных значений
         pred_temp = max(20.0, min(500.0, pred_temp))

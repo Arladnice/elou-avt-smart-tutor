@@ -38,11 +38,12 @@ class ErrorAnalyzer:
             "shutdown": ["SP_DOWN", "V2_OPEN", "V1_CLOSE"]
         }
 
-    def evaluate_session(self, actions, scenario_id):
+    def evaluate_session(self, actions, scenario_id, defects_triggered=None):
         """
         Оценивает сессию оператора.
         actions: список действий, совершенных оператором, например: ["V1_OPEN", "SP_UP", "V3_OPEN"]
         scenario_id: идентификатор сценария ("startup" или "shutdown")
+        defects_triggered: список или множество дефектов, активированных во время сессии
         
         Возвращает:
           score: оценка от 0 до 100%
@@ -51,6 +52,45 @@ class ErrorAnalyzer:
         """
         errors = []
         recommendations = []
+        
+        # 0. Оценка действий при ликвидации аварийных ситуаций (К5: ИИ-Тьютор)
+        if defects_triggered:
+            # А. Парирование прогара змеевика печи П-1 (coil_overheat)
+            if "coil_overheat" in defects_triggered:
+                has_sp_down = "SP_DOWN" in actions
+                has_v2_open = "V2_OPEN" in actions
+                if has_sp_down and has_v2_open:
+                    recommendations.append("Поздравляем! Вы успешно локализовали неисправность 'Прогар змеевика П-1'.")
+                    recommendations.append("Вы своевременно снизили температурную нагрузку на печь и открыли сброс давления V-2 в факельную систему, предотвратив взрыв колонны.")
+                    return 100, [], recommendations
+                else:
+                    if not has_sp_down:
+                        errors.append({
+                            "clause": "Раздел 7.7.1.14 / п. 7.9.1",
+                            "title": "Опасность перегрева змеевика",
+                            "text": "При прогаре змеевика печи П-1 оператор обязан немедленно снизить уставку температуры горелок печи (SP_DOWN) до минимума для тушения топки."
+                        })
+                        recommendations.append("При перегреве/прогаре змеевика немедленно снизьте уставку нагрева печи П-1.")
+                    if not has_v2_open:
+                        errors.append({
+                            "clause": "Раздел 3.5 / п. 7.10.4",
+                            "title": "Отсутствие сброса давления при аварии",
+                            "text": "При угрозе роста давления свыше нормы (0.3 МПа) оператор обязан открыть регулирующий клапан V-2 на факельную линию."
+                        })
+                        recommendations.append("При росте давления откройте клапан аварийного сброса V-2.")
+                    return 40, errors, recommendations
+
+            # Б. Парирование отказа сырьевого насоса (pump_fail)
+            if "pump_fail" in defects_triggered:
+                has_sp_down = "SP_DOWN" in actions
+                if has_sp_down:
+                    recommendations.append("Поздравляем! Вы успешно локализовали отказ сырьевого насоса.")
+                    recommendations.append("Вы своевременно снизили уставку температуры (SP_DOWN) при прекращении подачи холодного сырья, предотвратив сухой перегрев змеевиков.")
+                    return 100, [], recommendations
+                else:
+                    errors.append(TECH_REGULATIONS["P1_DRY_HEAT"])
+                    recommendations.append("При прекращении подачи сырья немедленно снизьте уставку температуры печи П-1, так как нагрев сухого змеевика приведет к его прогару.")
+                    return 30, errors, recommendations
         
         # Получаем эталонную последовательность
         golden = self.golden_sequences.get(scenario_id, [])

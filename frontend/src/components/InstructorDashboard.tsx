@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useSimulator } from '../context/SimulatorContext';
-import { Card, Switch, Button, Table, Badge, Alert, Radio, message } from 'antd';
+import { Card, Switch, Button, Table, Badge, Alert, Radio, App } from 'antd';
 import { ShieldCheck, ShieldAlert, Users, Play, AlertTriangle, LogOut, Trash2 } from 'lucide-react';
 
 const Container = styled.div`
@@ -172,6 +172,7 @@ const LogRow = styled.div<{ type: string }>`
 `;
 
 const InstructorDashboard: React.FC = () => {
+  const { message } = App.useApp();
   const { 
     status, 
     sensors, 
