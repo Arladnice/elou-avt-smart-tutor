@@ -174,8 +174,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         const F_in = valves.V1 && !defects.pump_fail ? 1.0 : 0.0;
 
-        // Печь
-        const Q_heat = (setpoints.furnaceTempSp - nextTemp) * 0.1 + (defects.coil_overheat ? 5.0 : 0.0);
+        // Печь с автоматической компенсацией охлаждения сырья (feedforward)
+        const Q_heat = (setpoints.furnaceTempSp - nextTemp) * 0.15 + F_in * (setpoints.furnaceTempSp - 60.0) * 0.06 + (defects.coil_overheat ? 5.0 : 0.0);
         const Q_cool = F_in * (nextTemp - 60.0) * 0.06;
         nextTemp += Q_heat - Q_cool + (Math.random() - 0.5) * 0.5;
 
