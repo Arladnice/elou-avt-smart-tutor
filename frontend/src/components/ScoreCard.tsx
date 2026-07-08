@@ -141,11 +141,11 @@ const FooterButtons = styled.div`
 `;
 
 const ScoreCard: React.FC = () => {
-  const { scoreCard, status, resetSession, logoutUser } = useSimulator();
+  const { scoreCard, resetSession, logoutUser } = useSimulator();
 
   if (!scoreCard) return null;
 
-  const isSuccess = status === 'success' || (status === 'running' && scoreCard.score >= 80);
+  const isSuccess = scoreCard.score >= 80;
 
   return (
     <Modal
