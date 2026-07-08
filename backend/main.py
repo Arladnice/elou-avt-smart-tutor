@@ -406,9 +406,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 log_audit_event("INSTRUCTOR", "DEFECT_TRIGGER", f"Неисправность {defect_id} -> {state}")
                 
             elif action_type == "complete":
-                manager.simulator.status = "success"
-                manager.add_log("info", "ТРЕНИРОВКА ЗАВЕРШЕНА: Оператор успешно сдал отчет о сессии.")
-                log_audit_event(manager.active_operator_name, "SESSION_COMPLETE", "Оператор успешно завершил тренировку вручную")
+                if manager.simulator.status == "running":
+                    manager.simulator.status = "success"
+                    manager.add_log("info", "ТРЕНИРОВКА ЗАВЕРШЕНА: Оператор успешно сдал отчет о сессии.")
+                    manager.save_completed_session()
+                    log_audit_event(manager.active_operator_name, "SESSION_COMPLETE", "Оператор успешно завершил тренировку вручную")
                 
             elif action_type == "ping":
                 await websocket.send_json({"type": "pong", "timestamp": cmd.get("timestamp")})
@@ -457,6 +459,13 @@ async def simulation_loop():
                 manager.telemetry_history.pop(0)
                 
             new_status = manager.simulator.status
+            
+            # Проверяем тайм-аут сессии (лимит 5 минут / 300 секунд)
+            if manager.simulator.time_elapsed >= 300:
+                manager.simulator.status = "success"
+                new_status = "success"
+                manager.add_log("info", "ТРЕНИРОВКА ЗАВЕРШЕНА: Достигнут лимит времени сессии (5 минут).")
+                manager.save_completed_session()
             
             # Проверяем нештатные ситуации
             temp = manager.simulator.sensors["furnaceTemp"]
