@@ -141,11 +141,24 @@ const FooterButtons = styled.div`
 `;
 
 const ScoreCard: React.FC = () => {
-  const { scoreCard, resetSession, logoutUser } = useSimulator();
+  const { scoreCard, status, resetSession, logoutUser } = useSimulator();
 
   if (!scoreCard) return null;
 
   const isSuccess = scoreCard.score >= 80;
+
+  const getHeaderTitle = () => {
+    if (isSuccess) return 'ЭКЗАМЕН УСПЕШНО СДАН!';
+    if (status === 'accident') return 'ТРЕНИРОВКА ПРОВАЛЕНА (АВАРИЯ)';
+    if (status === 'esd') return 'ТРЕНИРОВКА ПРОВАЛЕНА (АВАРИЙНЫЙ ОСТАНОВ)';
+    return 'ТРЕНИРОВКА ПРОВАЛЕНА (НИЗКИЙ БАЛЛ)';
+  };
+
+  const getHeaderColor = () => {
+    if (isSuccess) return '#00ff66';
+    if (status === 'accident' || status === 'esd') return '#ff3333';
+    return '#ff9900';
+  };
 
   return (
     <Modal
@@ -170,8 +183,8 @@ const ScoreCard: React.FC = () => {
         </GradeBadge>
 
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: isSuccess ? '#00ff66' : '#ff3333' }}>
-            {isSuccess ? 'ЭКЗАМЕН УСПЕШНО СДАН!' : 'ТРЕНИРОВКА ПРОВАЛЕНА / АВАРИЯ'}
+          <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: getHeaderColor() }}>
+            {getHeaderTitle()}
           </h2>
           <p style={{ fontSize: '11px', color: '#7c8ba1', marginTop: '2px' }}>
             Параметры сессии верифицированы ИИ по требованиям безопасности
