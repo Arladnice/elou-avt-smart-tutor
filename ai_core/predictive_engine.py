@@ -11,7 +11,15 @@ try:
 except ImportError:
     HAS_TORCH = False
 
+# Пытаемся импортировать onnxruntime для легкого инференса
+try:
+    import onnxruntime as ort
+    HAS_ONNX = True
+except ImportError:
+    HAS_ONNX = False
+
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "lstm_model.pth")
+ONNX_PATH = os.path.join(os.path.dirname(__file__), "model.onnx")
 DATASET_PATH = os.path.join(os.path.dirname(__file__), "telemetry_dataset.csv")
 
 # Константы нормирования (мин/макс для нормализации данных датчиков)
@@ -50,7 +58,8 @@ if HAS_TORCH:
             return out
 else:
     class RiskLSTM:
-        pass
+        def __init__(self, *args, **kwargs):
+            pass
 
 # -------------------------------------------------------------
 # Функция обучения модели
@@ -131,30 +140,41 @@ def train_lstm_model(epochs=10, batch_size=64):
     print(f"Модель сохранена в файл {MODEL_PATH}")
     return True
 
-# -------------------------------------------------------------
 # Класс инференса (Прогнозирование рисков на лету)
 # -------------------------------------------------------------
 class RiskPredictor:
     def __init__(self):
         self.model = None
-        self.use_fallback = not HAS_TORCH
+        self.ort_session = None
+        self.use_onnx = False
+        self.use_fallback = True
         
-        if HAS_TORCH:
+        # 1. Проверяем наличие ONNX (предпочтительный легкий инференс)
+        if HAS_ONNX and os.path.exists(ONNX_PATH):
+            try:
+                self.ort_session = ort.InferenceSession(ONNX_PATH, providers=['CPUExecutionProvider'])
+                self.use_onnx = True
+                self.use_fallback = False
+                print("Модель LSTM успешно загружена через ONNX Runtime.")
+            except Exception as e:
+                print(f"Ошибка загрузки ONNX модели: {e}. Пробуем PyTorch.")
+                
+        # 2. Если ONNX не загружен, но есть PyTorch и веса
+        if self.use_fallback and HAS_TORCH:
             try:
                 self.model = RiskLSTM(input_dim=3, hidden_dim=16, seq_len=30, output_dim=3)
                 if os.path.exists(MODEL_PATH):
-                    # Загрузка весов
                     self.model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
                     self.model.eval()
-                    print("Модель RiskLSTM успешно загружена.")
+                    self.use_fallback = False
+                    print("Модель RiskLSTM успешно загружена через PyTorch.")
                 else:
-                    print("Файл lstm_model.pth не найден. Включается математический fallback-прогнозист.")
-                    self.use_fallback = True
+                    print("Файл lstm_model.pth не найден. Включается математический fallback.")
             except Exception as e:
-                print(f"Ошибка загрузки модели: {e}. Переход на fallback.")
-                self.use_fallback = True
-        else:
-            print("PyTorch отсутствует. Используется резервный математический экстраполятор.")
+                print(f"Ошибка загрузки PyTorch модели: {e}. Переход на fallback.")
+                
+        if self.use_fallback:
+            print("Нейросети недоступны. Исполняется резервный математический экстраполятор (polyfit).")
 
     def predict_risk(self, window_data):
         """
@@ -178,22 +198,30 @@ class RiskPredictor:
                 return [280.0, 0.25, 50.0], 5.0
                 
         # -------------------------------------------------------------
-        # А. Использование нейросети LSTM (при наличии torch и файла весов)
+        # А. Использование нейросети (ONNX или PyTorch)
         # -------------------------------------------------------------
         if not self.use_fallback:
             try:
-                with torch.no_grad():
-                    # Нормализуем окно
-                    window_norm = normalize(window)
-                    # Превращаем в тензор (batch_size=1, seq_len=30, features=3)
-                    x_tensor = torch.tensor(window_norm, dtype=torch.float32).unsqueeze(0)
-                    pred_norm = self.model(x_tensor).squeeze(0).numpy()
-                    
-                    # Денормируем предсказанные значения на t + 15 с
-                    pred = denormalize(pred_norm)
-                    pred_temp, pred_pres, pred_level = float(pred[0]), float(pred[1]), float(pred[2])
+                # Нормализуем окно
+                window_norm = normalize(window)
+                
+                if self.use_onnx:
+                    # Инференс через ONNX Runtime
+                    x_input = window_norm.astype(np.float32)[np.newaxis, :, :]
+                    ort_outs = self.ort_session.run(None, {"input": x_input})
+                    pred_norm = ort_outs[0][0]
+                else:
+                    # Инференс через PyTorch
+                    with torch.no_grad():
+                        x_tensor = torch.tensor(window_norm, dtype=torch.float32).unsqueeze(0)
+                        pred_norm = self.model(x_tensor).squeeze(0).numpy()
+                        
+                # Денормируем предсказанные значения на t + 15 с
+                pred = denormalize(pred_norm)
+                pred_temp, pred_pres, pred_level = float(pred[0]), float(pred[1]), float(pred[2])
             except Exception as e:
                 # В случае сбоя при инференсе, задействуем резервный метод
+                print(f"Ошибка инференса нейросети: {e}. Переходим на fallback.")
                 pred_temp, pred_pres, pred_level = self._run_mathematical_fallback(window)
         else:
             # -------------------------------------------------------------
