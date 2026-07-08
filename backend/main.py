@@ -7,7 +7,7 @@ import hashlib
 import asyncio
 from typing import Dict, List, Set
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Добавляем пути в sys.path для импорта simulator и ai_core
@@ -233,11 +233,10 @@ class ConnectionManager:
     def get_full_state(self) -> dict:
         sim_state = self.simulator.get_state()
         
-        # Получаем предсказание рисков от LSTM
+        # Получаем предсказание рисков от LSTM (используем заполненную в симуляции историю)
         sensors = sim_state["sensors"]
-        self.telemetry_history.append([sensors["furnaceTemp"], sensors["columnPres"], sensors["columnLevel"]])
-        if len(self.telemetry_history) > 30:
-            self.telemetry_history.pop(0)
+        if not self.telemetry_history:
+            self.telemetry_history.append([sensors["furnaceTemp"], sensors["columnPres"], sensors["columnLevel"]])
             
         pred_vals, risk = self.predictor.predict_risk(self.telemetry_history)
         
@@ -423,6 +422,13 @@ async def simulation_loop():
             # Шаг физики симулятора
             old_status = manager.simulator.status
             manager.simulator.step()
+            
+            # Записываем телеметрию в историю только при реальном шаге физики
+            sensors = manager.simulator.sensors
+            manager.telemetry_history.append([sensors["furnaceTemp"], sensors["columnPres"], sensors["columnLevel"]])
+            if len(manager.telemetry_history) > 30:
+                manager.telemetry_history.pop(0)
+                
             new_status = manager.simulator.status
             
             # Проверяем нештатные ситуации

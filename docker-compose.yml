@@ -9,6 +9,7 @@ services:
       - "8000:8000"
     volumes:
       - tutor_data:/app/data
+      - .:/app
     environment:
       - DATABASE_PATH=/app/data/tutor.db
     restart: always
