@@ -142,7 +142,9 @@ const FlowScheme: React.FC = () => {
       // Нормируем y в пределах высоты прямоугольника
       const range = maxVal - minVal;
       const normalizedVal = range > 0 ? (val - minVal) / range : 0.5;
-      const py = y + h - normalizedVal * h;
+      // Ограничиваем значение в диапазоне [0, 1], чтобы линия не выходила за рамки
+      const clampedVal = Math.max(0, Math.min(1, normalizedVal));
+      const py = y + h - clampedVal * h;
       return `${px},${py}`;
     });
     return `M ${points.join(' L ')}`;
