@@ -185,7 +185,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (valves.V2 && !defects.valve_jam) {
           nextPres -= nextPres * 0.15;
         }
-        nextPres = Math.max(0.02, nextPres);
+        nextPres = Math.max(0.05, nextPres);
 
         // Колонна (уровень)
         nextLevel += F_in * 0.6;
