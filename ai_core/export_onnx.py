@@ -11,7 +11,7 @@ from ai_core.predictive_engine import RiskLSTM, MODEL_PATH
 def export_to_onnx():
     # Load model
     print("Loading PyTorch model...")
-    model = RiskLSTM(input_dim=3, hidden_dim=16, seq_len=30, output_dim=3)
+    model = RiskLSTM(input_dim=7, hidden_dim=64, seq_len=30, output_dim=3, num_layers=2)
     if not os.path.exists(MODEL_PATH):
         print(f"Error: {MODEL_PATH} not found!")
         return False
@@ -20,7 +20,7 @@ def export_to_onnx():
     model.eval()
 
     # Create dummy input
-    dummy_input = torch.randn(1, 30, 3, dtype=torch.float32)
+    dummy_input = torch.randn(1, 30, 7, dtype=torch.float32)
 
     # Export path
     onnx_path = os.path.join(os.path.dirname(MODEL_PATH), "model.onnx")

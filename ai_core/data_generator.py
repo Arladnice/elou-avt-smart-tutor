@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from simulator.elou_avt_model import ELOUAVTSimulator
 
-def generate_telemetry_data(output_path, num_samples=15000):
+def generate_telemetry_data(output_path, num_samples=100000):
     """
     Генерирует синтетический датасет телеметрии на основе физической модели.
     Имитирует нормальную работу, пусконаладочные режимы, инжекцию неисправностей
@@ -25,12 +25,17 @@ def generate_telemetry_data(output_path, num_samples=15000):
     ]
     
     records_generated = 0
+    last_reported = 0
     
     with open(output_path, mode="w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(headers)
         
         while records_generated < num_samples:
+            # Выводим прогресс каждые 10 000 строк
+            if records_generated - last_reported >= 10000:
+                print(f"Сгенерировано: {records_generated} / {num_samples} строк ({records_generated/num_samples*100:.1f}%)")
+                last_reported = records_generated
             sim.reset()
             scenario_type = random.choice(["normal", "startup", "defect_overheat", "defect_pump", "defect_jam"])
             

@@ -235,8 +235,19 @@ class ConnectionManager:
         
         # Получаем предсказание рисков от LSTM (используем заполненную в симуляции историю)
         sensors = sim_state["sensors"]
+        valves = sim_state["valves"]
+        setpoints = sim_state["setpoints"]
         if not self.telemetry_history:
-            self.telemetry_history.append([sensors["furnaceTemp"], sensors["columnPres"], sensors["columnLevel"]])
+            # [valve_V1, valve_V2, valve_V3, furnaceTempSp, furnaceTemp, columnPres, columnLevel]
+            self.telemetry_history.append([
+                1.0 if valves["V1"] else 0.0,
+                1.0 if valves["V2"] else 0.0,
+                1.0 if valves["V3"] else 0.0,
+                setpoints["furnaceTempSp"],
+                sensors["furnaceTemp"],
+                sensors["columnPres"],
+                sensors["columnLevel"]
+            ])
             
         pred_vals, risk = self.predictor.predict_risk(self.telemetry_history)
         
@@ -423,9 +434,20 @@ async def simulation_loop():
             old_status = manager.simulator.status
             manager.simulator.step()
             
-            # Записываем телеметрию в историю только при реальном шаге физики
+            # Записываем 7-фичевую телеметрию в историю (только при реальном шаге физики)
             sensors = manager.simulator.sensors
-            manager.telemetry_history.append([sensors["furnaceTemp"], sensors["columnPres"], sensors["columnLevel"]])
+            valves  = manager.simulator.valves
+            setpts  = manager.simulator.setpoints
+            # [valve_V1, valve_V2, valve_V3, furnaceTempSp, furnaceTemp, columnPres, columnLevel]
+            manager.telemetry_history.append([
+                1.0 if valves["V1"] else 0.0,
+                1.0 if valves["V2"] else 0.0,
+                1.0 if valves["V3"] else 0.0,
+                setpts["furnaceTempSp"],
+                sensors["furnaceTemp"],
+                sensors["columnPres"],
+                sensors["columnLevel"]
+            ])
             if len(manager.telemetry_history) > 30:
                 manager.telemetry_history.pop(0)
                 
