@@ -126,7 +126,7 @@ class ELOUAVTSimulator:
         
         # Сброс давления через предохранительный/регулирующий клапан V-2
         if V2 and not self.defects["valve_jam"]:
-            dP -= 0.015
+            dP -= 0.045
             
         next_P = P + dP + (random.random() - 0.5) * 0.002
         next_P = max(0.05, min(2.0, next_P))

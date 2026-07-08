@@ -183,7 +183,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Колонна (давление)
         nextPres += (nextTemp - 260) * 0.0012 + (nextLevel - 50) * 0.0005;
         if (valves.V2 && !defects.valve_jam) {
-          nextPres -= nextPres * 0.05;
+          nextPres -= nextPres * 0.15;
         }
         nextPres = Math.max(0.02, nextPres);
 
