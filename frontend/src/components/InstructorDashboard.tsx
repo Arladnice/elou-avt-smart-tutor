@@ -458,17 +458,26 @@ const InstructorDashboard: React.FC = () => {
       </Content>
 
       <Modal
-        title={`Детальный отчет по сессии №${selectedSession?.id}`}
+        title={
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#e1e7f0', fontSize: '15px', fontWeight: 'bold' }}>
+            <ShieldCheck size={18} color="#00ff66" />
+            Детальный отчет по сессии №{selectedSession?.id}
+          </span>
+        }
         open={isModalVisible}
         visible={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
+        centered={true}
         footer={[
-          <Button key="close" type="primary" onClick={() => setIsModalVisible(false)}>
+          <Button key="close" type="primary" onClick={() => setIsModalVisible(false)} style={{ background: '#00e5ff', borderColor: '#00e5ff', color: '#0b0f17', fontWeight: 'bold' }}>
             Закрыть
           </Button>
         ]}
-        width={700}
-        bodyStyle={{ backgroundColor: '#0b0f17', color: '#e1e7f0', padding: '20px' }}
+        width={750}
+        bodyStyle={{ backgroundColor: '#0b0f17', color: '#e1e7f0', padding: '20px', maxHeight: '60vh', overflowY: 'auto' }}
+        styles={{
+          body: { backgroundColor: '#0b0f17', color: '#e1e7f0', padding: '20px', maxHeight: '60vh', overflowY: 'auto' }
+        }}
       >
         {selectedSession && (
           <div>
@@ -497,7 +506,7 @@ const InstructorDashboard: React.FC = () => {
 
             <div>
               <h4 style={{ color: '#7c8ba1', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>Журнал действий оператора:</h4>
-              <div style={{ backgroundColor: '#05070a', border: '1px solid #1f293d', borderRadius: '4px', padding: '10px', maxHeight: '200px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px' }}>
+              <div style={{ backgroundColor: '#05070a', border: '1px solid #1f293d', borderRadius: '4px', padding: '10px', maxHeight: '180px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px' }}>
                 {selectedSession.session_logs && selectedSession.session_logs.length > 0 ? (
                   selectedSession.session_logs.map((log: any) => (
                     <div key={log.id} style={{ marginBottom: '4px', color: log.type === 'error' ? '#ff4d4f' : log.type === 'warning' ? '#ffcc00' : '#e1e7f0' }}>
@@ -505,7 +514,9 @@ const InstructorDashboard: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div style={{ color: '#7c8ba1', fontStyle: 'italic' }}>Журнал логов пуст.</div>
+                  <div style={{ color: '#7c8ba1', fontStyle: 'italic' }}>
+                    {selectedSession.id <= 13 ? "Логи отсутствуют (архивная сессия до миграции БД)" : "Журнал логов пуст."}
+                  </div>
                 )}
               </div>
             </div>
