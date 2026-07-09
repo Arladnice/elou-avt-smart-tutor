@@ -26,6 +26,21 @@ TECH_REGULATIONS = {
         "clause": "Раздел 7.7.1.1",
         "title": "Нарушение очередности технологических операций",
         "text": "Строгое выполнение всех операций, строгое соблюдение очередности выполнения операций, плавный и равномерный разогрев аппаратов и трубопроводов при выводе на режим установки..."
+    },
+    "V3_DRAIN_BLOCK": {
+        "clause": "Раздел 7.10.4",
+        "title": "Блокировка дренажа колонны К-1",
+        "text": "Закрытие дренажного клапана V-3 при работающей подаче сырья V-1 ведет к росту уровня куба колонны К-1, сокращению свободного объема и росту давления."
+    },
+    "FORCED_HEATING": {
+        "clause": "Раздел 7.7.1.1",
+        "title": "Форсированный разогрев печи",
+        "text": "Быстрое ступенчатое повышение уставки температуры печи П-1 без выдержки времени на стабилизацию параметров вызывает тепловые деформации змеевиков и риск их прогара."
+    },
+    "UNNECESSARY_VENT": {
+        "clause": "Раздел 3.5",
+        "title": "Необоснованный сброс газа на факел",
+        "text": "Открытие регулирующего клапана V-2 при нормальном давлении в системе приводит к сдувке ценных углеводородных газов на факел и экономическим потерям установки."
     }
 }
 
@@ -46,9 +61,9 @@ class ErrorAnalyzer:
         defects_triggered: список или множество дефектов, активированных во время сессии
         
         Возвращает:
-          score: оценка от 0 до 100%
-          errors: список обнаруженных ошибок со ссылками на техрегламент
-          recommendations: рекомендации по обучению
+           score: оценка от 0 до 100%
+           errors: список обнаруженных ошибок со ссылками на техрегламент
+           recommendations: рекомендации по обучению
         """
         errors = []
         recommendations = []
@@ -114,6 +129,9 @@ class ErrorAnalyzer:
         # 2. Анализ критических ошибок в процессе
         has_dry_heat = False
         has_hot_cut = False
+        has_drain_block = False
+        has_forced_heating = False
+        has_unnecessary_vent = False
         
         # Имитируем парсинг последовательности для выявления нарушений
         # а) Нагрев всухую (увеличили температуру без подачи сырья)
@@ -130,6 +148,24 @@ class ErrorAnalyzer:
             if "SP_DOWN" not in actions[:v1_close_idx]:
                 has_hot_cut = True
 
+        # в) Перекрытие дренажа при открытой подаче сырья
+        if "V3_CLOSE" in actions:
+            v3_close_idx = actions.index("V3_CLOSE")
+            # Если закрыли дренаж V-3, не закрыв подачу V-1 и не снизив уставку
+            if "V1_CLOSE" not in actions[:v3_close_idx] and "SP_DOWN" not in actions[:v3_close_idx]:
+                has_drain_block = True
+
+        # г) Форсированный нагрев печи (многократное повышение уставки без стабилизации)
+        if actions.count("SP_UP") >= 3:
+            has_forced_heating = True
+
+        # д) Открытие сброса V-2 без необходимости
+        if "V2_OPEN" in actions:
+            v2_open_idx = actions.index("V2_OPEN")
+            # Если открыли V-2 без повышения уставки температуры печи
+            if "SP_UP" not in actions[:v2_open_idx] and not (defects_triggered and ("coil_overheat" in defects_triggered or "valve_jam" in defects_triggered)):
+                has_unnecessary_vent = True
+
         # Собираем ошибки по регламенту
         if has_dry_heat:
             errors.append(TECH_REGULATIONS["P1_DRY_HEAT"])
@@ -139,7 +175,19 @@ class ErrorAnalyzer:
             errors.append(TECH_REGULATIONS["P1_DRY_HEAT"])
             recommendations.append("Запрещено прекращать подачу сырья (закрывать V-1) при работающих горелках печи П-1. Сначала снизьте уставку нагрева печи.")
 
-        if dtw_score < 80:
+        if has_drain_block:
+            errors.append(TECH_REGULATIONS["V3_DRAIN_BLOCK"])
+            recommendations.append("Контролируйте материальный баланс колонны К-1. Не перекрывайте дренаж V-3 при открытом входе сырья V-1 во избежание роста уровня и давления.")
+
+        if has_forced_heating:
+            errors.append(TECH_REGULATIONS["FORCED_HEATING"])
+            recommendations.append("Повышайте температуру печи П-1 плавно, ступенями по 5-10°C, с выдержкой времени для стабилизации теплообмена.")
+
+        if has_unnecessary_vent:
+            errors.append(TECH_REGULATIONS["UNNECESSARY_VENT"])
+            recommendations.append("Держите клапан сброса V-2 закрытым при давлении в пределах нормы (0.1 - 0.3 МПа). Открывайте сброс только при угрозе превышения давления.")
+
+        if dtw_score < 80 and not (has_dry_heat or has_hot_cut or has_drain_block or has_forced_heating or has_unnecessary_vent):
             errors.append(TECH_REGULATIONS["ORDER_VIOLATION"])
             recommendations.append("Обратите внимание на последовательность операций. Несоблюдение очередности ведет к нестабильности техпроцесса.")
 
@@ -150,13 +198,21 @@ class ErrorAnalyzer:
             final_score -= 30
         if has_hot_cut:
             final_score -= 35
+        if has_drain_block:
+            final_score -= 20
+        if has_forced_heating:
+            final_score -= 15
+        if has_unnecessary_vent:
+            final_score -= 10
             
         final_score = max(0, min(100, final_score))
         
         # Адаптивное назначение повторного сценария
         if final_score < 75:
-            if has_dry_heat or has_hot_cut:
+            if has_dry_heat or has_hot_cut or has_forced_heating:
                 recommendations.append("Рекомендуемый адаптивный сценарий: 'Регулирование теплового режима печи П-1'")
+            elif has_drain_block:
+                recommendations.append("Рекомендуемый адаптивный сценарий: 'Регулирование материального баланса колонны К-1'")
             else:
                 recommendations.append("Рекомендуемый адаптивный сценарий: 'Базовые переключения арматуры КТК'")
         else:

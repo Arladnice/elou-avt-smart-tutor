@@ -55,6 +55,12 @@ def init_db():
     )
     """)
     
+    # Добавляем колонку для сохранения логов действий в сессии
+    try:
+        cursor.execute("ALTER TABLE training_sessions ADD COLUMN session_logs_json TEXT DEFAULT '[]'")
+    except sqlite3.OperationalError:
+        pass
+    
     # Таблица системных ИБ-логов
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS audit_logs (
@@ -130,17 +136,26 @@ def get_sessions():
     """Возвращает историю тренировок и проверяет целостность данных (К8: 5 баллов)."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, operator_name, role, scenario_id, start_time, duration_sec, score, status, violations_json, integrity_hash FROM training_sessions ORDER BY id DESC")
+    cursor.execute("SELECT id, operator_name, role, scenario_id, start_time, duration_sec, score, status, violations_json, integrity_hash, session_logs_json FROM training_sessions ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
     
     sessions = []
     for r in rows:
-        session_id, op_name, role, scen_id, start_time, duration, score, status, viol_json, db_hash = r
+        session_id, op_name, role, scen_id, start_time, duration, score, status, viol_json, db_hash, session_logs_json = r
         
-        # Пересчитываем хэш для проверки целостности
-        recalculated_hash = calculate_integrity_hash(op_name, role, scen_id, start_time, duration, score, status, viol_json)
-        is_valid = (db_hash == recalculated_hash)
+        if not session_logs_json:
+            session_logs_json = "[]"
+            
+        # Проверка ИБ-целостности (двойная проверка хэша для совместимости со старыми записями)
+        hash_with_logs = calculate_integrity_hash(op_name, role, scen_id, start_time, duration, score, status, viol_json, session_logs_json)
+        hash_without_logs = calculate_integrity_hash(op_name, role, scen_id, start_time, duration, score, status, viol_json)
+        is_valid = (db_hash == hash_with_logs or db_hash == hash_without_logs)
+        
+        try:
+            parsed_logs = json.loads(session_logs_json)
+        except Exception:
+            parsed_logs = []
         
         sessions.append({
             "id": session_id,
@@ -152,6 +167,7 @@ def get_sessions():
             "score": score,
             "status": status,
             "violations": json.loads(viol_json),
+            "session_logs": parsed_logs,
             "integrity_valid": is_valid
         })
         
@@ -308,14 +324,16 @@ class ConnectionManager:
         score = card["score"]
         status = state["status"]
         violations = json.dumps(card["errors"], ensure_ascii=False)
+        session_logs = json.dumps(self.logs, ensure_ascii=False)
         
-        h = calculate_integrity_hash(op_name, role, scen_id, start_time, duration, score, status, violations)
+        # Защита целостности данных: включаем логи в расчет хэша SHA-256
+        h = calculate_integrity_hash(op_name, role, scen_id, start_time, duration, score, status, violations, session_logs)
         
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO training_sessions (operator_name, role, scenario_id, start_time, duration_sec, score, status, violations_json, integrity_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (op_name, role, scen_id, start_time, duration, score, status, violations, h)
+            "INSERT INTO training_sessions (operator_name, role, scenario_id, start_time, duration_sec, score, status, violations_json, integrity_hash, session_logs_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (op_name, role, scen_id, start_time, duration, score, status, violations, h, session_logs)
         )
         conn.commit()
         conn.close()

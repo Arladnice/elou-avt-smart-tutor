@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useSimulator } from '../context/SimulatorContext';
-import { Card, Switch, Button, Table, Badge, Alert, Radio, App } from 'antd';
+import { Card, Switch, Button, Table, Badge, Alert, Radio, App, Modal } from 'antd';
 import { ShieldCheck, ShieldAlert, Users, Play, AlertTriangle, LogOut, Trash2 } from 'lucide-react';
 
 const Container = styled.div`
@@ -192,6 +192,8 @@ const InstructorDashboard: React.FC = () => {
   } = useSimulator();
 
   const [history, setHistory] = useState<any[]>([]);
+  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   // Загружаем историю тренировок
   const fetchHistory = async () => {
@@ -441,10 +443,75 @@ const InstructorDashboard: React.FC = () => {
                 backgroundColor: '#111620',
                 color: '#e1e7f0'
               }}
+              onRow={(record) => {
+                return {
+                  onClick: () => {
+                    setSelectedSession(record);
+                    setIsModalVisible(true);
+                  },
+                  style: { cursor: 'pointer' }
+                };
+              }}
             />
           </StyledCard>
         </PanelColumn>
       </Content>
+
+      <Modal
+        title={`Детальный отчет по сессии №${selectedSession?.id}`}
+        open={isModalVisible}
+        visible={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsModalVisible(false)}>
+            Закрыть
+          </Button>
+        ]}
+        width={700}
+        bodyStyle={{ backgroundColor: '#0b0f17', color: '#e1e7f0', padding: '20px' }}
+      >
+        {selectedSession && (
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px', borderBottom: '1px solid #1f293d', paddingBottom: '12px' }}>
+              <div>Оператор: <strong>{selectedSession.operator_name}</strong></div>
+              <div>Сценарий: <strong>{selectedSession.scenario_id === 'startup' ? 'Пуск установки' : 'Останов установки'}</strong></div>
+              <div>Время сессии: <strong>{Math.floor(selectedSession.duration_sec / 60)}м {selectedSession.duration_sec % 60}с</strong></div>
+              <div>Итоговая оценка: <strong style={{ color: selectedSession.score >= 85 ? '#00ff66' : selectedSession.score >= 70 ? '#0070f3' : selectedSession.score >= 50 ? '#ffcc00' : '#ff3333' }}>{selectedSession.score}%</strong></div>
+              <div>Статус: <strong>{selectedSession.status === 'accident' ? 'Авария' : selectedSession.status === 'esd' ? 'Аварийный Останов' : 'Успешно сдано'}</strong></div>
+              <div>ИБ Целостность: <strong style={{ color: selectedSession.integrity_valid ? '#00ff66' : '#ff3333' }}>{selectedSession.integrity_valid ? 'Валидна' : 'Нарушена!'}</strong></div>
+            </div>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ color: '#7c8ba1', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>Зафиксированные нарушения регламента:</h4>
+              {selectedSession.violations && selectedSession.violations.length > 0 ? (
+                selectedSession.violations.map((v: any) => (
+                  <div key={v.title} style={{ backgroundColor: '#211517', border: '1px solid #5a1a1e', borderRadius: '4px', padding: '10px', marginBottom: '8px' }}>
+                    <div style={{ color: '#ff4d4f', fontWeight: 'bold', fontSize: '12px', marginBottom: '2px' }}>{v.title} ({v.clause})</div>
+                    <div style={{ fontSize: '11px', color: '#e8cbcc' }}>{v.text}</div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ color: '#00ff66', fontSize: '12px' }}>Нарушений требований ТБ/ИБ не обнаружено.</div>
+              )}
+            </div>
+
+            <div>
+              <h4 style={{ color: '#7c8ba1', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>Журнал действий оператора:</h4>
+              <div style={{ backgroundColor: '#05070a', border: '1px solid #1f293d', borderRadius: '4px', padding: '10px', maxHeight: '200px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px' }}>
+                {selectedSession.session_logs && selectedSession.session_logs.length > 0 ? (
+                  selectedSession.session_logs.map((log: any) => (
+                    <div key={log.id} style={{ marginBottom: '4px', color: log.type === 'error' ? '#ff4d4f' : log.type === 'warning' ? '#ffcc00' : '#e1e7f0' }}>
+                      [{log.time}] {log.message}
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ color: '#7c8ba1', fontStyle: 'italic' }}>Журнал логов пуст.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </Container>
   );
 };
