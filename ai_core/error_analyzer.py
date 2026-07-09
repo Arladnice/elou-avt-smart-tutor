@@ -65,6 +65,37 @@ class ErrorAnalyzer:
            errors: список обнаруженных ошибок со ссылками на техрегламент
            recommendations: рекомендации по обучению
         """
+        # Если действия вообще не совершались оператором (оригинальный список пуст)
+        if not actions:
+            errors = [{
+                "clause": "Общие положения регламента",
+                "title": "Регламентные операции не начаты",
+                "text": "Вы завершили сессию, не выполнив ни одного управляющего воздействия. Сценарий пуска/останова не был реализован."
+            }]
+            recommendations = [
+                "Ознакомьтесь с чек-листом пуска и выполните необходимые переключения арматуры.",
+                "Рекомендуемый адаптивный сценарий: 'Базовые переключения арматуры КТК'"
+            ]
+            return 0, errors, recommendations
+
+        # Создаем копию списка действий, чтобы не менять оригинальный
+        actions = list(actions)
+        
+        # Динамический учет начального состояния клапанов для корректного LCS-выравнивания
+        if scenario_id == "startup":
+            # Если V-1 не закрывали в самом начале, считаем что он был открыт
+            if "V1_OPEN" not in actions:
+                if "V1_CLOSE" not in actions:
+                    actions.insert(0, "V1_OPEN")
+                else:
+                    idx = actions.index("V1_CLOSE")
+                    actions.insert(idx, "V1_OPEN")
+            
+            # Если V-3 не закрывали, значит он был открыт на протяжении всей сессии
+            if "V3_OPEN" not in actions:
+                if "V3_CLOSE" not in actions:
+                    actions.append("V3_OPEN")
+
         errors = []
         recommendations = []
         
@@ -112,17 +143,6 @@ class ErrorAnalyzer:
         if not golden:
             return 100, [], ["Сценарий успешно выполнен."]
 
-        # Если действия вообще не совершались
-        if not actions:
-            errors.append({
-                "clause": "Общие положения регламента",
-                "title": "Регламентные операции не начаты",
-                "text": "Вы завершили сессию, не выполнив ни одного управляющего воздействия. Сценарий пуска/останова не был реализован."
-            })
-            recommendations.append("Ознакомьтесь с чек-листом пуска и выполните необходимые переключения арматуры.")
-            recommendations.append("Рекомендуемый адаптивный сценарий: 'Базовые переключения арматуры КТК'")
-            return 0, errors, recommendations
-
         # 1. Алгоритм сравнения последовательностей (упрощенный аналог DTW для дискретных шагов)
         dtw_score = self._calculate_dtw_alignment(actions, golden)
         
@@ -148,12 +168,16 @@ class ErrorAnalyzer:
             if "SP_DOWN" not in actions[:v1_close_idx]:
                 has_hot_cut = True
 
-        # в) Перекрытие дренажа при открытой подаче сырья
+        # в) Перекрытие дренажа при открытой подаче сырья (если оставили закрытым)
         if "V3_CLOSE" in actions:
-            v3_close_idx = actions.index("V3_CLOSE")
-            # Если закрыли дренаж V-3, не закрыв подачу V-1 и не снизив уставку
-            if "V1_CLOSE" not in actions[:v3_close_idx] and "SP_DOWN" not in actions[:v3_close_idx]:
-                has_drain_block = True
+            # Находим индексы последнего закрытия и открытия
+            last_close = max([i for i, a in enumerate(actions) if a == "V3_CLOSE"])
+            last_open = max([i for i, a in enumerate(actions) if a == "V3_OPEN"]) if "V3_OPEN" in actions else -1
+            
+            # Если закрыли и оставили закрытым (или закрыли после открытия) при открытом входе сырья
+            if last_close > last_open:
+                if "V1_CLOSE" not in actions[:last_close] and "SP_DOWN" not in actions[:last_close]:
+                    has_drain_block = True
 
         # г) Форсированный нагрев печи (многократное повышение уставки без стабилизации)
         if actions.count("SP_UP") >= 3:
@@ -222,36 +246,27 @@ class ErrorAnalyzer:
 
     def _calculate_dtw_alignment(self, s1, s2):
         """
-        Вычисляет расстояние выравнивания между действиями оператора (s1) и эталоном (s2).
-        Возвращает процент совпадения (0-100%).
+        Вычисляет сходство последовательности действий оператора (s1) и эталона (s2).
+        Использует Longest Common Subsequence (LCS) для оценки правильности порядка действий,
+        чтобы не штрафовать за дополнительные парирующие или регулирующие операции.
         """
         n, m = len(s1), len(s2)
         if n == 0 or m == 0:
             return 0 if n != m else 100
             
-        # Матрица расстояний DTW
-        dtw_matrix = np.zeros((n + 1, m + 1))
-        for i in range(n + 1):
-            for j in range(m + 1):
-                dtw_matrix[i, j] = float('inf')
-        dtw_matrix[0, 0] = 0
-
+        # Вычисляем длину LCS (Longest Common Subsequence)
+        dp = np.zeros((n + 1, m + 1))
         for i in range(1, n + 1):
             for j in range(1, m + 1):
-                # Расстояние между действиями: 0 если совпадают, 1 если разные
-                cost = 0 if s1[i - 1] == s2[j - 1] else 1
-                dtw_matrix[i, j] = cost + min(
-                    dtw_matrix[i - 1, j],    # вставка
-                    dtw_matrix[i, j - 1],    # удаление
-                    dtw_matrix[i - 1, j - 1]  # совпадение/замена
-                )
-
-        # Вычисляем процент сходства на основе DTW-расстояния
-        max_dist = max(n, m)
-        dtw_dist = dtw_matrix[n, m]
-        
-        similarity = (1 - (dtw_dist / max_dist)) * 100
-        return max(0.0, similarity)
+                if s1[i - 1] == s2[j - 1]:
+                    dp[i, j] = dp[i - 1, j - 1] + 1
+                else:
+                    dp[i, j] = max(dp[i - 1, j], dp[i, j - 1])
+                    
+        lcs_len = dp[n, m]
+        # Процент сходства = отношение длины LCS к длине эталона
+        similarity = (lcs_len / m) * 100
+        return round(similarity, 1)
 
 if __name__ == "__main__":
     analyzer = ErrorAnalyzer()
