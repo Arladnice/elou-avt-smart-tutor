@@ -9,7 +9,7 @@ const LogContainer = styled.footer`
   border-top: 1px solid ${props => props.theme.colors.border};
   display: flex;
   flex-direction: column;
-  height: 180px;
+  height: 100%;
   overflow: hidden;
 `;
 

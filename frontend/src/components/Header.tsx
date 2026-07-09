@@ -1,7 +1,7 @@
 import React from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useSimulator } from '../context/SimulatorContext';
-import { Play, RotateCcw, ShieldAlert, User, CheckCircle } from 'lucide-react';
+import { Play, RotateCcw, ShieldAlert, User, CheckCircle, ClipboardList } from 'lucide-react';
 
 const pulse = keyframes`
   0% { opacity: 0.3; }
@@ -146,7 +146,7 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
 `;
 
 const Header: React.FC = () => {
-  const { status, timeElapsed, triggerEsd, resetSession, username, logoutUser, role, completeSession } = useSimulator();
+  const { status, timeElapsed, triggerEsd, resetSession, username, logoutUser, role, completeSession, scenarioId } = useSimulator();
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -173,6 +173,10 @@ const Header: React.FC = () => {
         <InfoItem>
           <User size={14} />
           Оператор: <strong>{username}</strong>
+        </InfoItem>
+        <InfoItem>
+          <ClipboardList size={14} />
+          Сценарий: <strong>{scenarioId === 'startup' ? 'Пуск установки' : 'Останов установки'}</strong>
         </InfoItem>
         <InfoItem>
           <Play size={14} />

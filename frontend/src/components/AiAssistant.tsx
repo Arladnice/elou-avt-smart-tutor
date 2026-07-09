@@ -29,7 +29,7 @@ const AssistantContainer = styled(Card)`
   }
 
   .ant-card-body {
-    padding: 12px 16px;
+    padding: 8px 12px;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -60,7 +60,7 @@ const ChatBubble = styled.div<{ risk: number }>`
     return props.theme.colors.border;
   }};
   border-radius: 6px;
-  padding: 10px 14px;
+  padding: 6px 10px;
   height: 100%;
   display: flex;
   flex-direction: column;

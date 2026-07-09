@@ -29,17 +29,17 @@ const PanelContainer = styled(Card)`
   }
 
   .ant-card-body {
-    padding: 16px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
   }
 `;
 
 const ControlGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 `;
 
 const Label = styled.div`
@@ -56,7 +56,7 @@ const SwitchRow = styled.div`
   align-items: center;
   justify-content: space-between;
   background-color: ${props => props.theme.colors.background};
-  padding: 8px 12px;
+  padding: 5px 10px;
   border-radius: 4px;
   border: 1px solid ${props => props.theme.colors.border};
 `;
