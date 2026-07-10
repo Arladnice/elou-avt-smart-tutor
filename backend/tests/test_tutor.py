@@ -53,6 +53,52 @@ class TestKTKComponents(unittest.TestCase):
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
 
+    def test_simulator_scenario_initial_conditions(self):
+        """Проверяет начальные физические условия для сценариев пуска и останова."""
+        # Проверяем "startup"
+        self.simulator.reset("startup")
+        self.assertEqual(self.simulator.valves["V1"], False)
+        self.assertEqual(self.simulator.valves["V2"], False)
+        self.assertEqual(self.simulator.valves["V3"], False)
+        self.assertEqual(self.simulator.sensors["furnaceTemp"], 20.0)
+        self.assertEqual(self.simulator.sensors["columnLevel"], 0.0)
+
+        # Проверяем "shutdown"
+        self.simulator.reset("shutdown")
+        self.assertEqual(self.simulator.valves["V1"], True)
+        self.assertEqual(self.simulator.valves["V2"], False)
+        self.assertEqual(self.simulator.valves["V3"], True)
+        self.assertEqual(self.simulator.sensors["furnaceTemp"], 280.0)
+        self.assertEqual(self.simulator.sensors["columnLevel"], 50.0)
+
+    def test_error_analyzer_shutdown_success(self):
+        """Проверяет оценку идеального сценария останова печи."""
+        actions = ["SP_DOWN", "V2_OPEN", "V1_CLOSE"]
+        score, errors, recs = self.analyzer.evaluate_session(actions, "shutdown")
+        self.assertEqual(score, 100)
+        self.assertEqual(len(errors), 0)
+
+    def test_error_analyzer_column_shutdown_success(self):
+        """Проверяет оценку идеального сценария останова колонны."""
+        actions = ["SP_DOWN", "V1_CLOSE", "V3_CLOSE"]
+        score, errors, recs = self.analyzer.evaluate_session(actions, "column_shutdown")
+        self.assertEqual(score, 100)
+        self.assertEqual(len(errors), 0)
+
+    def test_error_analyzer_overpressure_relief_success(self):
+        """Проверяет оценку идеального сценария сброса избыточного давления."""
+        actions = ["V2_OPEN", "SP_DOWN"]
+        score, errors, recs = self.analyzer.evaluate_session(actions, "overpressure_relief")
+        self.assertEqual(score, 100)
+        self.assertEqual(len(errors), 0)
+
+    def test_error_analyzer_recirculation_success(self):
+        """Проверяет оценку идеального сценария перевода на рециркуляцию."""
+        actions = ["SP_DOWN", "V3_CLOSE", "V2_OPEN"]
+        score, errors, recs = self.analyzer.evaluate_session(actions, "recirculation")
+        self.assertEqual(score, 100)
+        self.assertEqual(len(errors), 0)
+
     def test_error_analyzer_dry_heat_violation(self):
         """Проверяет выявление нагрева печи всухую (нарушение техрегламента)."""
         # Оператор поднял уставку нагрева, но перекрыл сырье

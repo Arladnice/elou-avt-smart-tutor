@@ -212,8 +212,12 @@ class ErrorAnalyzer:
         # д) Открытие сброса V-2 без необходимости
         if "V2_OPEN" in actions:
             v2_open_idx = actions.index("V2_OPEN")
-            # Если открыли V-2 без повышения уставки температуры печи
-            if "SP_UP" not in actions[:v2_open_idx] and not (defects_triggered and ("coil_overheat" in defects_triggered or "valve_jam" in defects_triggered)):
+            # Если открыли V-2 без повышения уставки температуры печи и это не сценарии сброса/останова/рециркуляции
+            if (
+                scenario_id not in ["shutdown", "overpressure_relief", "recirculation"]
+                and "SP_UP" not in actions[:v2_open_idx]
+                and not (defects_triggered and ("coil_overheat" in defects_triggered or "valve_jam" in defects_triggered))
+            ):
                 has_unnecessary_vent = True
 
         # Собираем ошибки по регламенту
