@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
-import { Switch, Badge, Alert, Radio, Modal, message } from 'antd';
+import { Switch, Badge, Alert, Modal, message, Button } from 'antd';
 import { ShieldCheck, Users, Play, AlertTriangle, LogOut, Trash2, Info, AlertOctagon } from 'lucide-react';
-import { apiService, Session } from '../services/api';
+import { apiService, type Session } from '../services/api';
 import { getTableColumns, SCENARIO_NAMES } from './InstructorDashboard.config';
 import * as S from './InstructorDashboard.styles';
 
@@ -286,14 +286,14 @@ const InstructorDashboard: React.FC = () => {
             <S.TableWrapper ref={tableContainerRef}>
               <S.StyledTable
                 dataSource={history}
-                columns={columns}
+                columns={columns as any}
                 rowKey="id"
                 pagination={{ pageSize, showSizeChanger: false }}
                 size="small"
                 onRow={(record) => {
                   return {
                     onClick: () => {
-                      setSelectedSession(record);
+                      setSelectedSession(record as Session);
                       setIsModalVisible(true);
                     }
                   };
