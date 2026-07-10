@@ -13,26 +13,7 @@ class ELOUAVTSimulator:
     def __init__(self):
         self.reset()
 
-    def reset(self):
-        # Состояние клапанов (True - открыт, False - закрыт)
-        self.valves = {
-            "V1": True,   # Вход сырья в печь
-            "V2": False,  # Сброс давления из колонны
-            "V3": True    # Дренаж куба колонны
-        }
-        
-        # Уставки
-        self.setpoints = {
-            "furnaceTempSp": 280.0  # Уставка температуры печи, °C
-        }
-        
-        # Показания датчиков
-        self.sensors = {
-            "furnaceTemp": 280.0,   # T-1 (Температура печи), °C
-            "columnPres": 0.25,     # P-1 (Давление в колонне), МПа
-            "columnLevel": 50.0     # L-1 (Уровень в колонне), %
-        }
-        
+    def reset(self, scenario_id: str = "shutdown"):
         # Активные неисправности (задаются инструктором)
         self.defects = {
             "pump_fail": False,       # Отказ сырьевого насоса (сырье не идет даже при открытом V1)
@@ -43,6 +24,37 @@ class ELOUAVTSimulator:
         self.status = "running"       # "running", "paused", "esd" (аварийный останов), "accident" (авария)
         self.time_elapsed = 0         # Время сессии в секундах
         self.accident_reason = ""     # Причина аварии
+
+        if scenario_id == "startup":
+            # Холодное состояние для пуска
+            self.valves = {
+                "V1": False,  # Вход сырья в печь закрыт
+                "V2": False,  # Сброс давления из колонны закрыт
+                "V3": False   # Дренаж куба колонны закрыт
+            }
+            self.setpoints = {
+                "furnaceTempSp": 240.0  # Минимальная температура печи
+            }
+            self.sensors = {
+                "furnaceTemp": 20.0,    # Холодная печь
+                "columnPres": 0.05,     # Атмосферное давление
+                "columnLevel": 0.0      # Пустая колонна
+            }
+        else:
+            # Нормальное рабочее состояние для останова и прочих тестов
+            self.valves = {
+                "V1": True,   # Вход сырья в печь
+                "V2": False,  # Сброс давления из колонны
+                "V3": True    # Дренаж куба колонны
+            }
+            self.setpoints = {
+                "furnaceTempSp": 280.0  # Уставка температуры печи, °C
+            }
+            self.sensors = {
+                "furnaceTemp": 280.0,   # T-1 (Температура печи), °C
+                "columnPres": 0.25,     # P-1 (Давление в колонне), МПа
+                "columnLevel": 50.0     # L-1 (Уровень в колонне), %
+            }
 
     def set_valve(self, valve_id: str, state: bool):
         if self.status != "running":
@@ -157,7 +169,7 @@ class ELOUAVTSimulator:
         elif next_T >= 380.0:
             self.status = "accident"
             self.accident_reason = "Критический перегрев печи П-1 (выше 380°C). Прогар змеевика, коксование и пожар в топочной камере!"
-        elif next_L <= 5.0 and self.time_elapsed > 10:
+        elif next_L <= 5.0 and self.time_elapsed > 40:
             self.status = "accident"
             self.accident_reason = "Аварийно низкий уровень в колонне К-1 (ниже 5%). Срыв сырьевых насосов, сухой ход и разрушение торцевых уплотнений (п. 7.9.1 техрегламента)!"
         elif next_L >= 98.0:

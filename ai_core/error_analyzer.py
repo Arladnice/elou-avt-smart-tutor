@@ -1,26 +1,32 @@
 import numpy as np
+from ai_core.config import (
+    FURNACE_TEMP_WARNING, FURNACE_TEMP_CRITICAL, FURNACE_TEMP_MIN_STARTUP, FURNACE_TEMP_MAX_SHUTDOWN,
+    COLUMN_PRES_WARNING, COLUMN_PRES_CRITICAL, COLUMN_PRES_NORMAL_MIN, COLUMN_PRES_NORMAL_MAX,
+    COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_BALANCE_MIN, COLUMN_LEVEL_BALANCE_MAX,
+    STARTUP_MIN_TIME_SEC
+)
 
 # Технологический регламент ЭЛОУ-АВТ (База знаний ИИ-модуля)
 TECH_REGULATIONS = {
     "P1_DRY_HEAT": {
         "clause": "Раздел 7.9.1 / п. 7.10.3",
         "title": "Опасность прекращения циркуляции / нагрева всухую",
-        "text": "Прекращение расхода сырья по змеевикам печей П-1 при работающих горелках ведет к критическому росту температуры стенок змеевика, коксованию труб, их прогару и возникновению пожара в топке печи."
+        "text": f"Прекращение расхода сырья по змеевикам печей П-1 при работающих горелках ведет к критическому росту температуры стенок змеевика, коксованию труб, их прогару и возникновению пожара в топке печи."
     },
     "K1_OVERPRESSURE": {
         "clause": "Раздел 3.5 / п. 7.10.4",
         "title": "Рост давления в колонне К-1",
-        "text": "Рабочее давление верха колонны К-1 должно составлять от 1 до 4,5 кгс/см² (0.1 - 0.45 МПа). Рост давления свыше 4,8 кгс/см² приводит к автоматическому отсечению топлива. Оператор обязан заблаговременно открыть регулирующий клапан сброса давления V-2 на факельную линию."
+        "text": f"Рабочее давление верха колонны К-1 должно составлять от {COLUMN_PRES_NORMAL_MIN} до {COLUMN_PRES_NORMAL_MAX} МПа. Рост давления свыше 0.48 МПа приводит к автоматическому отсечению топлива (блокировка ПАЗ). Оператор обязан заблаговременно открыть регулирующий клапан сброса давления V-2 на факельную линию."
     },
     "K1_HIGH_LEVEL": {
         "clause": "Раздел 7.10.4",
         "title": "Высокий уровень в колонне К-1",
-        "text": "Высокий уровень жидкости в колонне К-1 (>85%) создает риск уноса жидких фракций с парами в шлемовую линию, что вызывает гидроудары и деформацию конденсаторов-холодильников. Требуется открыть дренаж V-3."
+        "text": f"Высокий уровень жидкости в колонне К-1 (>{COLUMN_LEVEL_HIGH}%) создает риск уноса жидких фракций с парами в шлемовую линию, что вызывает гидроудары и деформацию конденсаторов-холодильников. Требуется открыть дренаж V-3."
     },
     "K1_LOW_LEVEL": {
         "clause": "Раздел 7.9.1 / п. 7.7.1.14",
         "title": "Низкий уровень в колонне К-1",
-        "text": "Снижение уровня нефтепродукта в колонне К-1 ниже 20% может привести к срыву печных насосов Н-3 (Н-3А), Н-2 (Н-2А, Н-2Б), сухому ходу и повреждению их торцевых уплотнений."
+        "text": f"Снижение уровня нефтепродукта в колонне К-1 ниже {COLUMN_LEVEL_LOW}% может привести к срыву печных насосов, сухому ходу и повреждению их торцевых уплотнений."
     },
     "ORDER_VIOLATION": {
         "clause": "Раздел 7.7.1.1",
@@ -40,7 +46,22 @@ TECH_REGULATIONS = {
     "UNNECESSARY_VENT": {
         "clause": "Раздел 3.5",
         "title": "Необоснованный сброс газа на факел",
-        "text": "Открытие регулирующего клапана V-2 при нормальном давлении в системе приводит к сдувке ценных углеводородных газов на факел и экономическим потерям установки."
+        "text": f"Открытие регулирующего клапана V-2 при нормальном давлении в системе ({COLUMN_PRES_NORMAL_MIN} - {COLUMN_PRES_NORMAL_MAX} МПа) приводит к сдувке ценных углеводородных газов на факел и экономическим потерям установки."
+    },
+    "PROCESS_NOT_STABILIZED": {
+        "clause": "Раздел 7.7.1.1",
+        "title": "Недостаточное время выдержки параметров",
+        "text": f"Сессия завершена слишком быстро без выдержки стабилизации технологических параметров. Технологические процессы имеют инерционность и требуют времени для стабилизации физических параметров."
+    },
+    "TEMP_NOT_REACHED": {
+        "clause": "Раздел 7.7.1 / п. 7.7.1.14",
+        "title": "Температурный режим не достигнут",
+        "text": "Фактическая температура печи П-1 не достигла нормального рабочего значения. Нагрев сырья не завершен, сепарация фракций не произошла."
+    },
+    "LEVEL_UNBALANCED": {
+        "clause": "Раздел 7.9.1 / п. 7.7.1.14",
+        "title": "Нарушение материального баланса колонны К-1",
+        "text": f"Уровень в кубе колонны К-1 вышел за пределы рабочего диапазона. Уровень должен быть в диапазоне {COLUMN_LEVEL_BALANCE_MIN}-{COLUMN_LEVEL_BALANCE_MAX}% при завершении сессии пуска."
     }
 }
 
@@ -50,15 +71,20 @@ class ErrorAnalyzer:
         # Действия кодируются как: V1_OPEN, V1_CLOSE, V2_OPEN, V2_CLOSE, V3_OPEN, V3_CLOSE, SP_UP, SP_DOWN, ESD
         self.golden_sequences = {
             "startup": ["V1_OPEN", "SP_UP", "V3_OPEN"],
-            "shutdown": ["SP_DOWN", "V2_OPEN", "V1_CLOSE"]
+            "shutdown": ["SP_DOWN", "V2_OPEN", "V1_CLOSE"],
+            "column_shutdown": ["SP_DOWN", "V1_CLOSE", "V3_CLOSE"],
+            "overpressure_relief": ["V2_OPEN", "SP_DOWN"],
+            "recirculation": ["SP_DOWN", "V3_CLOSE", "V2_OPEN"]
         }
 
-    def evaluate_session(self, actions, scenario_id, defects_triggered=None):
+    def evaluate_session(self, actions, scenario_id, defects_triggered=None, final_sensors=None, time_elapsed=0):
         """
         Оценивает сессию оператора.
         actions: список действий, совершенных оператором, например: ["V1_OPEN", "SP_UP", "V3_OPEN"]
         scenario_id: идентификатор сценария ("startup" или "shutdown")
         defects_triggered: список или множество дефектов, активированных во время сессии
+        final_sensors: dict с финальными показаниями датчиков {furnaceTemp, columnLevel, columnPres}
+        time_elapsed: продолжительность сессии в секундах
         
         Возвращает:
            score: оценка от 0 до 100%
@@ -229,6 +255,38 @@ class ErrorAnalyzer:
         if has_unnecessary_vent:
             final_score -= 10
             
+        # ----------------------------------------------------------------
+        # 3. Проверка физических параметров на момент завершения (anti-cheat)
+        # Выполняется только если данные датчиков переданы (для совместимости с юнит-тестами)
+        # ----------------------------------------------------------------
+        if final_sensors is not None and not defects_triggered:
+            furnace_temp = final_sensors.get("furnaceTemp", 280.0)
+            column_level = final_sensors.get("columnLevel", 50.0)
+
+            # a) Минимальное время стабилизации
+            if scenario_id == "startup" and time_elapsed < STARTUP_MIN_TIME_SEC:
+                errors.append(TECH_REGULATIONS["PROCESS_NOT_STABILIZED"])
+                recommendations.insert(0, f"Сессия завершена недостаточно быстро. Требуется не менее {STARTUP_MIN_TIME_SEC} секунд для стабилизации теплового режима печи.")
+                final_score -= 30
+
+            # b) Температура печи должна достичь рабочего значения при пуске
+            if scenario_id == "startup" and furnace_temp < FURNACE_TEMP_MIN_STARTUP:
+                errors.append(TECH_REGULATIONS["TEMP_NOT_REACHED"])
+                recommendations.insert(0, f"Температура печи завершена на {furnace_temp:.1f}°C, что ниже рабочего минимума {FURNACE_TEMP_MIN_STARTUP}°C. Дождитесь выхода на режим перед завершением.")
+                final_score -= 35
+
+            # c) Температура печи должна остыть при останове
+            if scenario_id == "shutdown" and furnace_temp > FURNACE_TEMP_MAX_SHUTDOWN:
+                errors.append(TECH_REGULATIONS["TEMP_NOT_REACHED"])
+                recommendations.insert(0, f"Температура печи ({furnace_temp:.1f}°C) превышает порог безопасного останова ({FURNACE_TEMP_MAX_SHUTDOWN}°C). Дождитесь охлаждения перед завершением.")
+                final_score -= 35
+
+            # d) Уровень в колонне должен быть в рабочем диапазоне при завершении пуска
+            if scenario_id == "startup" and not (COLUMN_LEVEL_BALANCE_MIN <= column_level <= COLUMN_LEVEL_BALANCE_MAX):
+                errors.append(TECH_REGULATIONS["LEVEL_UNBALANCED"])
+                recommendations.insert(0, f"Уровень в кубе колонны K-1 ({column_level:.1f}%) вышел за пределы рабочего диапазона {COLUMN_LEVEL_BALANCE_MIN}-{COLUMN_LEVEL_BALANCE_MAX}%. Балансируйте дренажным клапаном V-3.")
+                final_score -= 20
+
         final_score = max(0, min(100, final_score))
         
         # Адаптивное назначение повторного сценария

@@ -1,124 +1,7 @@
 import React from 'react';
-import styled, { keyframes } from 'styled-components';
 import { useSimulator } from '../context/SimulatorContext';
-import { Card } from 'antd';
 import { ListTodo, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
-
-const pulse = keyframes`
-  0% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.8; }
-`;
-
-const ChecklistContainer = styled(Card)`
-  background-color: ${props => props.theme.colors.surface};
-  border-color: ${props => props.theme.colors.border};
-  color: ${props => props.theme.colors.text};
-  border-radius: 6px;
-  overflow: hidden;
-
-  .ant-card-head {
-    border-bottom: 1px solid ${props => props.theme.colors.border};
-    padding: 0 16px;
-    min-height: 40px;
-  }
-
-  .ant-card-head-title {
-    color: ${props => props.theme.colors.textMuted};
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 0;
-  }
-
-  .ant-card-body {
-    padding: 8px 12px;
-  }
-`;
-
-const TasksList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const TaskItem = styled.div<{ status: 'completed' | 'active' | 'pending' }>`
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  background-color: ${props => {
-    if (props.status === 'completed') return 'rgba(0, 255, 102, 0.03)';
-    if (props.status === 'active') return 'rgba(0, 229, 255, 0.03)';
-    return 'transparent';
-  }};
-  border: 1px solid ${props => {
-    if (props.status === 'completed') return 'rgba(0, 255, 102, 0.15)';
-    if (props.status === 'active') return 'rgba(0, 229, 255, 0.2)';
-    return props.theme.colors.border;
-  }};
-  border-radius: 4px;
-  padding: 6px 10px;
-  transition: all 0.3s ease;
-
-  &:hover {
-    border-color: ${props => {
-      if (props.status === 'completed') return props.theme.colors.success;
-      if (props.status === 'active') return props.theme.colors.accent;
-      return '#3a475d';
-    }};
-  }
-`;
-
-const IconWrapper = styled.div<{ status: 'completed' | 'active' | 'pending' }>`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 2px;
-  color: ${props => {
-    if (props.status === 'completed') return props.theme.colors.success;
-    if (props.status === 'active') return props.theme.colors.accent;
-    return props.theme.colors.textMuted;
-  }};
-
-  svg.pulsing {
-    animation: ${pulse} 1.5s infinite ease-in-out;
-    filter: drop-shadow(0 0 4px ${props => props.theme.colors.accent});
-  }
-  
-  svg.completed {
-    filter: drop-shadow(0 0 4px ${props => props.theme.colors.success});
-  }
-`;
-
-const TaskDetails = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-`;
-
-const TaskTitle = styled.span<{ status: 'completed' | 'active' | 'pending' }>`
-  font-size: 12px;
-  font-weight: 600;
-  color: ${props => {
-    if (props.status === 'completed') return props.theme.colors.success;
-    if (props.status === 'active') return props.theme.colors.text;
-    return props.theme.colors.textMuted;
-  }};
-  text-decoration: ${props => props.status === 'completed' ? 'line-through' : 'none'};
-  opacity: ${props => props.status === 'pending' ? 0.6 : 1};
-`;
-
-const TaskHint = styled.span<{ status: 'completed' | 'active' | 'pending' }>`
-  font-size: 10px;
-  color: ${props => {
-    if (props.status === 'active') return props.theme.colors.textMuted;
-    return 'rgba(124, 139, 161, 0.5)';
-  }};
-  line-height: 1.3;
-`;
+import * as S from './ScenarioChecklist.styles';
 
 interface TaskInfo {
   id: string;
@@ -128,7 +11,7 @@ interface TaskInfo {
 }
 
 const ScenarioChecklist: React.FC = () => {
-  const { scenarioId, valves, setpoints } = useSimulator();
+  const { scenarioId, valves, sensors } = useSimulator();
 
   // Определение шагов на основе текущего состояния симулятора
   const getTasks = (): TaskInfo[] => {
@@ -143,14 +26,71 @@ const ScenarioChecklist: React.FC = () => {
         {
           id: 'sp_up',
           title: '2. Разогрев змеевиков печи П-1',
-          hint: 'Повысьте уставку температуры печи Т-1 с 280°C до более высокой температуры (например, 300-340°C)',
-          isDone: setpoints.furnaceTempSp > 280,
+          hint: `Поднимите уставку и дождитесь, пока фактическая температура Т-1 достигнет 285°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.furnaceTemp ?? 0) >= 285,
         },
         {
           id: 'v3_open',
           title: '3. Регулирование дренажа колонны K-1',
-          hint: 'Убедитесь, что дренажный клапан V-3 открыт для балансировки уровня',
-          isDone: valves.V3,
+          hint: `Откройте V-3 при уровне в кубе выше 20% (сейчас L-1: ${sensors?.columnLevel?.toFixed(1) ?? '...'}%)`,
+          isDone: valves.V3 && (sensors?.columnLevel ?? 0) >= 20,
+        },
+      ];
+    } else if (scenarioId === 'column_shutdown') {
+      return [
+        {
+          id: 'sp_down',
+          title: '1. Снижение нагрева печи П-1',
+          hint: `Понизьте уставку и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.furnaceTemp ?? 999) <= 245,
+        },
+        {
+          id: 'v1_close',
+          title: '2. Перекрытие подачи сырья',
+          hint: 'Переведите V-1 в положение ЗАКРЫТО',
+          isDone: !valves.V1,
+        },
+        {
+          id: 'v3_close',
+          title: '3. Прекращение дренажа куба K-1',
+          hint: `Закройте клапан дренажа V-3 при уровне в кубе ниже 15% (сейчас: ${sensors?.columnLevel?.toFixed(1) ?? '...'}%)`,
+          isDone: !valves.V3 && (sensors?.columnLevel ?? 100) < 15,
+        },
+      ];
+    } else if (scenarioId === 'overpressure_relief') {
+      return [
+        {
+          id: 'v2_open',
+          title: '1. Сброс избыточного давления',
+          hint: 'Откройте клапан V-2 для сброса газа на факел',
+          isDone: valves.V2,
+        },
+        {
+          id: 'sp_down',
+          title: '2. Снижение тепловой нагрузки',
+          hint: `Понизьте уставку печи и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.furnaceTemp ?? 999) <= 245,
+        },
+      ];
+    } else if (scenarioId === 'recirculation') {
+      return [
+        {
+          id: 'sp_down',
+          title: '1. Снижение нагрева сырья в печи П-1',
+          hint: `Понизьте уставку и дождитесь снижения температуры Т-1 ниже 250°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.furnaceTemp ?? 999) <= 250,
+        },
+        {
+          id: 'v3_close',
+          title: '2. Прекращение вывода кубового остатка',
+          hint: 'Переведите клапан V-3 (Дренаж) в положение ЗАКРЫТО',
+          isDone: !valves.V3,
+        },
+        {
+          id: 'v2_open',
+          title: '3. Открытие сдувки на факел',
+          hint: 'Переведите клапан V-2 (Сброс давления) в положение ОТКРЫТО',
+          isDone: valves.V2,
         },
       ];
     } else {
@@ -159,8 +99,8 @@ const ScenarioChecklist: React.FC = () => {
         {
           id: 'sp_down',
           title: '1. Снижение нагрева печи П-1',
-          hint: 'Понизьте уставку температуры печи Т-1 до минимального значения (240°C)',
-          isDone: setpoints.furnaceTempSp <= 240,
+          hint: `Понизьте уставку и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.furnaceTemp ?? 999) <= 245,
         },
         {
           id: 'v2_open',
@@ -171,8 +111,8 @@ const ScenarioChecklist: React.FC = () => {
         {
           id: 'v1_close',
           title: '3. Перекрытие подачи сырья',
-          hint: 'Переведите задвижку V-1 на входе в положение ЗАКРЫТО',
-          isDone: !valves.V1,
+          hint: `Переведите V-1 в положение ЗАКРЫТО и дождитесь дренажа куба (уровень < 15%, сейчас: ${sensors?.columnLevel?.toFixed(1) ?? '...'}%)`,
+          isDone: !valves.V1 && (sensors?.columnLevel ?? 100) < 15,
         },
       ];
     }
@@ -189,35 +129,43 @@ const ScenarioChecklist: React.FC = () => {
     return 'pending';
   };
 
+  const scenarioNames: Record<string, string> = {
+    startup: 'Пуск установки',
+    shutdown: 'Аварийный останов печи П-1',
+    column_shutdown: 'Останов колонны К-1',
+    overpressure_relief: 'Ликвидация роста давления',
+    recirculation: 'Перевод на рециркуляцию'
+  };
+
   return (
-    <ChecklistContainer
+    <S.ChecklistContainer
       title={
         <>
           <ListTodo size={14} color="#00e5ff" />
-          Задачи Сценария: {scenarioId === 'startup' ? 'Пуск установки' : 'Останов установки'}
+          Задачи Сценария: {scenarioNames[scenarioId] || 'Обучение'}
         </>
       }
       bordered={false}
     >
-      <TasksList>
+      <S.TasksList>
         {tasks.map((task, index) => {
           const taskStatus = getTaskStatus(index, task.isDone);
           return (
-            <TaskItem key={task.id} status={taskStatus}>
-              <IconWrapper status={taskStatus}>
+            <S.TaskItem key={task.id} status={taskStatus}>
+              <S.IconWrapper status={taskStatus}>
                 {taskStatus === 'completed' && <CheckCircle2 size={16} className="completed" />}
                 {taskStatus === 'active' && <PlayCircle size={16} className="pulsing" />}
                 {taskStatus === 'pending' && <Circle size={16} />}
-              </IconWrapper>
-              <TaskDetails>
-                <TaskTitle status={taskStatus}>{task.title}</TaskTitle>
-                <TaskHint status={taskStatus}>{task.hint}</TaskHint>
-              </TaskDetails>
-            </TaskItem>
+              </S.IconWrapper>
+              <S.TaskDetails>
+                <S.TaskTitle status={taskStatus}>{task.title}</S.TaskTitle>
+                <S.TaskHint status={taskStatus}>{task.hint}</S.TaskHint>
+              </S.TaskDetails>
+            </S.TaskItem>
           );
         })}
-      </TasksList>
-    </ChecklistContainer>
+      </S.TasksList>
+    </S.ChecklistContainer>
   );
 };
 

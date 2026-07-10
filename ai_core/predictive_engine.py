@@ -2,11 +2,18 @@ import os
 import sys
 import numpy as np
 
-# Пытаемся импортировать torch для обучения и инференса нейросети
+# Импортируем конфигурационные параметры
+from ai_core.config import (
+    MODEL_PATH, ONNX_PATH, INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM, DROPOUT,
+    SCALER_MIN, SCALER_MAX, OUT_MIN, OUT_MAX,
+    FURNACE_TEMP_CRITICAL, FURNACE_TEMP_WARNING, COLUMN_PRES_CRITICAL, COLUMN_PRES_WARNING,
+    COLUMN_PRES_ESD, COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL
+)
+
+# Пытаемся импортировать torch для инференса нейросети
 try:
     import torch
     import torch.nn as nn
-    import torch.optim as optim
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
@@ -17,20 +24,6 @@ try:
     HAS_ONNX = True
 except ImportError:
     HAS_ONNX = False
-
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "lstm_model.pth")
-ONNX_PATH = os.path.join(os.path.dirname(__file__), "model.onnx")
-DATASET_PATH = os.path.join(os.path.dirname(__file__), "telemetry_dataset.csv")
-
-# Константы нормирования для 7 фичей:
-# [valve_V1, valve_V2, valve_V3, furnaceTempSp, furnaceTemp, columnPres, columnLevel]
-INPUT_DIM = 7
-SCALER_MIN = np.array([0.0,  0.0,  0.0,  100.0, 20.0,  0.02, 0.0  ])
-SCALER_MAX = np.array([1.0,  1.0,  1.0,  400.0, 600.0, 1.5,  100.0])
-
-# Нормирование для выхода (только 3 прогнозируемых параметра)
-OUT_MIN = np.array([20.0, 0.02, 0.0  ])
-OUT_MAX = np.array([600.0, 1.5, 100.0])
 
 def normalize(data):
     """Нормализует входные данные (7 фичей) в диапазон [0, 1]."""
@@ -50,7 +43,7 @@ if HAS_TORCH:
         Вход: 7 фичей (клапаны + уставка + temp/pres/level).
         Выход: 3 параметра через 15 секунд (temp, pres, level).
         """
-        def __init__(self, input_dim=INPUT_DIM, hidden_dim=64, seq_len=30, output_dim=3, num_layers=2, dropout=0.2):
+        def __init__(self, input_dim=INPUT_DIM, hidden_dim=HIDDEN_DIM, seq_len=30, output_dim=OUTPUT_DIM, num_layers=NUM_LAYERS, dropout=DROPOUT):
             super(RiskLSTM, self).__init__()
             self.hidden_dim = hidden_dim
             self.seq_len = seq_len
@@ -79,122 +72,13 @@ else:
         def __init__(self, *args, **kwargs):
             pass
 
-# -------------------------------------------------------------
-# Функция обучения модели
-# -------------------------------------------------------------
-def train_lstm_model(epochs=15, batch_size=128):
-    if not HAS_TORCH:
-        print("Ошибка: PyTorch не установлен в системе. Обучение нейросети невозможно.")
-        return False
-        
-    if not os.path.exists(DATASET_PATH):
-        print(f"Ошибка: файл датасета {DATASET_PATH} не найден. Сначала сгенерируйте данные.")
-        return False
-        
-    print("Подготовка данных для обучения LSTM (7 фичей)...")
-    
-    # Чтение 7 фичей из датасета:
-    # [valve_V1, valve_V2, valve_V3, furnaceTempSp, furnaceTemp, columnPres, columnLevel]
-    # Индексы в CSV: 1, 2, 3, 4, 5, 6, 7
-    FEATURE_INDICES = [1, 2, 3, 4, 5, 6, 7]  # все 7 входных признаков
-    OUTPUT_INDICES  = [4, 5, 6]              # выход: furnaceTemp(5), columnPres(6), columnLevel(7)
-    # Примечание: OUTPUT_INDICES в data — это колонки 4,5,6 (furnaceTemp=4, pres=5, level=6)
-    # поскольку data строится только из FEATURE_INDICES (7 колонок, 0-индекс)
-    # furnaceTemp -> позиция 4, columnPres -> 5, columnLevel -> 6
-    
-    data = []
-    with open(DATASET_PATH, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-        for line in lines[1:]:  # пропускаем заголовок
-            parts = line.strip().split(",")
-            row = [float(parts[idx]) for idx in FEATURE_INDICES]
-            data.append(row)
-            
-    data = np.array(data, dtype=np.float32)
-    print(f"Прочитано строк: {len(data)}. Фичей: {data.shape[1]}")
-    
-    # Нормализуем всю матрицу данных (7 фичей)
-    data_norm = normalize(data)
-    
-    # Нормализуем целевые значения (только 3 выходных: temp, pres, level)
-    # Позиции в нормализованной data: furnaceTemp=4, columnPres=5, columnLevel=6
-    TARGET_COLS = [4, 5, 6]  # позиции furnaceTemp, columnPres, columnLevel в data_norm
-    
-    # Формируем выборку: X — окно 30 шагов (7 фичей), y — 3 параметра через 15 шагов
-    seq_len = 30
-    forecast_horizon = 15
-    
-    X_list, y_list = [], []
-    for i in range(len(data_norm) - seq_len - forecast_horizon):
-        X_list.append(data_norm[i : i + seq_len])                            # (30, 7)
-        y_list.append(data_norm[i + seq_len + forecast_horizon - 1, TARGET_COLS])  # (3,)
-        
-    X_all = np.array(X_list, dtype=np.float32)
-    y_all = np.array(y_list, dtype=np.float32)
-    
-    # Train/Val split: 80% обучение, 20% валидация
-    split_idx = int(len(X_all) * 0.8)
-    X_train = torch.tensor(X_all[:split_idx], dtype=torch.float32)
-    y_train = torch.tensor(y_all[:split_idx], dtype=torch.float32)
-    X_val   = torch.tensor(X_all[split_idx:], dtype=torch.float32)
-    y_val   = torch.tensor(y_all[split_idx:], dtype=torch.float32)
-    
-    print(f"Обучающая выборка: {X_train.shape[0]} окон | Валидационная: {X_val.shape[0]} окон")
-    
-    # Создание модели
-    model = RiskLSTM(input_dim=INPUT_DIM, hidden_dim=64, seq_len=seq_len, output_dim=3, num_layers=2, dropout=0.2)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
-    
-    train_size = X_train.shape[0]
-    print("Запуск обучения модели RiskLSTM (2 слоя, hidden=64, 7 фичей)...")
-    
-    for epoch in range(epochs):
-        # --- Обучение ---
-        model.train()
-        permutation = torch.randperm(train_size)
-        epoch_loss = 0.0
-        
-        for i in range(0, train_size, batch_size):
-            indices = permutation[i : i + batch_size]
-            batch_x, batch_y = X_train[indices], y_train[indices]
-            optimizer.zero_grad()
-            preds = model(batch_x)
-            loss = criterion(preds, batch_y)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item() * batch_x.size(0)
-            
-        scheduler.step()
-        train_mse = epoch_loss / train_size
-        
-        # --- Валидация ---
-        model.eval()
-        with torch.no_grad():
-            val_preds = model(X_val)
-            val_mse = criterion(val_preds, y_val).item()
-            # MAE в реальных единицах (денормализуем)
-            val_pred_real = denormalize_output(val_preds.numpy())
-            val_true_real = denormalize_output(y_val.numpy())
-            mae_temp  = np.mean(np.abs(val_pred_real[:, 0] - val_true_real[:, 0]))
-            mae_pres  = np.mean(np.abs(val_pred_real[:, 1] - val_true_real[:, 1]))
-            mae_level = np.mean(np.abs(val_pred_real[:, 2] - val_true_real[:, 2]))
-            
-        print(
-            f"Эпоха {epoch+1:02d}/{epochs} | "
-            f"Train MSE: {train_mse:.6f} | Val MSE: {val_mse:.6f} | "
-            f"MAE: Temp={mae_temp:.2f}°C, Pres={mae_pres:.4f}МПа, Level={mae_level:.2f}%"
-        )
-        
-    # Сохраняем модель
-    torch.save(model.state_dict(), MODEL_PATH)
-    print(f"\nМодель сохранена: {MODEL_PATH}")
-    return True
-
 # Класс инференса (Прогнозирование рисков на лету)
 # -------------------------------------------------------------
 class RiskPredictor:
+    """
+    Класс инференса для расчета уровня рисков на основе 30-секундного окна телеметрии.
+    Использует ONNX Runtime или PyTorch с математическим fallback.
+    """
     def __init__(self):
         self.model = None
         self.ort_session = None
@@ -214,7 +98,14 @@ class RiskPredictor:
         # 2. Если ONNX не загружен, но есть PyTorch и веса
         if self.use_fallback and HAS_TORCH:
             try:
-                self.model = RiskLSTM(input_dim=INPUT_DIM, hidden_dim=64, seq_len=30, output_dim=3, num_layers=2)
+                self.model = RiskLSTM(
+                    input_dim=INPUT_DIM,
+                    hidden_dim=HIDDEN_DIM,
+                    seq_len=30,
+                    output_dim=OUTPUT_DIM,
+                    num_layers=NUM_LAYERS,
+                    dropout=DROPOUT
+                )
                 if os.path.exists(MODEL_PATH):
                     self.model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
                     self.model.eval()
@@ -228,11 +119,12 @@ class RiskPredictor:
         if self.use_fallback:
             print("Нейросети недоступны. Исполняется резервный математический экстраполятор (polyfit).")
 
-    def predict_risk(self, window_data):
+    def predict_risk(self, window_data, time_elapsed: int = 100, scenario_id: str = "shutdown"):
         """
         Принимает window_data: список или numpy array размерности (30, 7):
         каждая строка — [valve_V1, valve_V2, valve_V3, furnaceTempSp,
                           furnaceTemp, columnPres, columnLevel].
+        scenario_id: используется для подавления ложных рисков на фазе пуска.
         Возвращает:
           predicted_values: [temp_15s, pres_15s, level_15s]
           risk_level: уровень риска аварии в %
@@ -295,38 +187,55 @@ class RiskPredictor:
             # -------------------------------------------------------------
             pred_temp, pred_pres, pred_level = pred_temp_math, pred_pres_math, pred_level_math
 
-        # Ограничения предсказанных значений
-        pred_temp = max(20.0, min(500.0, pred_temp))
-        pred_pres = max(0.02, min(1.8, pred_pres))
-        pred_level = max(0.0, min(100.0, pred_level))
+        # Физические пределы
+        pred_temp = np.clip(pred_temp, 20.0, 500.0)
+        pred_pres = np.clip(pred_pres, 0.02, 1.8)
+        pred_level = np.clip(pred_level, 0.0, 100.0)
 
         # Вычисляем риск аварии (%) по прогнозируемым параметрам
         risk = 0.0
+        
+        # Фактическая температура печи из последней точки окна
+        actual_temp = float(window[-1, 4])
+        
+        # При пуске (startup) рост температуры — это ОЖИДАЕМОЕ поведение.
+        # Пока печь ещё не вышла на рабочий режим (< 290°C), не учитываем
+        # риск по температуре.
+        is_startup_heating = (scenario_id == "startup" and actual_temp < 290.0)
+        
         # 1. По температуре печи (уставка аварии: 380°C, предупреждение: 310°C)
-        if pred_temp > 310.0:
-            risk += (pred_temp - 310.0) / (380.0 - 310.0) * 45
+        if pred_temp > FURNACE_TEMP_WARNING and not is_startup_heating:
+            risk += (pred_temp - FURNACE_TEMP_WARNING) / (FURNACE_TEMP_CRITICAL - FURNACE_TEMP_WARNING) * 45
             
         # 2. По давлению в колонне (авария: 0.48 МПа, предупреждение: 0.3 МПа)
         if pred_pres > 0.3:
             risk += (pred_pres - 0.3) / (0.48 - 0.3) * 55
             
         # 3. По уровню в колонне (пределы: < 15% или > 85%)
-        if pred_level > 85.0:
-            risk += (pred_level - 85.0) / 15.0 * 20
-        elif pred_level < 15.0:
-            risk += (15.0 - pred_level) / 15.0 * 20
+        if pred_level > COLUMN_LEVEL_HIGH:
+            risk += (pred_level - COLUMN_LEVEL_HIGH) / 15.0 * 20
+        elif pred_level < COLUMN_LEVEL_LOW:
+            risk += (COLUMN_LEVEL_LOW - pred_level) / COLUMN_LEVEL_LOW * 20
             
         # Корректируем итоговый процент риска
-        risk = min(100.0, max(0.0, risk))
+        risk = np.clip(risk, 0.0, 100.0)
         
         # Если последнее фактическое состояние уже критическое, риск сразу 100%
+        # Учитываем защитный интервал времени (40 секунд) для уровня при пуске
         last_temp = float(window[-1, 4])
         last_pres = float(window[-1, 5])
         last_level = float(window[-1, 6])
-        if last_pres >= 0.48 or last_temp >= 380.0 or last_level <= 5.0 or last_level >= 98.0:
+        
+        is_critical = (
+            last_pres >= COLUMN_PRES_ESD or 
+            last_temp >= FURNACE_TEMP_CRITICAL or 
+            (last_level <= COLUMN_LEVEL_LOW_CRITICAL and time_elapsed > 40) or 
+            last_level >= COLUMN_LEVEL_HIGH_CRITICAL
+        )
+        if is_critical:
             risk = 100.0
 
-        return [round(pred_temp, 2), round(pred_pres, 3), round(pred_level, 2)], round(risk, 1)
+        return [round(float(pred_temp), 2), round(float(pred_pres), 3), round(float(pred_level), 2)], round(float(risk), 1)
 
     def _run_mathematical_fallback(self, window):
         """
@@ -346,15 +255,3 @@ class RiskPredictor:
             predictions.append(pred_val)
             
         return predictions[0], predictions[1], predictions[2]
-
-if __name__ == "__main__":
-    # Если запущен напрямую, обучаем модель и тестируем инференс
-    success = train_lstm_model(epochs=15)
-    if success:
-        print("\nТестовый запуск инференса...")
-        predictor = RiskPredictor()
-        # Имитируем стабильное 7-фичевое окно:
-        # [valve_V1, valve_V2, valve_V3, furnaceTempSp, furnaceTemp, columnPres, columnLevel]
-        dummy_window = [[1.0, 0.0, 1.0, 280.0, 278.0, 0.24, 50.0] for _ in range(30)]
-        pred_vals, risk = predictor.predict_risk(dummy_window)
-        print(f"Прогноз (t+15с): temp={pred_vals[0]}°C, pres={pred_vals[1]}МПа, level={pred_vals[2]}% | Риск аварии: {risk}%")

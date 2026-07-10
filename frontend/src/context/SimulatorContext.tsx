@@ -45,6 +45,7 @@ interface SimulatorContextType {
   // Пользователь и сессия
   username: string;
   role: 'operator' | 'instructor';
+  operatorName: string;
   scenarioId: string;
   isOnline: boolean;
   wsLatency: number; // Задержка в мс для Критерия 1 (производительность)
@@ -65,6 +66,7 @@ const SimulatorContext = createContext<SimulatorContextType | undefined>(undefin
 export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [username, setUsername] = useState(() => localStorage.getItem('ktk_username') || '');
   const [role, setRole] = useState<'operator' | 'instructor'>(() => (localStorage.getItem('ktk_role') as any) || 'operator');
+  const [operatorName, setOperatorName] = useState('Оператор');
   const [scenarioId, setScenarioId] = useState('startup');
   
   const [status, setStatus] = useState<SimulatorContextType['status']>('running');
@@ -131,6 +133,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setLogs(data.logs);
       setScoreCard(data.scoreCard);
       setAccidentReason(data.accidentReason);
+      if (data.operatorName) {
+        setOperatorName(data.operatorName);
+      }
     };
 
     ws.onerror = () => {
@@ -352,6 +357,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       accidentReason,
       username,
       role,
+      operatorName,
       scenarioId,
       isOnline,
       wsLatency,

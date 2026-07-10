@@ -119,10 +119,15 @@ class TestKTKComponents(unittest.TestCase):
         self.assertTrue(any("прогар змеевика" in r.lower() for r in recs))
 
 class TestBackendRoutesAndIntegrity(unittest.TestCase):
+    def setUp(self):
+        from backend.db.database import init_db
+        init_db()
+
     def test_scenario_1_authorization_and_roles(self):
         """Тест сценария 1: Авторизация и разделение ролей"""
         from fastapi import HTTPException
-        from backend.main import login, LoginRequest
+        from backend.routes.auth import login
+        from backend.models.schemas import LoginRequest
         
         # Успешный вход под оператором
         req = LoginRequest(username="Test_Operator", role="operator")
@@ -143,7 +148,9 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
 
     def test_scenario_6_security_integrity_sha256(self):
         """Тест сценария 6: Проверка ИБ-контроля целостности логов по SHA-256"""
-        from backend.main import get_sessions, clear_sessions, calculate_integrity_hash, DB_PATH
+        from backend.routes.sessions import get_sessions, clear_sessions
+        from backend.utils.security import calculate_integrity_hash
+        from backend.db.database import DB_PATH
         import sqlite3
         
         # Сначала очистим историю
@@ -188,7 +195,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # Удаляем тестовую БД после завершения тестов
-        from backend.main import DB_PATH
+        from backend.db.database import DB_PATH
         if os.path.exists(DB_PATH) and "tutor_test.db" in DB_PATH:
             try:
                 os.remove(DB_PATH)

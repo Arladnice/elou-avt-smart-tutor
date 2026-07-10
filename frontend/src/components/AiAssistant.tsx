@@ -1,105 +1,8 @@
 import React from 'react';
-import styled from 'styled-components';
 import { useSimulator } from '../context/SimulatorContext';
-import { Progress, Card } from 'antd';
+import { Progress } from 'antd';
 import { Brain } from 'lucide-react';
-
-const AssistantContainer = styled(Card)`
-  background-color: ${props => props.theme.colors.surface};
-  border-color: ${props => props.theme.colors.border};
-  color: ${props => props.theme.colors.text};
-  border-radius: 6px;
-  overflow: hidden;
-
-  .ant-card-head {
-    border-bottom: 1px solid ${props => props.theme.colors.border};
-    padding: 0 16px;
-    min-height: 40px;
-  }
-
-  .ant-card-head-title {
-    color: ${props => props.theme.colors.textMuted};
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 0;
-  }
-
-  .ant-card-body {
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    height: calc(100% - 40px);
-  }
-`;
-
-const ProgressWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-`;
-
-const RiskLabel = styled.span`
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: ${props => props.theme.colors.textMuted};
-`;
-
-const ChatBubble = styled.div<{ risk: number }>`
-  flex: 1;
-  background-color: ${props => props.theme.colors.background};
-  border: 1px solid ${props => {
-    if (props.risk > 70) return props.theme.colors.danger;
-    if (props.risk > 30) return props.theme.colors.warning;
-    return props.theme.colors.border;
-  }};
-  border-radius: 6px;
-  padding: 6px 10px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  position: relative;
-  box-shadow: ${props => {
-    if (props.risk > 70) return '0 0 8px rgba(255, 51, 51, 0.15)';
-    if (props.risk > 30) return '0 0 8px rgba(255, 204, 0, 0.15)';
-    return 'none';
-  }};
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: -6px;
-    top: 50%;
-    transform: translateY(-50%) rotate(45deg);
-    width: 10px;
-    height: 10px;
-    background-color: ${props => props.theme.colors.background};
-    border-left: 1px solid ${props => {
-      if (props.risk > 70) return props.theme.colors.danger;
-      if (props.risk > 30) return props.theme.colors.warning;
-      return props.theme.colors.border;
-    }};
-    border-bottom: 1px solid ${props => {
-      if (props.risk > 70) return props.theme.colors.danger;
-      if (props.risk > 30) return props.theme.colors.warning;
-      return props.theme.colors.border;
-    }};
-  }
-`;
-
-const AiMessage = styled.p`
-  font-size: 12px;
-  line-height: 1.4;
-  color: ${props => props.theme.colors.text};
-  font-weight: 500;
-`;
+import * as S from './AiAssistant.styles';
 
 const AiAssistant: React.FC = () => {
   const { riskLevel, sensors, valves, status } = useSimulator();
@@ -139,7 +42,7 @@ const AiAssistant: React.FC = () => {
   };
 
   return (
-    <AssistantContainer 
+    <S.AssistantContainer 
       title={
         <>
           <Brain size={14} color="#00e5ff" />
@@ -148,7 +51,7 @@ const AiAssistant: React.FC = () => {
       }
       bordered={false}
     >
-      <ProgressWrapper>
+      <S.ProgressWrapper>
         <Progress 
           type="dashboard" 
           percent={riskLevel} 
@@ -156,18 +59,18 @@ const AiAssistant: React.FC = () => {
           strokeColor={getProgressColor()}
           trailColor="#1b2332"
           format={percent => (
-            <span style={{ color: getProgressColor(), fontWeight: 'bold', fontSize: '14px' }}>
+            <S.ProgressPercent color={getProgressColor()}>
               {percent}%
-            </span>
+            </S.ProgressPercent>
           )}
         />
-        <RiskLabel>Риск аварии</RiskLabel>
-      </ProgressWrapper>
+        <S.RiskLabel>Риск аварии</S.RiskLabel>
+      </S.ProgressWrapper>
 
-      <ChatBubble risk={riskLevel}>
-        <AiMessage>{getAiMessage()}</AiMessage>
-      </ChatBubble>
-    </AssistantContainer>
+      <S.ChatBubble risk={riskLevel}>
+        <S.AiMessage>{getAiMessage()}</S.AiMessage>
+      </S.ChatBubble>
+    </S.AssistantContainer>
   );
 };
 

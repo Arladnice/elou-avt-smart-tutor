@@ -1,208 +1,42 @@
-import React, { useEffect, useState } from 'react';
-import styled from 'styled-components';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
-import { Card, Switch, Button, Table, Badge, Alert, Radio, App, Modal } from 'antd';
-import { ShieldCheck, ShieldAlert, Users, Play, AlertTriangle, LogOut, Trash2 } from 'lucide-react';
-
-const Container = styled.div`
-  display: grid;
-  grid-template-rows: 60px 1fr;
-  height: 100vh;
-  width: 100vw;
-  background-color: ${props => props.theme.colors.background};
-  color: ${props => props.theme.colors.text};
-`;
-
-const Header = styled.header`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: ${props => props.theme.colors.surface};
-  border-bottom: 1px solid ${props => props.theme.colors.border};
-  padding: 0 20px;
-`;
-
-const Title = styled.h1`
-  font-size: 16px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: ${props => props.theme.colors.text};
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  &::before {
-    content: '';
-    display: inline-block;
-    width: 8px;
-    height: 16px;
-    background-color: ${props => props.theme.colors.warning};
-  }
-`;
-
-const Content = styled.main`
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 16px;
-  padding: 16px;
-  overflow: hidden;
-`;
-
-const PanelColumn = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-`;
-
-const StyledCard = styled(Card)`
-  background-color: ${props => props.theme.colors.surface};
-  border-color: ${props => props.theme.colors.border};
-  color: ${props => props.theme.colors.text};
-  border-radius: 6px;
-
-  .ant-card-head {
-    border-bottom: 1px solid ${props => props.theme.colors.border};
-    padding: 0 16px;
-    min-height: 40px;
-  }
-
-  .ant-card-head-title {
-    color: ${props => props.theme.colors.textMuted};
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-  }
-
-  .ant-card-body {
-    padding: 16px;
-  }
-`;
-
-const MonitorRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-`;
-
-const MonitorItem = styled.div`
-  background-color: #0b0f17;
-  border: 1px solid ${props => props.theme.colors.border};
-  padding: 12px;
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-
-  span.lbl {
-    font-size: 9px;
-    font-weight: 700;
-    color: ${props => props.theme.colors.textMuted};
-    text-transform: uppercase;
-  }
-  span.val {
-    font-family: ${props => props.theme.fonts.mono};
-    font-size: 16px;
-    font-weight: 700;
-    color: ${props => props.theme.colors.accent};
-  }
-`;
-
-const DefectRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: #0b0f17;
-  padding: 10px 14px;
-  border-radius: 4px;
-  border: 1px solid ${props => props.theme.colors.border};
-  margin-bottom: 8px;
-`;
-
-const DefectInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-
-  span.title {
-    font-size: 12px;
-    font-weight: 600;
-    color: ${props => props.theme.colors.text};
-  }
-  span.desc {
-    font-size: 10px;
-    color: ${props => props.theme.colors.textMuted};
-  }
-`;
-
-const ConnectedBadge = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: #141b27;
-  border: 1px solid ${props => props.theme.colors.border};
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-`;
-
-const LogArea = styled.div`
-  background-color: #080b10;
-  border: 1px solid ${props => props.theme.colors.border};
-  font-family: ${props => props.theme.fonts.mono};
-  font-size: 11px;
-  padding: 10px;
-  height: 180px;
-  overflow-y: auto;
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const LogRow = styled.div<{ type: string }>`
-  color: ${props => {
-    if (props.type === 'error') return props.theme.colors.danger;
-    if (props.type === 'warning') return props.theme.colors.warning;
-    return props.theme.colors.text;
-  }};
-`;
+import { Switch, Badge, Alert, Radio, Modal, message } from 'antd';
+import { ShieldCheck, Users, Play, AlertTriangle, LogOut, Trash2, Info, AlertOctagon } from 'lucide-react';
+import { apiService, Session } from '../services/api';
+import { getTableColumns, SCENARIO_NAMES } from './InstructorDashboard.config';
+import * as S from './InstructorDashboard.styles';
 
 const InstructorDashboard: React.FC = () => {
-  const { message } = App.useApp();
   const { 
-    status, 
+    isOnline, 
+    wsLatency, 
+    username, 
+    operatorName, 
+    scenarioId, 
+    selectScenario, 
     sensors, 
     valves, 
+    status, 
     defects, 
-    riskLevel, 
-    logs, 
-    accidentReason,
-    username, 
-    scenarioId, 
-    isOnline,
-    wsLatency,
-    selectScenario, 
     triggerDefect, 
+    logs, 
+    riskLevel, 
+    accidentReason,
     logoutUser, 
     resetSession 
   } = useSimulator();
 
-  const [history, setHistory] = useState<any[]>([]);
-  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [history, setHistory] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [pageSize, setPageSize] = useState(4);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Загружаем историю тренировок
+  // Загружаем историю тренировок через API сервис
   const fetchHistory = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/sessions');
-      if (res.ok) {
-        const data = await res.json();
-        setHistory(data);
-      }
+      const data = await apiService.fetchSessions();
+      setHistory(data);
     } catch {
       console.warn('Не удалось загрузить историю с бэкенда.');
     }
@@ -210,8 +44,31 @@ const InstructorDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchHistory();
-    const interval = setInterval(fetchHistory, 5000);
+    const interval = setInterval(fetchHistory, 30000); // Раз в 30 секунд
     return () => clearInterval(interval);
+  }, []);
+
+  // Моментально обновляем историю при завершении сессии
+  useEffect(() => {
+    if (status === 'success' || status === 'accident' || status === 'esd') {
+      fetchHistory();
+    }
+  }, [status]);
+
+  // ResizeObserver для автоматического расчета количества строк в таблице
+  useEffect(() => {
+    if (!tableContainerRef.current) return;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const height = entry.contentRect.height;
+        // Высота шапки таблицы ~39px, пагинация ~56px, небольшие отступы ~10px
+        const availableHeight = height - 39 - 56 - 10;
+        const calculatedPageSize = Math.max(2, Math.floor(availableHeight / 37));
+        setPageSize(calculatedPageSize);
+      }
+    });
+    resizeObserver.observe(tableContainerRef.current);
+    return () => resizeObserver.disconnect();
   }, []);
 
   const handleDefectChange = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', checked: boolean) => {
@@ -219,16 +76,24 @@ const InstructorDashboard: React.FC = () => {
     message.info(`Неисправность "${defectId}" -> ${checked ? 'АКТИВИРОВАНА' : 'ОТКЛЮЧЕНА'}`);
   };
 
-  const clearHistory = async () => {
-    try {
-      const res = await fetch('http://localhost:8000/api/sessions/clear', { method: 'POST' });
-      if (res.ok) {
-        message.success('История учебных сессий успешно очищена.');
-        fetchHistory();
+  const handleClearHistory = () => {
+    Modal.confirm({
+      title: 'Вы уверены, что хотите очистить всю историю обучения?',
+      content: 'Это действие необратимо и приведет к удалению всех записей из базы данных.',
+      okText: 'Да, очистить',
+      okType: 'danger',
+      cancelText: 'Отмена',
+      centered: true,
+      onOk: async () => {
+        try {
+          await apiService.clearSessions();
+          message.success('История учебных сессий успешно очищена.');
+          fetchHistory();
+        } catch {
+          message.error('Ошибка при очистке истории.');
+        }
       }
-    } catch {
-      message.error('Ошибка при очистке истории.');
-    }
+    });
   };
 
   const getStatusBadge = (s: string) => {
@@ -238,292 +103,280 @@ const InstructorDashboard: React.FC = () => {
     return <Badge status="default" text="Пауза" style={{ color: '#7c8ba1' }} />;
   };
 
-  const columns = [
-    {
-      title: 'Оператор',
-      dataIndex: 'operator_name',
-      key: 'operator_name',
-    },
-    {
-      title: 'Сценарий',
-      dataIndex: 'scenario_id',
-      key: 'scenario_id',
-      render: (v: string) => v === 'startup' ? 'Пуск установки' : 'Останов установки'
-    },
-    {
-      title: 'Время (с)',
-      dataIndex: 'duration_sec',
-      key: 'duration_sec',
-      render: (v: number) => `${Math.floor(v / 60)}м ${v % 60}с`
-    },
-    {
-      title: 'Оценка (DTW)',
-      dataIndex: 'score',
-      key: 'score',
-      render: (v: number, record: any) => {
-        let color = '#ff3333';
-        let grade = 'F';
-        if (v >= 85) { color = '#00ff66'; grade = 'A'; }
-        else if (v >= 70) { color = '#0070f3'; grade = 'B'; }
-        else if (v >= 50) { color = '#ffcc00'; grade = 'C'; }
-        
-        if (record.status === 'accident') {
-          color = '#ff3333';
-          grade = 'F';
-        }
-        
-        return <strong style={{ color }}>{grade} ({v}%)</strong>;
-      }
-    },
-    {
-      title: 'ИБ Контроль (ГОСТ)',
-      dataIndex: 'integrity_valid',
-      key: 'integrity_valid',
-      render: (valid: boolean) => valid ? (
-        <span style={{ color: '#00ff66', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}>
-          <ShieldCheck size={14} /> OK
-        </span>
-      ) : (
-        <span style={{ color: '#ff3333', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}>
-          <ShieldAlert size={14} /> Нарушена!
-        </span>
-      )
-    }
-  ];
+  const columns = getTableColumns();
 
   return (
-    <Container>
-      <Header>
-        <Title>Панель Инструктора // Контроль КТК</Title>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <ConnectedBadge>
+    <S.Container>
+      <S.Header>
+        <S.Title>Панель Инструктора // Контроль КТК</S.Title>
+        <S.HeaderRight>
+          <S.ConnectedBadge>
             <Users size={14} color="#ffcc00" />
             Инструктор: <strong>{username}</strong>
-            <span style={{ fontSize: '10px', color: isOnline ? '#00ff66' : '#5c6470' }}>
+            <S.ConnectedBadgeStatus active={isOnline}>
               ({isOnline ? `Online, ping ${wsLatency}ms` : 'Offline'})
-            </span>
-          </ConnectedBadge>
-          <Button 
+            </S.ConnectedBadgeStatus>
+          </S.ConnectedBadge>
+          <S.ConnectedBadge>
+            <Users size={14} color="#00e5ff" />
+            Оператор: <S.ConnectedOperatorName connected={!!operatorName}>{operatorName || 'Не подключен'}</S.ConnectedOperatorName>
+          </S.ConnectedBadge>
+          <S.LogoutButton 
             onClick={logoutUser} 
             icon={<LogOut size={12} />} 
             type="primary" 
-            danger 
-            style={{ textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold' }}
+            danger
           >
             Выход
-          </Button>
-        </div>
-      </Header>
+          </S.LogoutButton>
+        </S.HeaderRight>
+      </S.Header>
 
-      <Content>
+      <S.Content>
         {/* Левая колонка: Управление сценариями и неисправностями */}
-        <PanelColumn>
+        <S.PanelColumn>
           {/* Контроль сессии */}
-          <StyledCard title="Управление Учебным Процессом">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <S.StyledCard title="Управление Учебным Процессом">
+            <S.ProcessControlLayout>
               <div>
-                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#7c8ba1', display: 'block', marginBottom: '6px' }}>
+                <S.ScenarioLabel>
                   Выбор учебного сценария:
-                </span>
-                <Radio.Group value={scenarioId} onChange={e => selectScenario(e.target.value)}>
-                  <Radio.Button value="startup">Пуск установки ЭЛОУ-АВТ</Radio.Button>
-                  <Radio.Button value="shutdown">Аварийный останов печи П-1</Radio.Button>
-                </Radio.Group>
+                </S.ScenarioLabel>
+                <S.ScenarioRadioGroup 
+                  value={scenarioId} 
+                  onChange={e => selectScenario(e.target.value)}
+                >
+                  <S.ScenarioRadioButton value="startup">Пуск установки ЭЛОУ-АВТ</S.ScenarioRadioButton>
+                  <S.ScenarioRadioButton value="shutdown">Аварийный останов печи П-1</S.ScenarioRadioButton>
+                  <S.ScenarioRadioButton value="column_shutdown">Останов колонны К-1</S.ScenarioRadioButton>
+                  <S.ScenarioRadioButton value="overpressure_relief">Ликвидация роста давления</S.ScenarioRadioButton>
+                  <S.ScenarioRadioButton value="recirculation" fullWidth>Перевод на рециркуляцию</S.ScenarioRadioButton>
+                </S.ScenarioRadioGroup>
               </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <Button onClick={resetSession} style={{ flex: 1 }} icon={<Play size={14} />}>
-                  Сбросить сессию
-                </Button>
-                <Button onClick={fetchHistory} style={{ flex: 1 }}>
-                  Обновить историю
-                </Button>
-              </div>
-            </div>
-          </StyledCard>
+              <S.ControlRow>
+                <S.FullWidthButton onClick={resetSession} type="primary" icon={<Play size={14} />}>
+                  Перезапустить сессию
+                </S.FullWidthButton>
+              </S.ControlRow>
+            </S.ProcessControlLayout>
+          </S.StyledCard>
 
           {/* Инъекция неисправностей */}
-          <StyledCard title="Внедрение нештатных ситуаций (Слайд 11 КТК)">
-            <DefectRow>
-              <DefectInfo>
+          <S.StyledCard title="Внедрение нештатных ситуаций (Слайд 11 КТК)">
+            <S.DefectRow>
+              <S.DefectInfo>
                 <span className="title">Отказ сырьевого насоса Н-1</span>
                 <span className="desc">Прекращает подачу сырья. Угроза коксования печи П-1 (п. 7.9.1 техрегламента).</span>
-              </DefectInfo>
+              </S.DefectInfo>
               <Switch checked={defects.pump_fail} onChange={v => handleDefectChange('pump_fail', v)} />
-            </DefectRow>
+            </S.DefectRow>
 
-            <DefectRow>
-              <DefectInfo>
+            <S.DefectRow>
+              <S.DefectInfo>
                 <span className="title">Прогар змеевика печи П-1</span>
                 <span className="desc">Неконтролируемый перегрев труб печи П-1, угроза пожара (п. 7.9.7).</span>
-              </DefectInfo>
+              </S.DefectInfo>
               <Switch checked={defects.coil_overheat} onChange={v => handleDefectChange('coil_overheat', v)} />
-            </DefectRow>
+            </S.DefectRow>
 
-            <DefectRow>
-              <DefectInfo>
+            <S.DefectRow>
+              <S.DefectInfo>
                 <span className="title">Зависание клапана сброса V-2</span>
                 <span className="desc">Клапан V-2 блокируется в закрытом состоянии. Угроза взрыва К-1.</span>
-              </DefectInfo>
+              </S.DefectInfo>
               <Switch checked={defects.valve_jam} onChange={v => handleDefectChange('valve_jam', v)} />
-            </DefectRow>
-          </StyledCard>
+            </S.DefectRow>
+          </S.StyledCard>
 
           {/* Журнал аудита действий оператора */}
-          <StyledCard title="Мониторинг журнала событий">
-            <LogArea>
-              {logs.map(log => (
-                <LogRow key={log.id} type={log.type}>
-                  [{log.time}] {log.message}
-                </LogRow>
-              ))}
-            </LogArea>
-          </StyledCard>
-        </PanelColumn>
+          <S.StretchCard title="Мониторинг журнала событий">
+            <S.LogArea>
+              {logs.map(log => {
+                const Icon = log.type === 'error' ? AlertOctagon : log.type === 'warning' ? AlertTriangle : Info;
+                const iconColor = log.type === 'error' ? '#ff3333' : log.type === 'warning' ? '#ffcc00' : '#00e5ff';
+                return (
+                  <S.LogRow key={log.id} type={log.type}>
+                    <S.LogTime>[{log.time}]</S.LogTime>
+                    <S.LogIconWrapper>
+                      <Icon size={12} color={iconColor} />
+                    </S.LogIconWrapper>
+                    <span>{log.message}</span>
+                  </S.LogRow>
+                );
+              })}
+            </S.LogArea>
+          </S.StretchCard>
+        </S.PanelColumn>
 
         {/* Правая колонка: Мониторинг в реальном времени и история сессий */}
-        <PanelColumn>
+        <S.PanelColumn>
           {/* Панель живого мониторинга */}
-          <StyledCard title="Текущие показатели оператора (Live telemetry)">
-            <MonitorRow>
-              <MonitorItem>
+          <S.StyledCard title="Текущие показатели оператора (Live telemetry)">
+            <S.MonitorRow>
+              <S.MonitorItem>
                 <span className="lbl">Т-1 (Печь)</span>
-                <span className="val" style={{ color: sensors.furnaceTemp > 310 ? '#ff3333' : '#00e5ff' }}>
+                <S.SensorValue isAlert={sensors.furnaceTemp > 310}>
                   {sensors.furnaceTemp} °C
-                </span>
-              </MonitorItem>
-              <MonitorItem>
+                </S.SensorValue>
+              </S.MonitorItem>
+              <S.MonitorItem>
                 <span className="lbl">P-1 (Колонна)</span>
-                <span className="val" style={{ color: sensors.columnPres > 0.4 ? '#ff3333' : '#00e5ff' }}>
+                <S.SensorValue isAlert={sensors.columnPres > 0.4}>
                   {sensors.columnPres} МПа
-                </span>
-              </MonitorItem>
-              <MonitorItem>
+                </S.SensorValue>
+              </S.MonitorItem>
+              <S.MonitorItem>
                 <span className="lbl">L-1 (Уровень)</span>
-                <span className="val" style={{ color: (sensors.columnLevel > 80 || sensors.columnLevel < 20) ? '#ffcc00' : '#00e5ff' }}>
+                <S.SensorValue isAlert={false} isWarning={sensors.columnLevel > 80 || sensors.columnLevel < 20}>
                   {sensors.columnLevel} %
-                </span>
-              </MonitorItem>
-            </MonitorRow>
+                </S.SensorValue>
+              </S.MonitorItem>
+            </S.MonitorRow>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px' }}>
-              <div>Статус: {getStatusBadge(status)}</div>
-              <div>Риск аварии (ИИ): <strong style={{ color: riskLevel > 70 ? '#ff3333' : '#00ff66' }}>{riskLevel}%</strong></div>
-              <div>Клапан V-1 (Сырье): <strong style={{ color: valves.V1 ? '#00ff66' : '#ff3333' }}>{valves.V1 ? 'ОТКР' : 'ЗАКР'}</strong></div>
-              <div>Клапан V-2 (Сброс): <strong style={{ color: valves.V2 ? '#00ff66' : '#ff3333' }}>{valves.V2 ? 'ОТКР' : 'ЗАКР'}</strong></div>
-            </div>
+            <S.LiveTelemetryGrid>
+              <S.LiveTelemetrySpan span={1}>Статус: {getStatusBadge(status)}</S.LiveTelemetrySpan>
+              <S.LiveTelemetrySpan span={2}>
+                Риск аварии (ИИ):{' '}
+                <S.ColoredValue color={riskLevel > 70 ? '#ff3333' : '#00ff66'}>
+                  {riskLevel}%
+                </S.ColoredValue>
+              </S.LiveTelemetrySpan>
+              <div>
+                Клапан V-1 (Сырье):{' '}
+                <S.ColoredValue color={valves.V1 ? '#00ff66' : '#ff3333'}>
+                  {valves.V1 ? 'ОТКР' : 'ЗАКР'}
+                </S.ColoredValue>
+              </div>
+              <div>
+                Клапан V-2 (Сброс):{' '}
+                <S.ColoredValue color={valves.V2 ? '#00ff66' : '#ff3333'}>
+                  {valves.V2 ? 'ОТКР' : 'ЗАКР'}
+                </S.ColoredValue>
+              </div>
+              <div>
+                Клапан V-3 (Дренаж):{' '}
+                <S.ColoredValue color={valves.V3 ? '#00ff66' : '#ff3333'}>
+                  {valves.V3 ? 'ОТКР' : 'ЗАКР'}
+                </S.ColoredValue>
+              </div>
+            </S.LiveTelemetryGrid>
 
             {status === 'accident' && (
-              <Alert 
-                type="error" 
-                showIcon 
-                icon={<AlertTriangle size={14} />} 
-                message="АВАРИЯ НА УСТАНОВКЕ!" 
-                description={accidentReason}
-                style={{ marginTop: '12px' }}
-              />
+              <S.AlertContainer>
+                <Alert 
+                  type="error" 
+                  showIcon 
+                  icon={<AlertTriangle size={14} />} 
+                  message="АВАРИЯ НА УСТАНОВКЕ!" 
+                  description={accidentReason}
+                />
+              </S.AlertContainer>
             )}
-          </StyledCard>
+          </S.StyledCard>
 
           {/* База данных оценок с контролем целостности */}
-          <StyledCard 
+          <S.StretchCard 
             title="Защищенная база результатов обучения (К8: ИБ)" 
             extra={
-              <Button size="small" type="primary" danger icon={<Trash2 size={12} />} onClick={clearHistory}>
+              <Button size="small" type="primary" danger icon={<Trash2 size={12} />} onClick={handleClearHistory}>
                 Очистить
               </Button>
             }
           >
-            <Table
-              dataSource={history}
-              columns={columns}
-              rowKey="id"
-              pagination={{ pageSize: 4 }}
-              size="small"
-              style={{
-                backgroundColor: '#111620',
-                color: '#e1e7f0'
-              }}
-              onRow={(record) => {
-                return {
-                  onClick: () => {
-                    setSelectedSession(record);
-                    setIsModalVisible(true);
-                  },
-                  style: { cursor: 'pointer' }
-                };
-              }}
-            />
-          </StyledCard>
-        </PanelColumn>
-      </Content>
+            <S.TableWrapper ref={tableContainerRef}>
+              <S.StyledTable
+                dataSource={history}
+                columns={columns}
+                rowKey="id"
+                pagination={{ pageSize, showSizeChanger: false }}
+                size="small"
+                onRow={(record) => {
+                  return {
+                    onClick: () => {
+                      setSelectedSession(record);
+                      setIsModalVisible(true);
+                    }
+                  };
+                }}
+              />
+            </S.TableWrapper>
+          </S.StretchCard>
+        </S.PanelColumn>
+      </S.Content>
 
       <Modal
         title={
-          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#e1e7f0', fontSize: '15px', fontWeight: 'bold' }}>
+          <S.ModalTitle>
             <ShieldCheck size={18} color="#00ff66" />
             Детальный отчет по сессии №{selectedSession?.id}
-          </span>
+          </S.ModalTitle>
         }
         open={isModalVisible}
-        visible={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         centered={true}
         footer={[
-          <Button key="close" type="primary" onClick={() => setIsModalVisible(false)} style={{ background: '#00e5ff', borderColor: '#00e5ff', color: '#0b0f17', fontWeight: 'bold' }}>
+          <S.CloseButton key="close" type="primary" onClick={() => setIsModalVisible(false)}>
             Закрыть
-          </Button>
+          </S.CloseButton>
         ]}
         width={750}
-        bodyStyle={{ backgroundColor: '#0b0f17', color: '#e1e7f0', padding: '20px', maxHeight: '60vh', overflowY: 'auto' }}
-        styles={{
-          body: { backgroundColor: '#0b0f17', color: '#e1e7f0', padding: '20px', maxHeight: '60vh', overflowY: 'auto' }
-        }}
+        styles={S.modalStyles}
       >
         {selectedSession && (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px', borderBottom: '1px solid #1f293d', paddingBottom: '12px' }}>
+            <S.ModalBodyContainer>
               <div>Оператор: <strong>{selectedSession.operator_name}</strong></div>
-              <div>Сценарий: <strong>{selectedSession.scenario_id === 'startup' ? 'Пуск установки' : 'Останов установки'}</strong></div>
+              <div>Сценарий: <strong>{SCENARIO_NAMES[selectedSession.scenario_id] || selectedSession.scenario_id}</strong></div>
               <div>Время сессии: <strong>{Math.floor(selectedSession.duration_sec / 60)}м {selectedSession.duration_sec % 60}с</strong></div>
-              <div>Итоговая оценка: <strong style={{ color: selectedSession.score >= 85 ? '#00ff66' : selectedSession.score >= 70 ? '#0070f3' : selectedSession.score >= 50 ? '#ffcc00' : '#ff3333' }}>{selectedSession.score}%</strong></div>
+              <div>
+                Итоговая оценка:{' '}
+                <S.ColoredValue color={selectedSession.score >= 85 ? '#00ff66' : selectedSession.score >= 70 ? '#0070f3' : selectedSession.score >= 50 ? '#ffcc00' : '#ff3333'}>
+                  {selectedSession.score}%
+                </S.ColoredValue>
+              </div>
               <div>Статус: <strong>{selectedSession.status === 'accident' ? 'Авария' : selectedSession.status === 'esd' ? 'Аварийный Останов' : 'Успешно сдано'}</strong></div>
-              <div>ИБ Целостность: <strong style={{ color: selectedSession.integrity_valid ? '#00ff66' : '#ff3333' }}>{selectedSession.integrity_valid ? 'Валидна' : 'Нарушена!'}</strong></div>
-            </div>
+              <div>
+                ИБ Целостность:{' '}
+                <S.ColoredValue color={selectedSession.integrity_valid ? '#00ff66' : '#ff3333'}>
+                  {selectedSession.integrity_valid ? 'Валидна' : 'Нарушена!'}
+                </S.ColoredValue>
+              </div>
+            </S.ModalBodyContainer>
             
-            <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: '#7c8ba1', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>Зафиксированные нарушения регламента:</h4>
+            <S.ModalSection>
+              <S.SectionTitle>Зафиксированные нарушения регламента:</S.SectionTitle>
               {selectedSession.violations && selectedSession.violations.length > 0 ? (
                 selectedSession.violations.map((v: any) => (
-                  <div key={v.title} style={{ backgroundColor: '#211517', border: '1px solid #5a1a1e', borderRadius: '4px', padding: '10px', marginBottom: '8px' }}>
-                    <div style={{ color: '#ff4d4f', fontWeight: 'bold', fontSize: '12px', marginBottom: '2px' }}>{v.title} ({v.clause})</div>
-                    <div style={{ fontSize: '11px', color: '#e8cbcc' }}>{v.text}</div>
-                  </div>
+                  <S.ViolationCard key={v.title}>
+                    <S.ViolationHeader>{v.title} ({v.clause})</S.ViolationHeader>
+                    <S.ViolationText>{v.text}</S.ViolationText>
+                  </S.ViolationCard>
                 ))
               ) : (
-                <div style={{ color: '#00ff66', fontSize: '12px' }}>Нарушений требований ТБ/ИБ не обнаружено.</div>
+                <S.NoViolationsText>Нарушений требований ТБ/ИБ не обнаружено.</S.NoViolationsText>
               )}
-            </div>
+            </S.ModalSection>
 
             <div>
-              <h4 style={{ color: '#7c8ba1', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>Журнал действий оператора:</h4>
-              <div style={{ backgroundColor: '#05070a', border: '1px solid #1f293d', borderRadius: '4px', padding: '10px', maxHeight: '180px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '11px' }}>
+              <S.SectionTitle>Журнал действий оператора:</S.SectionTitle>
+              <S.SessionLogBox>
                 {selectedSession.session_logs && selectedSession.session_logs.length > 0 ? (
                   selectedSession.session_logs.map((log: any) => (
-                    <div key={log.id} style={{ marginBottom: '4px', color: log.type === 'error' ? '#ff4d4f' : log.type === 'warning' ? '#ffcc00' : '#e1e7f0' }}>
+                    <S.SessionLogRow key={log.id} type={log.type}>
                       [{log.time}] {log.message}
-                    </div>
+                    </S.SessionLogRow>
                   ))
                 ) : (
-                  <div style={{ color: '#7c8ba1', fontStyle: 'italic' }}>
+                  <S.ArchiveMessage>
                     {selectedSession.id <= 13 ? "Логи отсутствуют (архивная сессия до миграции БД)" : "Журнал логов пуст."}
-                  </div>
+                  </S.ArchiveMessage>
                 )}
-              </div>
+              </S.SessionLogBox>
             </div>
           </div>
         )}
       </Modal>
-    </Container>
+    </S.Container>
   );
 };
 
