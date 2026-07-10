@@ -1,10 +1,15 @@
 import os
+import sys
 import random
 import logging
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
 
 from ai_core.config import (
     RANDOM_SEED, INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM, DROPOUT,
