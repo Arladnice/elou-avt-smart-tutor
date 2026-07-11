@@ -80,12 +80,14 @@ export const StyledCard = styled(Card)`
 
 export const StretchCard = styled(StyledCard)`
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 
   .ant-card-body {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -291,12 +293,19 @@ export const AlertContainer = styled.div`
   margin-top: 12px;
 `;
 
+export const EllipsisCell = styled.div`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+`;
+
 export const TableWrapper = styled.div`
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-items: stretch;
 `;
 
 export const StyledTable = styled(Table)`
@@ -312,6 +321,7 @@ export const StyledTable = styled(Table)`
     background: transparent !important;
     color: #e1e7f0 !important;
     border-bottom: 1px solid ${props => props.theme.colors.border} !important;
+    white-space: nowrap !important;
   }
 
   .ant-table-row:hover .ant-table-cell {

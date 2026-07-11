@@ -29,7 +29,67 @@ const InstructorDashboard: React.FC = () => {
   const [history, setHistory] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [pageSize, setPageSize] = useState(8);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const stretchCardRef = useRef<HTMLDivElement>(null);
+
+  // Динамический расчет пагинации точно под высоту контейнера карточки (реагирует на зум и ресайз окна)
+  useEffect(() => {
+    const calculatePageSize = () => {
+      const wrapper = tableContainerRef.current;
+      if (!wrapper) return;
+      
+      const wrapperHeight = wrapper.clientHeight;
+      if (wrapperHeight > 50) {
+        const tableHeader = wrapper.querySelector('.ant-table-thead') as HTMLElement;
+        const pagination = wrapper.querySelector('.ant-pagination') as HTMLElement;
+        const firstRow = wrapper.querySelector('.ant-table-row') as HTMLElement;
+
+        const headerHeight = tableHeader ? tableHeader.offsetHeight : 39;
+        // Зарезервируем под пагинацию минимум 48px, даже если она сейчас скрыта
+        const paginationHeight = pagination && pagination.offsetHeight > 0 ? pagination.offsetHeight : 48;
+        const rowHeight = firstRow ? firstRow.offsetHeight : 37;
+
+        const safetyMargin = 16;
+        const availableRowHeight = wrapperHeight - headerHeight - paginationHeight - safetyMargin;
+        const calculated = Math.max(1, Math.floor(availableRowHeight / rowHeight));
+        
+        console.log('Dynamic pagination calculation:', {
+          wrapperHeight,
+          headerHeight,
+          paginationHeight,
+          rowHeight,
+          availableRowHeight,
+          calculated
+        });
+
+        setPageSize((prev) => (prev !== calculated ? calculated : prev));
+      }
+    };
+
+    calculatePageSize();
+    const timer = setTimeout(calculatePageSize, 150);
+
+    const observer = new ResizeObserver(() => {
+      calculatePageSize();
+    });
+    if (tableContainerRef.current) {
+      observer.observe(tableContainerRef.current);
+    }
+    if (stretchCardRef.current) {
+      observer.observe(stretchCardRef.current);
+    }
+
+    window.addEventListener('resize', calculatePageSize);
+    window.visualViewport?.addEventListener('resize', calculatePageSize);
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+      window.removeEventListener('resize', calculatePageSize);
+      window.visualViewport?.removeEventListener('resize', calculatePageSize);
+    };
+  }, []);
 
   // Загружаем историю тренировок через API сервис
   const fetchHistory = async () => {
@@ -259,6 +319,7 @@ const InstructorDashboard: React.FC = () => {
 
           {/* База данных оценок с контролем целостности */}
           <S.StretchCard 
+            ref={stretchCardRef}
             title={
               <S.TableCardTitle>
                 <span className="main-title">Защищенная база результатов обучения (К8: ИБ)</span>
@@ -276,7 +337,7 @@ const InstructorDashboard: React.FC = () => {
                 dataSource={history}
                 columns={columns as any}
                 rowKey="id"
-                pagination={{ pageSize: 6, showSizeChanger: false, hideOnSinglePage: true }}
+                pagination={{ pageSize, showSizeChanger: false, hideOnSinglePage: true }}
                 size="small"
                 onRow={(record) => {
                   return {
