@@ -29,7 +29,6 @@ const InstructorDashboard: React.FC = () => {
   const [history, setHistory] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [pageSize, setPageSize] = useState(4);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Загружаем историю тренировок через API сервис
@@ -54,22 +53,6 @@ const InstructorDashboard: React.FC = () => {
       fetchHistory();
     }
   }, [status]);
-
-  // ResizeObserver для автоматического расчета количества строк в таблице
-  useEffect(() => {
-    if (!tableContainerRef.current) return;
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        const height = entry.contentRect.height;
-        // Высота шапки таблицы ~39px, пагинация ~56px, небольшие отступы ~10px
-        const availableHeight = height - 39 - 56 - 10;
-        const calculatedPageSize = Math.max(2, Math.floor(availableHeight / 37));
-        setPageSize(calculatedPageSize);
-      }
-    });
-    resizeObserver.observe(tableContainerRef.current);
-    return () => resizeObserver.disconnect();
-  }, []);
 
   const handleDefectChange = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', checked: boolean) => {
     triggerDefect(defectId, checked);
@@ -168,7 +151,7 @@ const InstructorDashboard: React.FC = () => {
                 <span className="title">Отказ сырьевого насоса Н-1</span>
                 <span className="desc">Прекращает подачу сырья. Угроза коксования печи П-1 (п. 7.9.1 техрегламента).</span>
               </S.DefectInfo>
-              <Switch checked={defects.pump_fail} onChange={v => handleDefectChange('pump_fail', v)} />
+              <Switch size="small" checked={defects.pump_fail} onChange={v => handleDefectChange('pump_fail', v)} />
             </S.DefectRow>
 
             <S.DefectRow>
@@ -176,7 +159,7 @@ const InstructorDashboard: React.FC = () => {
                 <span className="title">Прогар змеевика печи П-1</span>
                 <span className="desc">Неконтролируемый перегрев труб печи П-1, угроза пожара (п. 7.9.7).</span>
               </S.DefectInfo>
-              <Switch checked={defects.coil_overheat} onChange={v => handleDefectChange('coil_overheat', v)} />
+              <Switch size="small" checked={defects.coil_overheat} onChange={v => handleDefectChange('coil_overheat', v)} />
             </S.DefectRow>
 
             <S.DefectRow>
@@ -184,7 +167,7 @@ const InstructorDashboard: React.FC = () => {
                 <span className="title">Зависание клапана сброса V-2</span>
                 <span className="desc">Клапан V-2 блокируется в закрытом состоянии. Угроза взрыва К-1.</span>
               </S.DefectInfo>
-              <Switch checked={defects.valve_jam} onChange={v => handleDefectChange('valve_jam', v)} />
+              <Switch size="small" checked={defects.valve_jam} onChange={v => handleDefectChange('valve_jam', v)} />
             </S.DefectRow>
           </S.StyledCard>
 
@@ -276,7 +259,12 @@ const InstructorDashboard: React.FC = () => {
 
           {/* База данных оценок с контролем целостности */}
           <S.StretchCard 
-            title="Защищенная база результатов обучения (К8: ИБ)" 
+            title={
+              <S.TableCardTitle>
+                <span className="main-title">Защищенная база результатов обучения (К8: ИБ)</span>
+                <span className="sub-hint">(нажмите на строку для просмотра детального отчета)</span>
+              </S.TableCardTitle>
+            }
             extra={
               <Button size="small" type="primary" danger icon={<Trash2 size={12} />} onClick={handleClearHistory}>
                 Очистить
@@ -288,7 +276,7 @@ const InstructorDashboard: React.FC = () => {
                 dataSource={history}
                 columns={columns as any}
                 rowKey="id"
-                pagination={{ pageSize, showSizeChanger: false }}
+                pagination={{ pageSize: 6, showSizeChanger: false, hideOnSinglePage: true }}
                 size="small"
                 onRow={(record) => {
                   return {

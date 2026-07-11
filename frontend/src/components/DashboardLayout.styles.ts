@@ -2,7 +2,7 @@ import styled from 'styled-components';
 
 export const GridContainer = styled.div`
   display: grid;
-  grid-template-rows: 60px 1fr 110px; /* Шапка, Главный экран, Журнал логов */
+  grid-template-rows: 60px 1fr; /* Шапка, Главный экран */
   grid-template-columns: 1fr;
   height: 100vh;
   width: 100vw;
@@ -13,8 +13,9 @@ export const MainArea = styled.main`
   display: grid;
   grid-template-columns: minmax(0, 10fr) minmax(0, 4fr); /* Защита от распирания колонок */
   gap: 12px;
-  padding: 12px 12px 0 12px;
+  padding: 12px;
   overflow: hidden;
+  height: calc(100vh - 60px);
 `;
 
 export const Sidebar = styled.aside`
@@ -39,3 +40,4 @@ export const Sidebar = styled.aside`
     background: #00e5ff;
   }
 `;
+

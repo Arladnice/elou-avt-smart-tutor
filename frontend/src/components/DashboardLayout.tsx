@@ -17,9 +17,9 @@ const DashboardLayout: React.FC = () => {
           <ControlPanel />
           <ScenarioChecklist />
           <AiAssistant />
+          <AlarmLog />
         </S.Sidebar>
       </S.MainArea>
-      <AlarmLog />
     </S.GridContainer>
   );
 };

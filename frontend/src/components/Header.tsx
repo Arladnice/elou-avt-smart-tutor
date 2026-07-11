@@ -19,6 +19,17 @@ const Header: React.FC = () => {
     return 'Пауза';
   };
 
+  const getScenarioTitle = (id: string) => {
+    switch (id) {
+      case 'startup': return 'Пуск установки ЭЛОУ-АВТ';
+      case 'shutdown': return 'Аварийный останов печи П-1';
+      case 'column_shutdown': return 'Останов колонны К-1';
+      case 'overpressure_relief': return 'Ликвидация роста давления';
+      case 'recirculation': return 'Перевод на рециркуляцию';
+      default: return id;
+    }
+  };
+
   return (
     <S.HeaderContainer>
       <S.Title>КТК ЭЛОУ-АВТ // ИИ-Модуль</S.Title>
@@ -34,7 +45,7 @@ const Header: React.FC = () => {
         </S.InfoItem>
         <S.InfoItem>
           <ClipboardList size={14} />
-          Сценарий: <strong>{scenarioId === 'startup' ? 'Пуск установки' : 'Останов установки'}</strong>
+          Сценарий: <strong>{getScenarioTitle(scenarioId)}</strong>
         </S.InfoItem>
         <S.InfoItem>
           <Play size={14} />

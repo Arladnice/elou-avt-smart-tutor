@@ -1,12 +1,14 @@
 import styled from 'styled-components';
 import type { LogEntry } from '../context/SimulatorContext';
 
-export const LogContainer = styled.footer`
+export const LogContainer = styled.div`
   background-color: ${props => props.theme.colors.surface};
-  border-top: 1px solid ${props => props.theme.colors.border};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 180px;
   overflow: hidden;
 `;
 

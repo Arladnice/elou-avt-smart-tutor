@@ -137,11 +137,11 @@ export const DefectRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px;
-  background-color: #111620;
+  padding: 6px 10px;
+  background-color: rgba(17, 22, 32, 0.6);
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 4px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 
   &:last-child {
     margin-bottom: 0;
@@ -151,18 +151,18 @@ export const DefectRow = styled.div`
 export const DefectInfo = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2px;
 
   .title {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: ${props => props.theme.colors.text};
+    line-height: 1.3;
   }
 
   .desc {
-    font-size: 11px;
+    font-size: 10.5px;
     color: ${props => props.theme.colors.textMuted};
-    max-width: 320px;
+    line-height: 1.25;
   }
 `;
 
@@ -317,6 +317,14 @@ export const StyledTable = styled(Table)`
   .ant-table-row:hover .ant-table-cell {
     background: rgba(255, 255, 255, 0.05) !important;
   }
+
+  .ant-table-tbody > tr.ant-table-row {
+    cursor: pointer;
+  }
+
+  .ant-table-tbody > tr.ant-table-row .ant-table-cell {
+    cursor: pointer;
+  }
 `;
 
 // Modal stylings
@@ -435,3 +443,22 @@ export const StatusText = styled.span<{ color: string }>`
 export const ScoreText = styled.strong<{ color: string }>`
   color: ${props => props.color};
 `;
+
+export const TableCardTitle = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  .main-title {
+    font-weight: 600;
+  }
+
+  .sub-hint {
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: none;
+    color: ${props => props.theme.colors.textMuted};
+  }
+`;
+
