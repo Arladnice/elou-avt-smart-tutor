@@ -139,6 +139,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (data.operatorName) {
         setOperatorName(data.operatorName);
       }
+      if (data.scenarioId) {
+        setScenarioId(data.scenarioId);
+      }
     };
 
     ws.onerror = () => {
@@ -260,7 +263,11 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const selectScenario = (scenId: string) => {
     setScenarioId(scenId);
-    resetSession();
+    if (isOnline) {
+      sendWsAction({ type: 'change_scenario', scenario_id: scenId });
+    } else {
+      resetSession();
+    }
   };
 
   const toggleValve = (valveId: 'V1' | 'V2' | 'V3') => {

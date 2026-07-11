@@ -94,6 +94,22 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json({"type": "pong", "timestamp": cmd.get("timestamp")})
                 continue
                 
+            elif action_type == "change_scenario":
+                scen_id = cmd.get("scenario_id")
+                manager.active_scenario = scen_id
+                manager.simulator.reset(scen_id)
+                manager.actions_taken.clear()
+                manager.defects_triggered.clear()
+                manager.telemetry_history.clear()
+                manager.logs.clear()
+                if scen_id == "startup":
+                    manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
+                    manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
+                else:
+                    manager.add_log("info", "Система перезапущена. Режим работы: Стабильный.")
+                    manager.add_log("info", "Входной клапан V-1 открыт. Подача сырья в норме.")
+                log_audit_event("INSTRUCTOR" if role == "instructor" else manager.active_operator_name, "SCENARIO_CHANGE", f"Смена сценария на {scen_id}")
+
             elif action_type == "reset":
                 manager.simulator.reset(manager.active_scenario)
                 manager.actions_taken.clear()
