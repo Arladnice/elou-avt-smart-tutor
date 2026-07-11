@@ -1,4 +1,9 @@
-const BASE_URL = 'http://localhost:8000/api';
+/**
+ * Базовый URL для REST API.
+ * При деплое на HF Spaces — автоматически определяется из window.location.origin.
+ * Локально — берётся из переменной VITE_API_URL (.env.development).
+ */
+const BASE_URL = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
 
 export interface Session {
   id: number;

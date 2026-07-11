@@ -95,8 +95,11 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     if (!username) return;
     
-    const host = window.location.hostname || 'localhost';
-    const wsUrl = `ws://${host}:8000/ws?role=${role}&username=${encodeURIComponent(username)}&scenario=${scenarioId}`;
+    // Динамический WebSocket URL:
+    // При деплое (HF Spaces) — wss://<host>/ws, локально — из VITE_WS_URL
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsBase = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
+    const wsUrl = `${wsBase}/ws?role=${role}&username=${encodeURIComponent(username)}&scenario=${scenarioId}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
