@@ -64,8 +64,8 @@ interface SimulatorContextType {
 const SimulatorContext = createContext<SimulatorContextType | undefined>(undefined);
 
 export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [username, setUsername] = useState(() => localStorage.getItem('ktk_username') || '');
-  const [role, setRole] = useState<'operator' | 'instructor'>(() => (localStorage.getItem('ktk_role') as any) || 'operator');
+  const [username, setUsername] = useState(() => sessionStorage.getItem('ktk_username') || '');
+  const [role, setRole] = useState<'operator' | 'instructor'>(() => (sessionStorage.getItem('ktk_role') as any) || 'operator');
   const [operatorName, setOperatorName] = useState('Оператор');
   const [scenarioId, setScenarioId] = useState('startup');
   
@@ -250,15 +250,16 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const loginUser = (name: string, userRole: 'operator' | 'instructor') => {
     setUsername(name);
     setRole(userRole);
-    localStorage.setItem('ktk_username', name);
-    localStorage.setItem('ktk_role', userRole);
+    sessionStorage.setItem('ktk_username', name);
+    sessionStorage.setItem('ktk_role', userRole);
   };
 
   const logoutUser = () => {
     setUsername('');
     setRole('operator');
-    localStorage.removeItem('ktk_username');
-    localStorage.removeItem('ktk_role');
+    sessionStorage.removeItem('ktk_username');
+    sessionStorage.removeItem('ktk_role');
+    sessionStorage.removeItem('ktk_token');
   };
 
   const selectScenario = (scenId: string) => {

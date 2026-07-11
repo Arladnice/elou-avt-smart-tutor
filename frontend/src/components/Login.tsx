@@ -20,7 +20,7 @@ const Login: React.FC = () => {
     try {
       // Отправляем REST-запрос на бэкенд для авторизации через централизованный сервис
       const data = await apiService.login(name.trim(), role);
-      localStorage.setItem('ktk_token', data.token);
+      sessionStorage.setItem('ktk_token', data.token);
       loginUser(data.username, data.role);
       message.success(`Вход выполнен успешно! Добро пожаловать, ${data.username}.`);
     } catch {
