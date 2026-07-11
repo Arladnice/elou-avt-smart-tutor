@@ -186,10 +186,10 @@ export const StyledRepeatButton = styled(Button)`
   font-weight: 600;
   text-transform: uppercase;
 
-  &:hover, &:focus {
-    background-color: #00e5ff !important;
-    border-color: #00e5ff !important;
-    color: #0b0f17 !important;
+  &&:hover, &&:focus {
+    background-color: #00e5ff;
+    border-color: #00e5ff;
+    color: #0b0f17;
   }
 `;
 
@@ -201,9 +201,9 @@ export const StyledExitButton = styled(Button)`
   font-weight: 600;
   text-transform: uppercase;
 
-  &:hover, &:focus {
-    background-color: #222c3e !important;
-    border-color: #222c3e !important;
-    color: #e1e7f0 !important;
+  &&:hover, &&:focus {
+    background-color: #222c3e;
+    border-color: #222c3e;
+    color: #e1e7f0;
   }
 `;

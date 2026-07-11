@@ -309,31 +309,30 @@ export const TableWrapper = styled.div`
 `;
 
 export const StyledTable = styled(Table)`
-  background-color: #111620;
-  color: #e1e7f0;
+  &&& {
+    background-color: #111620;
+    color: #e1e7f0;
 
-  .ant-table {
-    background: transparent !important;
-    color: #e1e7f0 !important;
-  }
+    .ant-table {
+      background: transparent;
+      color: #e1e7f0;
+    }
 
-  .ant-table-cell {
-    background: transparent !important;
-    color: #e1e7f0 !important;
-    border-bottom: 1px solid ${props => props.theme.colors.border} !important;
-    white-space: nowrap !important;
-  }
+    .ant-table-cell {
+      background: transparent;
+      color: #e1e7f0;
+      border-bottom: 1px solid ${props => props.theme.colors.border};
+      white-space: nowrap;
+    }
 
-  .ant-table-row:hover .ant-table-cell {
-    background: rgba(255, 255, 255, 0.05) !important;
-  }
+    .ant-table-row:hover .ant-table-cell {
+      background: rgba(255, 255, 255, 0.05);
+    }
 
-  .ant-table-tbody > tr.ant-table-row {
-    cursor: pointer;
-  }
-
-  .ant-table-tbody > tr.ant-table-row .ant-table-cell {
-    cursor: pointer;
+    .ant-table-tbody > tr.ant-table-row,
+    .ant-table-tbody > tr.ant-table-row .ant-table-cell {
+      cursor: pointer;
+    }
   }
 `;
 
@@ -354,10 +353,10 @@ export const CloseButton = styled(Button)`
   color: #0b0f17;
   font-weight: bold;
 
-  &:hover, &:focus {
-    background: #33ebff !important;
-    border-color: #33ebff !important;
-    color: #0b0f17 !important;
+  &&:hover, &&:focus {
+    background: #33ebff;
+    border-color: #33ebff;
+    color: #0b0f17;
   }
 `;
 

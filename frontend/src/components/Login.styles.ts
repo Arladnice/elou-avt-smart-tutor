@@ -108,14 +108,16 @@ export const InfoText = styled.div`
 `;
 
 export const StyledInput = styled(Input)`
-  background-color: #0a0e14 !important;
-  border-color: #222c3e !important;
-  color: #e1e7f0 !important;
-  height: 38px !important;
+  && {
+    background-color: #0a0e14;
+    border-color: #222c3e;
+    color: #e1e7f0;
+    height: 38px;
 
-  .ant-input {
-    background-color: #0a0e14 !important;
-    color: #e1e7f0 !important;
+    .ant-input {
+      background-color: #0a0e14;
+      color: #e1e7f0;
+    }
   }
   
   .ant-input-prefix {
