@@ -23,7 +23,14 @@ const InstructorDashboard: React.FC = () => {
     riskLevel, 
     accidentReason,
     logoutUser, 
-    resetSession 
+    resetSession,
+    speedMultiplier,
+    isPaused,
+    hasSnapshot,
+    changeSpeed,
+    togglePause,
+    saveState,
+    loadState
   } = useSimulator();
 
   const [history, setHistory] = useState<Session[]>([]);
@@ -200,6 +207,58 @@ const InstructorDashboard: React.FC = () => {
                 <S.FullWidthButton onClick={resetSession} type="primary" icon={<Play size={14} />}>
                   Перезапустить сессию
                 </S.FullWidthButton>
+              </S.ControlRow>
+
+              <S.ControlRow style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <S.ScenarioLabel style={{ marginBottom: 0 }}>
+                  Управление временем симуляции:
+                </S.ScenarioLabel>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Button 
+                    type={isPaused ? "primary" : "default"} 
+                    danger={isPaused}
+                    onClick={() => togglePause(!isPaused)}
+                    style={{ flex: 1, height: '32px', fontSize: '12px' }}
+                  >
+                    {isPaused ? "Продолжить" : "Пауза"}
+                  </Button>
+                  <Button 
+                    type={speedMultiplier === 1 ? "primary" : "default"}
+                    onClick={() => changeSpeed(1.0)}
+                    style={{ width: '45px', height: '32px', padding: 0 }}
+                  >
+                    1x
+                  </Button>
+                  <Button 
+                    type={speedMultiplier === 2 ? "primary" : "default"}
+                    onClick={() => changeSpeed(2.0)}
+                    style={{ width: '45px', height: '32px', padding: 0 }}
+                  >
+                    2x
+                  </Button>
+                </div>
+              </S.ControlRow>
+
+              <S.ControlRow style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <S.ScenarioLabel style={{ marginBottom: 0 }}>
+                  Контрольные точки (Снапшоты):
+                </S.ScenarioLabel>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Button 
+                    onClick={saveState}
+                    style={{ flex: 1, height: '32px', fontSize: '12px' }}
+                  >
+                    Сделать снимок
+                  </Button>
+                  <Button 
+                    disabled={!hasSnapshot}
+                    onClick={loadState}
+                    type="dashed"
+                    style={{ flex: 1, height: '32px', fontSize: '12px' }}
+                  >
+                    Откатиться
+                  </Button>
+                </div>
               </S.ControlRow>
             </S.ProcessControlLayout>
           </S.StyledCard>
