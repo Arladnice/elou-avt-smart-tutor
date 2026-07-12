@@ -23,6 +23,7 @@ backend/
 ├── main.py                    # Инициализация FastAPI приложения и lifespan события
 ├── routes/                    # Эндпоинты REST API и WebSocket
 │   ├── auth.py                # POST /api/auth/login (авторизация по роли)
+│   ├── health.py              # GET /api/health (легковесный health-check для keep-alive)
 │   ├── sessions.py            # GET /api/sessions (история), POST /api/sessions/clear
 │   └── ws.py                  # WebSocket /ws (обмен данными симуляции)
 ├── services/                  # Бизнес-логика симуляции и сокетов

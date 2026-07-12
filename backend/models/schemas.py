@@ -13,3 +13,7 @@ class SessionSaveRequest(BaseModel):
     score: int
     status: str
     violations: List[Dict[str, Any]]
+
+class HealthResponse(BaseModel):
+    status: str
+

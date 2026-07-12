@@ -169,6 +169,12 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         from backend.db.database import init_db
         init_db()
 
+    def test_health_endpoint(self):
+        """Тест эндпоинта /api/health для проверки работоспособности (health check)."""
+        from backend.routes.health import health_check
+        res = health_check()
+        self.assertEqual(res, {"status": "ok"})
+
     def test_scenario_1_authorization_and_roles(self):
         """Тест сценария 1: Авторизация и разделение ролей"""
         from fastapi import HTTPException
