@@ -29,6 +29,7 @@ const ScoreCard: React.FC = () => {
   return (
     <Modal
       open={true}
+      centered
       title={
         <S.ModalTitle>
           <Award size={16} color="#00e5ff" />
