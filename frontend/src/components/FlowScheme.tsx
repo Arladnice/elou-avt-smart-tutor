@@ -14,12 +14,12 @@ const FlowScheme: React.FC = () => {
   useEffect(() => {
     if (status !== 'running') return;
     
-    setTempHistory(prev => [...prev.slice(-14), sensors.furnaceTemp]);
-    setPresHistory(prev => [...prev.slice(-14), sensors.columnPres]);
-    setLevelHistory(prev => [...prev.slice(-14), sensors.columnLevel]);
+    setTempHistory(prev => [...prev.slice(-14), sensors.T_1]);
+    setPresHistory(prev => [...prev.slice(-14), sensors.P_1]);
+    setLevelHistory(prev => [...prev.slice(-14), sensors.L_1]);
   }, [sensors, status]);
 
-  const handleValveClick = (valveId: 'V1' | 'V2' | 'V3') => {
+  const handleValveClick = (valveId: 'V_1' | 'V_2' | 'V_3') => {
     if (status !== 'running') return;
     toggleValve(valveId);
   };
@@ -74,20 +74,20 @@ const FlowScheme: React.FC = () => {
 
         {/* ТРУБОПРОВОДЫ */}
         {/* Вход сырья */}
-        <S.PipeLine d="M 50,250 L 180,250" isActive={valves.V1} />
-        <S.PipeFlow d="M 50,250 L 180,250" isActive={valves.V1} />
+        <S.PipeLine d="M 50,250 L 180,250" isActive={valves.V_1} />
+        <S.PipeFlow d="M 50,250 L 180,250" isActive={valves.V_1} />
 
         {/* Из печи в колонну */}
-        <S.PipeLine d="M 280,250 L 400,250" isActive={valves.V1} />
-        <S.PipeFlow d="M 280,250 L 400,250" isActive={valves.V1} speed="1s" />
+        <S.PipeLine d="M 280,250 L 400,250" isActive={valves.V_1} />
+        <S.PipeFlow d="M 280,250 L 400,250" isActive={valves.V_1} speed="1s" />
 
         {/* Сброс давления (вверху) */}
-        <S.PipeLine d="M 460,80 L 460,40 L 700,40" isActive={valves.V2} />
-        <S.PipeFlow d="M 460,80 L 460,40 L 700,40" isActive={valves.V2} speed="0.8s" />
+        <S.PipeLine d="M 460,80 L 460,40 L 700,40" isActive={valves.V_2} />
+        <S.PipeFlow d="M 460,80 L 460,40 L 700,40" isActive={valves.V_2} speed="0.8s" />
 
         {/* Дренаж куба колонны (снизу) */}
-        <S.PipeLine d="M 460,370 L 460,410 L 700,410" isActive={valves.V3} />
-        <S.PipeFlow d="M 460,370 L 460,410 L 700,410" isActive={valves.V3} />
+        <S.PipeLine d="M 460,370 L 460,410 L 700,410" isActive={valves.V_3} />
+        <S.PipeFlow d="M 460,370 L 460,410 L 700,410" isActive={valves.V_3} />
 
         {/* ОБОРУДОВАНИЕ */}
         {/* 1. Нагревательная Печь П-1 */}
@@ -96,8 +96,8 @@ const FlowScheme: React.FC = () => {
           <text x="50" y="30" fill="#ff4444" fontSize="11" fontWeight="700" textAnchor="middle">ПЕЧЬ П-1</text>
           
           {/* Пламя печи */}
-          <S.FlameWrapper isActive={valves.V1} transform="translate(35, 112)">
-            <Flame size={30} color={valves.V1 ? "#ff6600" : "#ff3333"} />
+          <S.FlameWrapper isActive={valves.V_1} transform="translate(35, 112)">
+            <Flame size={30} color={valves.V_1 ? "#ff6600" : "#ff3333"} />
           </S.FlameWrapper>
         </g>
 
@@ -111,34 +111,34 @@ const FlowScheme: React.FC = () => {
           {/* Динамическая высота жидкости */}
           <rect 
             x="15" 
-            y={60 + (200 - (sensors.columnLevel / 100) * 200)} 
+            y={60 + (200 - (sensors.L_1 / 100) * 200)} 
             width="90" 
-            height={(sensors.columnLevel / 100) * 200} 
+            height={(sensors.L_1 / 100) * 200} 
             fill="rgba(0, 229, 255, 0.15)" 
             rx="4" 
           />
           <text x="60" y="160" fill="rgba(0, 229, 255, 0.4)" fontSize="11" fontWeight="700" textAnchor="middle">
-            {sensors.columnLevel}%
+            {sensors.L_1}%
           </text>
         </g>
 
         {/* ИНТЕРАКТИВНЫЕ КЛАПАНЫ */}
         {/* Клапан V-1 (Вход в печь) */}
-        <S.ValveGroup isOpen={valves.V1} transform="translate(100, 250)" onClick={() => handleValveClick('V1')}>
+        <S.ValveGroup isOpen={valves.V_1} transform="translate(100, 250)" onClick={() => handleValveClick('V_1')}>
           <polygon points="-12,-10 12,10 12,-10 -12,10" />
           <circle cx="0" cy="0" r="4" />
           <text x="0" y="-16" fill="#e1e7f0" fontSize="9" textAnchor="middle">V-1</text>
         </S.ValveGroup>
 
         {/* Клапан V-2 (Сброс давления) */}
-        <S.ValveGroup isOpen={valves.V2} transform="translate(560, 40)" onClick={() => handleValveClick('V2')}>
+        <S.ValveGroup isOpen={valves.V_2} transform="translate(560, 40)" onClick={() => handleValveClick('V_2')}>
           <polygon points="-12,-10 12,10 12,-10 -12,10" />
           <circle cx="0" cy="0" r="4" />
           <text x="0" y="-16" fill="#e1e7f0" fontSize="9" textAnchor="middle">V-2 (Сброс)</text>
         </S.ValveGroup>
 
         {/* Клапан V-3 (Дренаж) */}
-        <S.ValveGroup isOpen={valves.V3} transform="translate(560, 410)" onClick={() => handleValveClick('V3')}>
+        <S.ValveGroup isOpen={valves.V_3} transform="translate(560, 410)" onClick={() => handleValveClick('V_3')}>
           <polygon points="-12,-10 12,10 12,-10 -12,10" />
           <circle cx="0" cy="0" r="4" />
           <text x="0" y="-16" fill="#e1e7f0" fontSize="9" textAnchor="middle">V-3</text>
@@ -148,11 +148,11 @@ const FlowScheme: React.FC = () => {
         {/* Датчик T-1 (Температура печи) */}
         <g transform="translate(230, 230)">
           <S.SensorBox 
-            isWarning={sensors.furnaceTemp > 310} 
-            isDanger={sensors.furnaceTemp > 325}
+            isWarning={sensors.T_1 > 310} 
+            isDanger={sensors.T_1 > 325}
           >
             <rect className="bg" x="-35" y="-10" width="70" height="28" rx="4" />
-            <text className="value" x="0" y="8" textAnchor="middle">{sensors.furnaceTemp}°C</text>
+            <text className="value" x="0" y="8" textAnchor="middle">{sensors.T_1}°C</text>
             <text className="label" x="0" y="-15" textAnchor="middle">T-1 (ПЕЧЬ)</text>
           </S.SensorBox>
           
@@ -160,18 +160,18 @@ const FlowScheme: React.FC = () => {
           <rect x="-35" y="22" width="70" height="15" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
           <S.SparklinePath 
             d={generateSparklineD(tempHistory, -35, 22, 70, 15, 240, 340)} 
-            strokeColor={sensors.furnaceTemp > 310 ? "#ff3333" : "#00ff66"} 
+            strokeColor={sensors.T_1 > 310 ? "#ff3333" : "#00ff66"} 
           />
         </g>
 
         {/* Датчик P-1 (Давление в колонне) */}
         <g transform="translate(630, 90)">
           <S.SensorBox 
-            isWarning={sensors.columnPres > 0.3} 
-            isDanger={sensors.columnPres > 0.4}
+            isWarning={sensors.P_1 > 0.3} 
+            isDanger={sensors.P_1 > 0.4}
           >
             <rect className="bg" x="-35" y="-10" width="70" height="28" rx="4" />
-            <text className="value" x="0" y="8" textAnchor="middle">{sensors.columnPres} МПа</text>
+            <text className="value" x="0" y="8" textAnchor="middle">{sensors.P_1} МПа</text>
             <text className="label" x="0" y="-15" textAnchor="middle">P-1 (КОЛОННА)</text>
           </S.SensorBox>
           
@@ -179,18 +179,18 @@ const FlowScheme: React.FC = () => {
           <rect x="-35" y="22" width="70" height="15" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
           <S.SparklinePath 
             d={generateSparklineD(presHistory, -35, 22, 70, 15, 0.05, 0.5)} 
-            strokeColor={sensors.columnPres > 0.3 ? "#ffcc00" : "#00ff66"} 
+            strokeColor={sensors.P_1 > 0.3 ? "#ffcc00" : "#00ff66"} 
           />
         </g>
 
         {/* Датчик L-1 (Уровень в колонне) */}
         <g transform="translate(460, 310)">
           <S.SensorBox 
-            isWarning={sensors.columnLevel > 85 || sensors.columnLevel < 15} 
-            isDanger={sensors.columnLevel > 95 || sensors.columnLevel < 5}
+            isWarning={sensors.L_1 > 85 || sensors.L_1 < 15} 
+            isDanger={sensors.L_1 > 95 || sensors.L_1 < 5}
           >
             <rect className="bg" x="-35" y="-10" width="70" height="28" rx="4" />
-            <text className="value" x="0" y="8" textAnchor="middle">{sensors.columnLevel}%</text>
+            <text className="value" x="0" y="8" textAnchor="middle">{sensors.L_1}%</text>
             <text className="label" x="0" y="-15" textAnchor="middle">L-1 (УРОВЕНЬ)</text>
           </S.SensorBox>
           
@@ -198,7 +198,7 @@ const FlowScheme: React.FC = () => {
           <rect x="-35" y="22" width="70" height="15" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
           <S.SparklinePath 
             d={generateSparklineD(levelHistory, -35, 22, 70, 15, 0, 100)} 
-            strokeColor={(sensors.columnLevel > 85 || sensors.columnLevel < 15) ? "#ffcc00" : "#00ff66"} 
+            strokeColor={(sensors.L_1 > 85 || sensors.L_1 < 15) ? "#ffcc00" : "#00ff66"} 
           />
         </g>
       </S.SVGCanvas>

@@ -29,8 +29,8 @@ class TestKTKComponents(unittest.TestCase):
         state = self.simulator.step()
         self.assertEqual(state["timeElapsed"], 1)
         # Температура должна измениться (или остаться близко к уставке)
-        self.assertGreater(state["sensors"]["furnaceTemp"], 100.0)
-        self.assertLess(state["sensors"]["furnaceTemp"], 400.0)
+        self.assertGreater(state["sensors"]["T_1"], 100.0)
+        self.assertLess(state["sensors"]["T_1"], 400.0)
 
     def test_risk_predictor(self):
         """Проверяет корректность расчета рисков и прогноза параметров."""
@@ -57,19 +57,19 @@ class TestKTKComponents(unittest.TestCase):
         """Проверяет начальные физические условия для сценариев пуска и останова."""
         # Проверяем "startup"
         self.simulator.reset("startup")
-        self.assertEqual(self.simulator.valves["V1"], False)
-        self.assertEqual(self.simulator.valves["V2"], False)
-        self.assertEqual(self.simulator.valves["V3"], False)
-        self.assertEqual(self.simulator.sensors["furnaceTemp"], 20.0)
-        self.assertEqual(self.simulator.sensors["columnLevel"], 0.0)
+        self.assertEqual(self.simulator.valves["V_1"], False)
+        self.assertEqual(self.simulator.valves["V_2"], False)
+        self.assertEqual(self.simulator.valves["V_3"], False)
+        self.assertEqual(self.simulator.sensors["T_1"], 20.0)
+        self.assertEqual(self.simulator.sensors["L_1"], 0.0)
 
         # Проверяем "shutdown"
         self.simulator.reset("shutdown")
-        self.assertEqual(self.simulator.valves["V1"], True)
-        self.assertEqual(self.simulator.valves["V2"], False)
-        self.assertEqual(self.simulator.valves["V3"], True)
-        self.assertEqual(self.simulator.sensors["furnaceTemp"], 280.0)
-        self.assertEqual(self.simulator.sensors["columnLevel"], 50.0)
+        self.assertEqual(self.simulator.valves["V_1"], True)
+        self.assertEqual(self.simulator.valves["V_2"], False)
+        self.assertEqual(self.simulator.valves["V_3"], True)
+        self.assertEqual(self.simulator.sensors["T_1"], 280.0)
+        self.assertEqual(self.simulator.sensors["L_1"], 50.0)
 
     def test_error_analyzer_shutdown_success(self):
         """Проверяет оценку идеального сценария останова печи."""

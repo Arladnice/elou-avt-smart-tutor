@@ -53,8 +53,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 
             elif action_type == "change_setpoint":
                 temp = float(cmd.get("value"))
-                old_temp = manager.simulator.setpoints["furnaceTempSp"]
-                manager.simulator.set_setpoint("furnaceTempSp", temp)
+                old_temp = manager.simulator.setpoints["T_1_Sp"]
+                manager.simulator.set_setpoint("T_1_Sp", temp)
                 action_name = "SP_UP" if temp > old_temp else "SP_DOWN"
                 manager.actions_taken.append(action_name)
                 manager.add_log("info", f"Оператор изменил уставку температуры П-1 на: {temp}°C")

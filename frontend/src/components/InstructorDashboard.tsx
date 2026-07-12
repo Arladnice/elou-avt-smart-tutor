@@ -258,20 +258,20 @@ const InstructorDashboard: React.FC = () => {
             <S.MonitorRow>
               <S.MonitorItem>
                 <span className="lbl">Т-1 (Печь)</span>
-                <S.SensorValue isAlert={sensors.furnaceTemp > 310}>
-                  {sensors.furnaceTemp} °C
+                <S.SensorValue isAlert={sensors.T_1 > 310}>
+                  {sensors.T_1} °C
                 </S.SensorValue>
               </S.MonitorItem>
               <S.MonitorItem>
                 <span className="lbl">P-1 (Колонна)</span>
-                <S.SensorValue isAlert={sensors.columnPres > 0.4}>
-                  {sensors.columnPres} МПа
+                <S.SensorValue isAlert={sensors.P_1 > 0.4}>
+                  {sensors.P_1} МПа
                 </S.SensorValue>
               </S.MonitorItem>
               <S.MonitorItem>
                 <span className="lbl">L-1 (Уровень)</span>
-                <S.SensorValue isAlert={false} isWarning={sensors.columnLevel > 80 || sensors.columnLevel < 20}>
-                  {sensors.columnLevel} %
+                <S.SensorValue isAlert={false} isWarning={sensors.L_1 > 80 || sensors.L_1 < 20}>
+                  {sensors.L_1} %
                 </S.SensorValue>
               </S.MonitorItem>
             </S.MonitorRow>
@@ -286,20 +286,20 @@ const InstructorDashboard: React.FC = () => {
               </S.LiveTelemetrySpan>
               <div>
                 Клапан V-1 (Сырье):{' '}
-                <S.ColoredValue color={valves.V1 ? '#00ff66' : '#ff3333'}>
-                  {valves.V1 ? 'ОТКР' : 'ЗАКР'}
+                <S.ColoredValue color={valves.V_1 ? '#00ff66' : '#ff3333'}>
+                  {valves.V_1 ? 'ОТКР' : 'ЗАКР'}
                 </S.ColoredValue>
               </div>
               <div>
                 Клапан V-2 (Сброс):{' '}
-                <S.ColoredValue color={valves.V2 ? '#00ff66' : '#ff3333'}>
-                  {valves.V2 ? 'ОТКР' : 'ЗАКР'}
+                <S.ColoredValue color={valves.V_2 ? '#00ff66' : '#ff3333'}>
+                  {valves.V_2 ? 'ОТКР' : 'ЗАКР'}
                 </S.ColoredValue>
               </div>
               <div>
                 Клапан V-3 (Дренаж):{' '}
-                <S.ColoredValue color={valves.V3 ? '#00ff66' : '#ff3333'}>
-                  {valves.V3 ? 'ОТКР' : 'ЗАКР'}
+                <S.ColoredValue color={valves.V_3 ? '#00ff66' : '#ff3333'}>
+                  {valves.V_3 ? 'ОТКР' : 'ЗАКР'}
                 </S.ColoredValue>
               </div>
             </S.LiveTelemetryGrid>

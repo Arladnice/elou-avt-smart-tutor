@@ -19,17 +19,17 @@ interface SimulatorContextType {
   status: 'running' | 'paused' | 'esd' | 'accident' | 'success';
   timeElapsed: number;
   valves: {
-    V1: boolean;
-    V2: boolean;
-    V3: boolean;
+    V_1: boolean;
+    V_2: boolean;
+    V_3: boolean;
   };
   sensors: {
-    furnaceTemp: number;
-    columnPres: number;
-    columnLevel: number;
+    T_1: number;
+    P_1: number;
+    L_1: number;
   };
   setpoints: {
-    furnaceTempSp: number;
+    T_1_Sp: number;
   };
   defects: {
     pump_fail: boolean;
@@ -53,7 +53,7 @@ interface SimulatorContextType {
   loginUser: (name: string, role: 'operator' | 'instructor') => void;
   logoutUser: () => void;
   selectScenario: (scenId: string) => void;
-  toggleValve: (valveId: 'V1' | 'V2' | 'V3') => void;
+  toggleValve: (valveId: 'V_1' | 'V_2' | 'V_3') => void;
   changeSetpoint: (temp: number) => void;
   triggerEsd: () => void;
   triggerDefect: (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', state: boolean) => void;
@@ -71,9 +71,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   
   const [status, setStatus] = useState<SimulatorContextType['status']>('running');
   const [timeElapsed, setTimeElapsed] = useState(0);
-  const [valves, setValves] = useState({ V1: true, V2: false, V3: true });
-  const [setpoints, setSetpoints] = useState({ furnaceTempSp: 280 });
-  const [sensors, setSensors] = useState({ furnaceTemp: 280, columnPres: 0.25, columnLevel: 50 });
+  const [valves, setValves] = useState({ V_1: true, V_2: false, V_3: true });
+  const [setpoints, setSetpoints] = useState({ T_1_Sp: 280 });
+  const [sensors, setSensors] = useState({ T_1: 280, P_1: 0.25, L_1: 50 });
   const [defects, setDefects] = useState({ pump_fail: false, coil_overheat: false, valve_jam: false });
   const [riskLevel, setRiskLevel] = useState(5);
   const [predictions, setPredictions] = useState<number[]>([280, 0.25, 50]);
@@ -180,35 +180,35 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const interval = setInterval(() => {
       setSensors(prev => {
-        let nextTemp = prev.furnaceTemp;
-        let nextPres = prev.columnPres;
-        let nextLevel = prev.columnLevel;
+        let nextTemp = prev.T_1;
+        let nextPres = prev.P_1;
+        let nextLevel = prev.L_1;
 
-        const F_in = valves.V1 && !defects.pump_fail ? 1.0 : 0.0;
+        const F_in = valves.V_1 && !defects.pump_fail ? 1.0 : 0.0;
 
         // Печь с автоматической компенсацией охлаждения сырья (feedforward)
-        const Q_heat = (setpoints.furnaceTempSp - nextTemp) * 0.15 + F_in * (setpoints.furnaceTempSp - 60.0) * 0.06 + (defects.coil_overheat ? 5.0 : 0.0);
+        const Q_heat = (setpoints.T_1_Sp - nextTemp) * 0.15 + F_in * (setpoints.T_1_Sp - 60.0) * 0.06 + (defects.coil_overheat ? 5.0 : 0.0);
         const Q_cool = F_in * (nextTemp - 60.0) * 0.06;
         nextTemp += Q_heat - Q_cool + (Math.random() - 0.5) * 0.5;
 
         // Колонна (давление)
         nextPres += (nextTemp - 260) * 0.0012 + (nextLevel - 50) * 0.0005;
-        if (valves.V2 && !defects.valve_jam) {
+        if (valves.V_2 && !defects.valve_jam) {
           nextPres -= nextPres * 0.15;
         }
         nextPres = Math.max(0.05, nextPres);
 
         // Колонна (уровень)
         nextLevel += F_in * 0.6;
-        if (valves.V3) {
+        if (valves.V_3) {
           nextLevel -= 0.55 * Math.sqrt(nextLevel / 100.0);
         }
         nextLevel = Math.max(0, Math.min(100, nextLevel));
 
         return {
-          furnaceTemp: Math.round(nextTemp * 100) / 100,
-          columnPres: Math.round(nextPres * 1000) / 1000,
-          columnLevel: Math.round(nextLevel * 100) / 100,
+          T_1: Math.round(nextTemp * 100) / 100,
+          P_1: Math.round(nextPres * 1000) / 1000,
+          L_1: Math.round(nextLevel * 100) / 100,
         };
       });
     }, 1000);
@@ -221,17 +221,17 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (isOnline || status !== 'running') return;
 
     let newRisk = 5;
-    if (sensors.furnaceTemp > 310) newRisk += 30;
-    if (sensors.columnPres > 0.4) newRisk += 40;
-    if (sensors.columnLevel > 85 || sensors.columnLevel < 15) newRisk += 25;
+    if (sensors.T_1 > 310) newRisk += 30;
+    if (sensors.P_1 > 0.4) newRisk += 40;
+    if (sensors.L_1 > 85 || sensors.L_1 < 15) newRisk += 25;
     
     newRisk = Math.min(100, newRisk);
     setRiskLevel(newRisk);
 
-    if (sensors.columnPres >= 0.48) {
+    if (sensors.P_1 >= 0.48) {
       setStatus('accident');
       setAccidentReason('Критическое превышение давления в колонне К-1 (более 0.48 МПа). Взрыв колонны!');
-    } else if (sensors.furnaceTemp >= 380) {
+    } else if (sensors.T_1 >= 380) {
       setStatus('accident');
       setAccidentReason('Критический перегрев печи П-1 (выше 380°C). Прогар змеевика и пожар!');
     }
@@ -271,7 +271,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const toggleValve = (valveId: 'V1' | 'V2' | 'V3') => {
+  const toggleValve = (valveId: 'V_1' | 'V_2' | 'V_3') => {
     if (isOnline) {
       sendWsAction({ type: 'toggle_valve', valve_id: valveId, state: !valves[valveId] });
     } else {
@@ -291,7 +291,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (isOnline) {
       sendWsAction({ type: 'change_setpoint', value: temp });
     } else {
-      setSetpoints({ furnaceTempSp: temp });
+      setSetpoints({ T_1_Sp: temp });
     }
   };
 
@@ -341,9 +341,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } else {
       setStatus('running');
       setTimeElapsed(0);
-      setValves({ V1: true, V2: false, V3: true });
-      setSetpoints({ furnaceTempSp: 280 });
-      setSensors({ furnaceTemp: 280, columnPres: 0.25, columnLevel: 50 });
+      setValves({ V_1: true, V_2: false, V_3: true });
+      setSetpoints({ T_1_Sp: 280 });
+      setSensors({ T_1: 280, P_1: 0.25, L_1: 50 });
       setDefects({ pump_fail: false, coil_overheat: false, valve_jam: false });
       setRiskLevel(5);
       setPredictions([280, 0.25, 50]);

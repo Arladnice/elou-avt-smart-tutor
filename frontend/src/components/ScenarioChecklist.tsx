@@ -21,19 +21,19 @@ const ScenarioChecklist: React.FC = () => {
           id: 'v1_open',
           title: '1. Подача сырья в печь',
           hint: 'Убедитесь, что задвижка V-1 находится в положении ОТКРЫТО',
-          isDone: valves.V1,
+          isDone: valves.V_1,
         },
         {
           id: 'sp_up',
           title: '2. Разогрев змеевиков печи П-1',
-          hint: `Поднимите уставку и дождитесь, пока фактическая температура Т-1 достигнет 285°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.furnaceTemp ?? 0) >= 285,
+          hint: `Поднимите уставку и дождитесь, пока фактическая температура Т-1 достигнет 285°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.T_1 ?? 0) >= 285,
         },
         {
           id: 'v3_open',
           title: '3. Регулирование дренажа колонны K-1',
-          hint: `Откройте V-3 при уровне в кубе выше 20% (сейчас L-1: ${sensors?.columnLevel?.toFixed(1) ?? '...'}%)`,
-          isDone: valves.V3 && (sensors?.columnLevel ?? 0) >= 20,
+          hint: `Откройте V-3 при уровне в кубе выше 20% (сейчас L-1: ${sensors?.L_1?.toFixed(1) ?? '...'}%)`,
+          isDone: valves.V_3 && (sensors?.L_1 ?? 0) >= 20,
         },
       ];
     } else if (scenarioId === 'column_shutdown') {
@@ -41,20 +41,20 @@ const ScenarioChecklist: React.FC = () => {
         {
           id: 'sp_down',
           title: '1. Снижение нагрева печи П-1',
-          hint: `Понизьте уставку и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.furnaceTemp ?? 999) <= 245,
+          hint: `Понизьте уставку и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.T_1 ?? 999) <= 245,
         },
         {
           id: 'v1_close',
           title: '2. Перекрытие подачи сырья',
           hint: 'Переведите V-1 в положение ЗАКРЫТО',
-          isDone: !valves.V1,
+          isDone: !valves.V_1,
         },
         {
           id: 'v3_close',
           title: '3. Прекращение дренажа куба K-1',
-          hint: `Закройте клапан дренажа V-3 при уровне в кубе ниже 15% (сейчас: ${sensors?.columnLevel?.toFixed(1) ?? '...'}%)`,
-          isDone: !valves.V3 && (sensors?.columnLevel ?? 100) < 15,
+          hint: `Закройте клапан дренажа V-3 при уровне в кубе ниже 15% (сейчас: ${sensors?.L_1?.toFixed(1) ?? '...'}%)`,
+          isDone: !valves.V_3 && (sensors?.L_1 ?? 100) < 15,
         },
       ];
     } else if (scenarioId === 'overpressure_relief') {
@@ -63,13 +63,13 @@ const ScenarioChecklist: React.FC = () => {
           id: 'v2_open',
           title: '1. Сброс избыточного давления',
           hint: 'Откройте клапан V-2 для сброса газа на факел',
-          isDone: valves.V2,
+          isDone: valves.V_2,
         },
         {
           id: 'sp_down',
           title: '2. Снижение тепловой нагрузки',
-          hint: `Понизьте уставку печи и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.furnaceTemp ?? 999) <= 245,
+          hint: `Понизьте уставку печи и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.T_1 ?? 999) <= 245,
         },
       ];
     } else if (scenarioId === 'recirculation') {
@@ -77,20 +77,20 @@ const ScenarioChecklist: React.FC = () => {
         {
           id: 'sp_down',
           title: '1. Снижение нагрева сырья в печи П-1',
-          hint: `Понизьте уставку и дождитесь снижения температуры Т-1 ниже 250°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.furnaceTemp ?? 999) <= 250,
+          hint: `Понизьте уставку и дождитесь снижения температуры Т-1 ниже 250°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.T_1 ?? 999) <= 250,
         },
         {
           id: 'v3_close',
           title: '2. Прекращение вывода кубового остатка',
           hint: 'Переведите клапан V-3 (Дренаж) в положение ЗАКРЫТО',
-          isDone: !valves.V3,
+          isDone: !valves.V_3,
         },
         {
           id: 'v2_open',
           title: '3. Открытие сдувки на факел',
           hint: 'Переведите клапан V-2 (Сброс давления) в положение ОТКРЫТО',
-          isDone: valves.V2,
+          isDone: valves.V_2,
         },
       ];
     } else {
@@ -99,20 +99,20 @@ const ScenarioChecklist: React.FC = () => {
         {
           id: 'sp_down',
           title: '1. Снижение нагрева печи П-1',
-          hint: `Понизьте уставку и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.furnaceTemp?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.furnaceTemp ?? 999) <= 245,
+          hint: `Понизьте уставку и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
+          isDone: (sensors?.T_1 ?? 999) <= 245,
         },
         {
           id: 'v2_open',
           title: '2. Сброс давления в колонне K-1',
           hint: 'Откройте регулирующий клапан V-2 для сдувки газа на факел',
-          isDone: valves.V2,
+          isDone: valves.V_2,
         },
         {
           id: 'v1_close',
           title: '3. Перекрытие подачи сырья',
-          hint: `Переведите V-1 в положение ЗАКРЫТО и дождитесь дренажа куба (уровень < 15%, сейчас: ${sensors?.columnLevel?.toFixed(1) ?? '...'}%)`,
-          isDone: !valves.V1 && (sensors?.columnLevel ?? 100) < 15,
+          hint: `Переведите V-1 в положение ЗАКРЫТО и дождитесь дренажа куба (уровень < 15%, сейчас: ${sensors?.L_1?.toFixed(1) ?? '...'}%)`,
+          isDone: !valves.V_1 && (sensors?.L_1 ?? 100) < 15,
         },
       ];
     }

@@ -6,11 +6,11 @@ import * as S from './ControlPanel.styles';
 
 const ControlPanel: React.FC = () => {
   const { setpoints, valves, toggleValve, changeSetpoint, status } = useSimulator();
-  const [localTemp, setLocalTemp] = React.useState(setpoints.furnaceTempSp);
+  const [localTemp, setLocalTemp] = React.useState(setpoints.T_1_Sp);
 
   React.useEffect(() => {
-    setLocalTemp(setpoints.furnaceTempSp);
-  }, [setpoints.furnaceTempSp]);
+    setLocalTemp(setpoints.T_1_Sp);
+  }, [setpoints.T_1_Sp]);
 
   return (
     <S.PanelContainer 
@@ -56,8 +56,8 @@ const ControlPanel: React.FC = () => {
           <S.SwitchRow>
             <S.SwitchLabel>Вход печи <strong>V-1</strong></S.SwitchLabel>
             <Switch
-              checked={valves.V1}
-              onChange={() => toggleValve('V1')}
+              checked={valves.V_1}
+              onChange={() => toggleValve('V_1')}
               disabled={status !== 'running'}
               checkedChildren="ОТКР"
               unCheckedChildren="ЗАКР"
@@ -67,8 +67,8 @@ const ControlPanel: React.FC = () => {
           <S.SwitchRow>
             <S.SwitchLabel>Сброс давления колонны <strong>V-2</strong></S.SwitchLabel>
             <Switch
-              checked={valves.V2}
-              onChange={() => toggleValve('V2')}
+              checked={valves.V_2}
+              onChange={() => toggleValve('V_2')}
               disabled={status !== 'running'}
               checkedChildren="ОТКР"
               unCheckedChildren="ЗАКР"
@@ -78,8 +78,8 @@ const ControlPanel: React.FC = () => {
           <S.SwitchRow>
             <S.SwitchLabel>Дренаж куба колонны <strong>V-3</strong></S.SwitchLabel>
             <Switch
-              checked={valves.V3}
-              onChange={() => toggleValve('V3')}
+              checked={valves.V_3}
+              onChange={() => toggleValve('V_3')}
               disabled={status !== 'running'}
               checkedChildren="ОТКР"
               unCheckedChildren="ЗАКР"

@@ -19,13 +19,13 @@ async def simulation_loop():
             setpts  = manager.simulator.setpoints
             
             manager.telemetry_history.append([
-                1.0 if valves["V1"] else 0.0,
-                1.0 if valves["V2"] else 0.0,
-                1.0 if valves["V3"] else 0.0,
-                setpts["furnaceTempSp"],
-                sensors["furnaceTemp"],
-                sensors["columnPres"],
-                sensors["columnLevel"]
+                1.0 if valves["V_1"] else 0.0,
+                1.0 if valves["V_2"] else 0.0,
+                1.0 if valves["V_3"] else 0.0,
+                setpts["T_1_Sp"],
+                sensors["T_1"],
+                sensors["P_1"],
+                sensors["L_1"]
             ])
             if len(manager.telemetry_history) > 30:
                 manager.telemetry_history.pop(0)
@@ -40,17 +40,17 @@ async def simulation_loop():
                 manager.save_completed_session()
             
             # Проверяем нештатные ситуации
-            temp = manager.simulator.sensors["furnaceTemp"]
-            pres = manager.simulator.sensors["columnPres"]
-            level = manager.simulator.sensors["columnLevel"]
+            temp = manager.simulator.sensors["T_1"]
+            pres = manager.simulator.sensors["P_1"]
+            level = manager.simulator.sensors["L_1"]
             
             # Формируем автоматические предупреждения по техрегламенту
             if temp > FURNACE_TEMP_WARNING:
                 manager.add_log("warning", f"Предупреждение: Температура печи П-1 ({temp:.1f}°C) выше нормы ({FURNACE_TEMP_WARNING}°C). Опасность коксования труб!")
             if pres > COLUMN_PRES_WARNING:
-                manager.add_log("warning", f"Предупреждение: Давление в колонне К-1 ({pres:.3f} МПа) приближается к предельному! Откройте клапан сброса V-2.")
+                manager.add_log("warning", f"Предупреждение: Давление в колонне К-1 ({pres:.3f} МПа) приближается к предельному! Откройте клапан сброса V_2.")
             if level > COLUMN_LEVEL_HIGH:
-                manager.add_log("warning", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) выше нормы! Откройте дренаж V-3.")
+                manager.add_log("warning", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) выше нормы! Откройте дренаж V_3.")
             elif level < COLUMN_LEVEL_LOW:
                 manager.add_log("warning", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) опасно низок! Риск срыва печных насосов.")
                 
