@@ -6,9 +6,13 @@ from ai_core.config import (
 )
 
 async def simulation_loop():
-    """Фоновый цикл симуляции физического процесса (шаг раз в 1 секунду)."""
+    """Фоновый цикл симуляции физического процесса (шаг с учетом скорости и паузы)."""
     while True:
-        if manager.simulator.status == "running" and len(manager.operator_sockets) > 0:
+        if (
+            manager.simulator.status == "running" 
+            and len(manager.operator_sockets) > 0 
+            and not manager.is_paused
+        ):
             # Шаг физики симулятора
             old_status = manager.simulator.status
             manager.simulator.step()
@@ -64,4 +68,5 @@ async def simulation_loop():
                 
             await manager.broadcast_state()
             
-        await asyncio.sleep(1.0)
+        sleep_time = max(0.01, 1.0 / manager.speed_multiplier)
+        await asyncio.sleep(sleep_time)

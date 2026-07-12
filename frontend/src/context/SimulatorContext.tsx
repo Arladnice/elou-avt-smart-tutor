@@ -50,6 +50,10 @@ interface SimulatorContextType {
   isOnline: boolean;
   wsLatency: number; // Задержка в мс для Критерия 1 (производительность)
   
+  speedMultiplier: number;
+  isPaused: boolean;
+  hasSnapshot: boolean;
+  
   loginUser: (name: string, role: 'operator' | 'instructor') => void;
   logoutUser: () => void;
   selectScenario: (scenId: string) => void;
@@ -59,6 +63,10 @@ interface SimulatorContextType {
   triggerDefect: (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', state: boolean) => void;
   resetSession: () => void;
   completeSession: () => void;
+  changeSpeed: (multiplier: number) => void;
+  togglePause: (paused: boolean) => void;
+  saveState: () => void;
+  loadState: () => void;
 }
 
 const SimulatorContext = createContext<SimulatorContextType | undefined>(undefined);
@@ -85,6 +93,10 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   
   const [isOnline, setIsOnline] = useState(false);
   const [wsLatency, setWsLatency] = useState(0);
+  
+  const [speedMultiplier, setSpeedMultiplier] = useState(1.0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [hasSnapshot, setHasSnapshot] = useState(false);
   
   const wsRef = useRef<WebSocket | null>(null);
   const latencyTimerRef = useRef<number | null>(null);
@@ -136,6 +148,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setLogs(data.logs);
       setScoreCard(data.scoreCard);
       setAccidentReason(data.accidentReason);
+      if (data.speedMultiplier !== undefined) setSpeedMultiplier(data.speedMultiplier);
+      if (data.isPaused !== undefined) setIsPaused(data.isPaused);
+      if (data.hasSnapshot !== undefined) setHasSnapshot(data.hasSnapshot);
       if (data.operatorName) {
         setOperatorName(data.operatorName);
       }
@@ -320,6 +335,53 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const changeSpeed = (multiplier: number) => {
+    if (isOnline) {
+      sendWsAction({ type: 'change_speed', multiplier });
+    } else {
+      setSpeedMultiplier(multiplier);
+      setLogs(l => [
+        ...l,
+        { id: Date.now().toString(), time: '00:00', type: 'info', message: `Локально: Скорость изменена на ${multiplier}x` }
+      ]);
+    }
+  };
+
+  const togglePause = (paused: boolean) => {
+    if (isOnline) {
+      sendWsAction({ type: 'toggle_pause', paused });
+    } else {
+      setIsPaused(paused);
+      setLogs(l => [
+        ...l,
+        { id: Date.now().toString(), time: '00:00', type: 'info', message: `Локально: Симуляция ${paused ? 'ПРИОСТАНОВЛЕНА' : 'ВОЗОБНОВЛЕНА'}` }
+      ]);
+    }
+  };
+
+  const saveState = () => {
+    if (isOnline) {
+      sendWsAction({ type: 'save_state' });
+    } else {
+      setHasSnapshot(true);
+      setLogs(l => [
+        ...l,
+        { id: Date.now().toString(), time: '00:00', type: 'info', message: 'Локально: Сделан снимок состояния (снапшот).' }
+      ]);
+    }
+  };
+
+  const loadState = () => {
+    if (isOnline) {
+      sendWsAction({ type: 'load_state' });
+    } else {
+      setLogs(l => [
+        ...l,
+        { id: Date.now().toString(), time: '00:00', type: 'warning', message: 'Локально: Произведен откат к снапшоту.' }
+      ]);
+    }
+  };
+
   const completeSession = () => {
     if (isOnline) {
       sendWsAction({ type: 'complete' });
@@ -372,6 +434,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       scenarioId,
       isOnline,
       wsLatency,
+      speedMultiplier,
+      isPaused,
+      hasSnapshot,
       loginUser,
       logoutUser,
       selectScenario,
@@ -380,7 +445,11 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       triggerEsd,
       triggerDefect,
       resetSession,
-      completeSession
+      completeSession,
+      changeSpeed,
+      togglePause,
+      saveState,
+      loadState
     }}>
       {children}
     </SimulatorContext.Provider>

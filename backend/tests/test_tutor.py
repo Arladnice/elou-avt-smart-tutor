@@ -71,6 +71,26 @@ class TestKTKComponents(unittest.TestCase):
         self.assertEqual(self.simulator.sensors["T_1"], 280.0)
         self.assertEqual(self.simulator.sensors["L_1"], 50.0)
 
+    def test_simulator_snapshots(self):
+        """Проверяет создание снимка состояния симулятора и откат к нему."""
+        self.simulator.reset("shutdown")
+        initial_temp = self.simulator.sensors["T_1"]
+        
+        # Делаем снапшот
+        snapshot = self.simulator.get_snapshot()
+        self.assertEqual(snapshot["sensors"]["T_1"], initial_temp)
+        
+        # Меняем состояние симулятора
+        self.simulator.sensors["T_1"] = 550.0
+        self.simulator.valves["V_1"] = False
+        self.simulator.time_elapsed = 150
+        
+        # Откатываемся
+        self.simulator.load_snapshot(snapshot)
+        self.assertEqual(self.simulator.sensors["T_1"], initial_temp)
+        self.assertEqual(self.simulator.valves["V_1"], True)
+        self.assertEqual(self.simulator.time_elapsed, 0)
+
     def test_error_analyzer_shutdown_success(self):
         """Проверяет оценку идеального сценария останова печи."""
         actions = ["SP_DOWN", "V2_OPEN", "V1_CLOSE"]
@@ -197,6 +217,24 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         with self.assertRaises(HTTPException) as ctx:
             login(LoginRequest(username="User", role="admin"))
         self.assertEqual(ctx.exception.status_code, 400)
+
+    def test_simulation_time_and_speed_control(self):
+        """Проверяет логику паузы и изменения скорости в ConnectionManager."""
+        from backend.services.connection_manager import manager
+        
+        # По умолчанию симуляция идет с нормальной скоростью и не на паузе
+        self.assertEqual(manager.speed_multiplier, 1.0)
+        self.assertFalse(manager.is_paused)
+        
+        # Меняем параметры
+        manager.is_paused = True
+        manager.speed_multiplier = 2.0
+        self.assertEqual(manager.speed_multiplier, 2.0)
+        self.assertTrue(manager.is_paused)
+        
+        # Сбрасываем назад
+        manager.is_paused = False
+        manager.speed_multiplier = 1.0
 
     def test_scenario_6_security_integrity_sha256(self):
         """Тест сценария 6: Проверка ИБ-контроля целостности логов по SHA-256"""

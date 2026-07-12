@@ -32,6 +32,11 @@ class ConnectionManager:
         self.defects_triggered: Set[str] = set()
         self.telemetry_history: List[List[float]] = [] # Последние 30 секунд для LSTM
         self.logs: List[dict] = []
+        
+        # Переменные управления симуляцией (Инструктор)
+        self.speed_multiplier = 1.0
+        self.is_paused = False
+        self.snapshot_data = None
 
     async def connect(self, websocket: WebSocket, role: str):
         """Подключает клиента и регистрирует в соответствующем наборе сокетов."""
@@ -90,13 +95,13 @@ class ConnectionManager:
         
         if not self.telemetry_history:
             self.telemetry_history.append([
-                1.0 if valves["V1"] else 0.0,
-                1.0 if valves["V2"] else 0.0,
-                1.0 if valves["V3"] else 0.0,
-                setpoints["furnaceTempSp"],
-                sensors["furnaceTemp"],
-                sensors["columnPres"],
-                sensors["columnLevel"]
+                1.0 if valves["V_1"] else 0.0,
+                1.0 if valves["V_2"] else 0.0,
+                1.0 if valves["V_3"] else 0.0,
+                setpoints["T_1_Sp"],
+                sensors["T_1"],
+                sensors["P_1"],
+                sensors["L_1"]
             ])
             
         pred_vals, risk = self.predictor.predict_risk(
@@ -149,7 +154,10 @@ class ConnectionManager:
             "predictions": pred_vals,
             "actions": self.actions_taken,
             "logs": self.logs,
-            "scoreCard": score_card
+            "scoreCard": score_card,
+            "speedMultiplier": self.speed_multiplier,
+            "isPaused": self.is_paused,
+            "hasSnapshot": self.snapshot_data is not None
         }
 
     def save_completed_session(self):

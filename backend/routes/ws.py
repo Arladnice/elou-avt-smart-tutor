@@ -83,6 +83,31 @@ async def websocket_endpoint(websocket: WebSocket):
                 manager.add_log("error" if state else "info", f"ИНСТРУКТОР: Неисправность '{defect_names_ru.get(defect_id, defect_id)}' {status_ru}!")
                 log_audit_event("INSTRUCTOR", "DEFECT_TRIGGER", f"Неисправность {defect_id} -> {state}")
                 
+            elif action_type == "change_speed":
+                multiplier = float(cmd.get("multiplier", 1.0))
+                manager.speed_multiplier = multiplier
+                manager.add_log("info", f"ИНСТРУКТОР: Скорость симуляции изменена на {multiplier}x.")
+                log_audit_event("INSTRUCTOR", "CHANGE_SPEED", f"Скорость -> {multiplier}x")
+
+            elif action_type == "toggle_pause":
+                paused = bool(cmd.get("paused", False))
+                manager.is_paused = paused
+                manager.add_log("warning" if paused else "info", f"ИНСТРУКТОР: Симуляция {'ПРИОСТАНОВЛЕНА' if paused else 'ВОЗОБНОВЛЕНА'}.")
+                log_audit_event("INSTRUCTOR", "TOGGLE_PAUSE", f"Пауза -> {paused}")
+
+            elif action_type == "save_state":
+                manager.snapshot_data = manager.simulator.get_snapshot()
+                manager.add_log("info", "ИНСТРУКТОР: Сделан снимок состояния процесса (снапшот).")
+                log_audit_event("INSTRUCTOR", "SAVE_STATE", "Создан снапшот")
+
+            elif action_type == "load_state":
+                if manager.snapshot_data:
+                    manager.simulator.load_snapshot(manager.snapshot_data)
+                    manager.add_log("warning", "ИНСТРУКТОР: Произведен откат состояния процесса к снапшоту.")
+                    log_audit_event("INSTRUCTOR", "LOAD_STATE", "Откат к снапшоту")
+                else:
+                    manager.add_log("warning", "ИНСТРУКТОР: Невозможно выполнить откат (снапшот не найден).")
+
             elif action_type == "complete":
                 if manager.simulator.status == "running":
                     manager.simulator.status = "success"

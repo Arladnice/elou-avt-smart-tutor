@@ -187,3 +187,27 @@ class ELOUAVTSimulator:
             "defects": self.defects,
             "accidentReason": self.accident_reason
         }
+
+    def get_snapshot(self) -> dict:
+        """Создает полную копию состояния симулятора для сохранения (снапшот)."""
+        import copy
+        return {
+            "status": self.status,
+            "time_elapsed": self.time_elapsed,
+            "valves": copy.deepcopy(self.valves),
+            "sensors": copy.deepcopy(self.sensors),
+            "setpoints": copy.deepcopy(self.setpoints),
+            "defects": copy.deepcopy(self.defects),
+            "accident_reason": self.accident_reason
+        }
+
+    def load_snapshot(self, snapshot: dict):
+        """Восстанавливает состояние симулятора из сохраненного снапшота."""
+        import copy
+        self.status = snapshot["status"]
+        self.time_elapsed = snapshot["time_elapsed"]
+        self.valves = copy.deepcopy(snapshot["valves"])
+        self.sensors = copy.deepcopy(snapshot["sensors"])
+        self.setpoints = copy.deepcopy(snapshot["setpoints"])
+        self.defects = copy.deepcopy(snapshot["defects"])
+        self.accident_reason = snapshot["accident_reason"]
