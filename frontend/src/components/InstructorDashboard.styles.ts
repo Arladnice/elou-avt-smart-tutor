@@ -420,7 +420,7 @@ export const EllipsisCell = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
+  max-width: 280px;
 `;
 
 export const TableWrapper = styled.div`
