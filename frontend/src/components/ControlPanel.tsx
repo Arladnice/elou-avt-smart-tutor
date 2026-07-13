@@ -30,7 +30,7 @@ const ControlPanel: React.FC = () => {
         </S.Label>
         <S.SliderWrapper>
           <Slider
-            min={240}
+            min={100}
             max={340}
             value={localTemp}
             onChange={(v) => setLocalTemp(v)}
@@ -40,7 +40,7 @@ const ControlPanel: React.FC = () => {
           />
         </S.SliderWrapper>
         <S.SliderLabels>
-          <span>240°C</span>
+          <span>100°C</span>
           <strong>Текущая: {localTemp}°C</strong>
           <span>340°C</span>
         </S.SliderLabels>

@@ -7,8 +7,8 @@ export const LogContainer = styled.div`
   border-radius: 6px;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 180px;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 `;
 
@@ -23,6 +23,11 @@ export const LogHeader = styled.div`
   text-transform: uppercase;
   color: ${props => props.theme.colors.textMuted};
   background-color: #0b0f17;
+
+  @media (max-height: 950px) {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
 `;
 
 export const LogConsole = styled.div`
@@ -35,6 +40,12 @@ export const LogConsole = styled.div`
   flex-direction: column;
   gap: 6px;
   background-color: #080b10;
+
+  @media (max-height: 950px) {
+    padding: 6px 12px;
+    font-size: 11px;
+    gap: 4px;
+  }
 `;
 
 export const LogRow = styled.div<{ type: LogEntry['type'] }>`

@@ -12,12 +12,19 @@ const DashboardLayout: React.FC = () => {
     <S.GridContainer>
       <Header />
       <S.MainArea>
-        <FlowScheme />
+        <S.LeftColumn>
+          <FlowScheme />
+          <S.LeftLogWrapper>
+            <AlarmLog />
+          </S.LeftLogWrapper>
+        </S.LeftColumn>
         <S.Sidebar>
           <ControlPanel />
           <ScenarioChecklist />
           <AiAssistant />
-          <AlarmLog />
+          <S.SidebarLogWrapper>
+            <AlarmLog />
+          </S.SidebarLogWrapper>
         </S.Sidebar>
       </S.MainArea>
     </S.GridContainer>

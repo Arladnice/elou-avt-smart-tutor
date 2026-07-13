@@ -2,22 +2,30 @@ import styled, { keyframes } from 'styled-components';
 import { Card } from 'antd';
 
 export const pulse = keyframes`
-  0% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.8; }
+  0% { opacity: 0.8; filter: drop-shadow(0 0 0px rgba(255, 77, 79, 0)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 4px rgba(255, 77, 79, 0.6)); }
+  100% { opacity: 0.8; filter: drop-shadow(0 0 0px rgba(255, 77, 79, 0)); }
 `;
 
-export const ChecklistContainer = styled(Card)`
+export const ChecklistContainer = styled(Card)<{ isEmergency?: boolean }>`
   background-color: ${props => props.theme.colors.surface};
-  border-color: ${props => props.theme.colors.border};
+  border-color: ${props => props.isEmergency ? 'rgba(255, 77, 79, 0.4)' : props.theme.colors.border};
   color: ${props => props.theme.colors.text};
   border-radius: 6px;
   overflow: hidden;
+  box-shadow: ${props => props.isEmergency ? '0 0 10px rgba(255, 77, 79, 0.1)' : 'none'};
+  transition: all 0.3s ease;
+  flex-shrink: 0;
 
   .ant-card-head {
-    border-bottom: 1px solid ${props => props.theme.colors.border};
+    border-bottom: 1px solid ${props => props.isEmergency ? 'rgba(255, 77, 79, 0.2)' : props.theme.colors.border};
     padding: 0 16px;
     min-height: 40px;
+
+    @media (max-height: 950px) {
+      padding: 0 12px;
+      min-height: 32px;
+    }
   }
 
   .ant-card-head-title {
@@ -29,17 +37,40 @@ export const ChecklistContainer = styled(Card)`
     align-items: center;
     gap: 8px;
     padding: 10px 0;
+
+    @media (max-height: 950px) {
+      font-size: 11px;
+      padding: 6px 0;
+      gap: 6px;
+    }
   }
 
   .ant-card-body {
     padding: 8px 12px;
+
+    @media (max-height: 950px) {
+      padding: 6px 10px;
+    }
   }
+`;
+
+export const EmergencyTitle = styled.span`
+  color: ${props => props.theme.colors.danger || '#ff4d4f'};
+  font-weight: bold;
+  animation: ${pulse} 2s infinite ease-in-out;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 `;
 
 export const TasksList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  @media (max-height: 950px) {
+    gap: 4px;
+  }
 `;
 
 export const TaskItem = styled.div<{ status: 'completed' | 'active' | 'pending' }>`
@@ -59,6 +90,11 @@ export const TaskItem = styled.div<{ status: 'completed' | 'active' | 'pending' 
   border-radius: 4px;
   padding: 6px 10px;
   transition: all 0.3s ease;
+
+  @media (max-height: 950px) {
+    padding: 4px 8px;
+    gap: 6px;
+  }
 
   &:hover {
     border-color: ${props => {
@@ -106,6 +142,10 @@ export const TaskTitle = styled.span<{ status: 'completed' | 'active' | 'pending
   }};
   text-decoration: ${props => props.status === 'completed' ? 'line-through' : 'none'};
   opacity: ${props => props.status === 'pending' ? 0.6 : 1};
+
+  @media (max-height: 950px) {
+    font-size: 11px;
+  }
 `;
 
 export const TaskHint = styled.span<{ status: 'completed' | 'active' | 'pending' }>`
@@ -115,4 +155,8 @@ export const TaskHint = styled.span<{ status: 'completed' | 'active' | 'pending'
     return 'rgba(124, 139, 161, 0.5)';
   }};
   line-height: 1.3;
+
+  @media (max-height: 950px) {
+    font-size: 9.5px;
+  }
 `;

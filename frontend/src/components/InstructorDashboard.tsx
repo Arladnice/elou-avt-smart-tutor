@@ -6,6 +6,13 @@ import { apiService, type Session } from '../services/api';
 import { getTableColumns, SCENARIO_NAMES } from './InstructorDashboard.config';
 import * as S from './InstructorDashboard.styles';
 
+const getStatusBadge = (s: string) => {
+  if (s === 'running') return <Badge status="processing" text="Работа" style={{ color: '#00ff66' }} />;
+  if (s === 'esd') return <Badge status="warning" text="Аварийный Останов" style={{ color: '#ffcc00' }} />;
+  if (s === 'accident') return <Badge status="error" text="АВАРИЯ" style={{ color: '#ff3333' }} />;
+  return <Badge status="default" text="Пауза" style={{ color: '#7c8ba1' }} />;
+};
+
 const InstructorDashboard: React.FC = () => {
   const { 
     isOnline, 
@@ -146,12 +153,7 @@ const InstructorDashboard: React.FC = () => {
     });
   };
 
-  const getStatusBadge = (s: string) => {
-    if (s === 'running') return <Badge status="processing" text="Работа" style={{ color: '#00ff66' }} />;
-    if (s === 'esd') return <Badge status="warning" text="Аварийный Останов" style={{ color: '#ffcc00' }} />;
-    if (s === 'accident') return <Badge status="error" text="АВАРИЯ" style={{ color: '#ff3333' }} />;
-    return <Badge status="default" text="Пауза" style={{ color: '#7c8ba1' }} />;
-  };
+
 
   const columns = getTableColumns();
 
@@ -185,110 +187,107 @@ const InstructorDashboard: React.FC = () => {
       <S.Content>
         {/* Левая колонка: Управление сценариями и неисправностями */}
         <S.PanelColumn>
-          {/* Контроль сессии */}
-          <S.StyledCard title="Управление Учебным Процессом">
-            <S.ProcessControlLayout>
-              <div>
-                <S.ScenarioLabel>
-                  Выбор учебного сценария:
-                </S.ScenarioLabel>
-                <S.ScenarioRadioGroup 
-                  value={scenarioId} 
-                  onChange={e => selectScenario(e.target.value)}
-                >
-                  <S.ScenarioRadioButton value="startup">Пуск установки ЭЛОУ-АВТ</S.ScenarioRadioButton>
-                  <S.ScenarioRadioButton value="shutdown">Аварийный останов печи П-1</S.ScenarioRadioButton>
-                  <S.ScenarioRadioButton value="column_shutdown">Останов колонны К-1</S.ScenarioRadioButton>
-                  <S.ScenarioRadioButton value="overpressure_relief">Ликвидация роста давления</S.ScenarioRadioButton>
-                  <S.ScenarioRadioButton value="recirculation" fullWidth>Перевод на рециркуляцию</S.ScenarioRadioButton>
-                </S.ScenarioRadioGroup>
-              </div>
-              <S.ControlRow>
-                <S.FullWidthButton onClick={resetSession} type="primary" icon={<Play size={14} />}>
-                  Перезапустить сессию
-                </S.FullWidthButton>
-              </S.ControlRow>
-
-              <S.ControlRow style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <S.ScenarioLabel style={{ marginBottom: 0 }}>
-                  Управление временем симуляции:
-                </S.ScenarioLabel>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <Button 
-                    type={isPaused ? "primary" : "default"} 
-                    danger={isPaused}
-                    onClick={() => togglePause(!isPaused)}
-                    style={{ flex: 1, height: '32px', fontSize: '12px' }}
+          <S.TopCardsRow>
+            {/* Контроль сессии */}
+            <S.StyledCard title="Управление Учебным Процессом">
+              <S.ProcessControlLayout>
+                <div>
+                  <S.ScenarioLabel>
+                    Выбор учебного сценария:
+                  </S.ScenarioLabel>
+                  <S.ScenarioRadioGroup 
+                    value={scenarioId} 
+                    onChange={e => selectScenario(e.target.value)}
                   >
-                    {isPaused ? "Продолжить" : "Пауза"}
-                  </Button>
-                  <Button 
-                    type={speedMultiplier === 1 ? "primary" : "default"}
-                    onClick={() => changeSpeed(1.0)}
-                    style={{ width: '45px', height: '32px', padding: 0 }}
-                  >
-                    1x
-                  </Button>
-                  <Button 
-                    type={speedMultiplier === 2 ? "primary" : "default"}
-                    onClick={() => changeSpeed(2.0)}
-                    style={{ width: '45px', height: '32px', padding: 0 }}
-                  >
-                    2x
-                  </Button>
+                    <S.ScenarioRadioButton value="startup">Пуск установки ЭЛОУ-АВТ</S.ScenarioRadioButton>
+                    <S.ScenarioRadioButton value="shutdown">Аварийный останов печи П-1</S.ScenarioRadioButton>
+                    <S.ScenarioRadioButton value="column_shutdown">Останов колонны К-1</S.ScenarioRadioButton>
+                    <S.ScenarioRadioButton value="overpressure_relief">Ликвидация роста давления</S.ScenarioRadioButton>
+                    <S.ScenarioRadioButton value="recirculation" fullWidth>Перевод на рециркуляцию</S.ScenarioRadioButton>
+                  </S.ScenarioRadioGroup>
                 </div>
-              </S.ControlRow>
+                <S.ControlRow>
+                  <S.FullWidthButton onClick={resetSession} type="primary" icon={<Play size={14} />}>
+                    Перезапустить сессию
+                  </S.FullWidthButton>
+                </S.ControlRow>
 
-              <S.ControlRow style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <S.ScenarioLabel style={{ marginBottom: 0 }}>
-                  Контрольные точки (Снапшоты):
-                </S.ScenarioLabel>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <Button 
-                    onClick={saveState}
-                    style={{ flex: 1, height: '32px', fontSize: '12px' }}
-                  >
-                    Сделать снимок
-                  </Button>
-                  <Button 
-                    disabled={!hasSnapshot}
-                    onClick={loadState}
-                    type="dashed"
-                    style={{ flex: 1, height: '32px', fontSize: '12px' }}
-                  >
-                    Откатиться
-                  </Button>
-                </div>
-              </S.ControlRow>
-            </S.ProcessControlLayout>
-          </S.StyledCard>
+                <S.TimeControlRow>
+                  <S.CompactScenarioLabel>
+                    Управление временем симуляции:
+                  </S.CompactScenarioLabel>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <S.ActionButton 
+                      type={isPaused ? "primary" : "default"} 
+                      danger={isPaused}
+                      onClick={() => togglePause(!isPaused)}
+                    >
+                      {isPaused ? "Продолжить" : "Пауза"}
+                    </S.ActionButton>
+                    <S.SpeedButton 
+                      type={speedMultiplier === 1 ? "primary" : "default"}
+                      onClick={() => changeSpeed(1.0)}
+                    >
+                      1x
+                    </S.SpeedButton>
+                    <S.SpeedButton 
+                      type={speedMultiplier === 2 ? "primary" : "default"}
+                      onClick={() => changeSpeed(2.0)}
+                    >
+                      2x
+                    </S.SpeedButton>
+                  </div>
+                </S.TimeControlRow>
 
-          {/* Инъекция неисправностей */}
-          <S.StyledCard title="Внедрение нештатных ситуаций (Слайд 11 КТК)">
-            <S.DefectRow>
-              <S.DefectInfo>
-                <span className="title">Отказ сырьевого насоса Н-1</span>
-                <span className="desc">Прекращает подачу сырья. Угроза коксования печи П-1 (п. 7.9.1 техрегламента).</span>
-              </S.DefectInfo>
-              <Switch size="small" checked={defects.pump_fail} onChange={v => handleDefectChange('pump_fail', v)} />
-            </S.DefectRow>
+                <S.SnapshotControlRow>
+                  <S.CompactScenarioLabel>
+                    Контрольные точки (Снапшоты):
+                  </S.CompactScenarioLabel>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <S.ActionButton 
+                      onClick={saveState}
+                    >
+                      Сделать снимок
+                    </S.ActionButton>
+                    <S.ActionButton 
+                      disabled={!hasSnapshot}
+                      onClick={loadState}
+                      type="dashed"
+                    >
+                      Откатиться
+                    </S.ActionButton>
+                  </div>
+                </S.SnapshotControlRow>
+              </S.ProcessControlLayout>
+            </S.StyledCard>
 
-            <S.DefectRow>
-              <S.DefectInfo>
-                <span className="title">Прогар змеевика печи П-1</span>
-                <span className="desc">Неконтролируемый перегрев труб печи П-1, угроза пожара (п. 7.9.7).</span>
-              </S.DefectInfo>
-              <Switch size="small" checked={defects.coil_overheat} onChange={v => handleDefectChange('coil_overheat', v)} />
-            </S.DefectRow>
+            {/* Инъекция неисправностей */}
+            <S.StyledCard title="Внедрение нештатных ситуаций (Слайд 11 КТК)">
+              <S.DefectRow>
+                <S.DefectInfo>
+                  <span className="title">Отказ сырьевого насоса Н-1</span>
+                  <span className="desc">Прекращает подачу сырья. Угроза коксования печи П-1 (п. 7.9.1 техрегламента).</span>
+                </S.DefectInfo>
+                <Switch size="small" checked={defects.pump_fail} onChange={v => handleDefectChange('pump_fail', v)} />
+              </S.DefectRow>
 
-            <S.DefectRow>
-              <S.DefectInfo>
-                <span className="title">Зависание клапана сброса V-2</span>
-                <span className="desc">Клапан V-2 блокируется в закрытом состоянии. Угроза взрыва К-1.</span>
-              </S.DefectInfo>
-              <Switch size="small" checked={defects.valve_jam} onChange={v => handleDefectChange('valve_jam', v)} />
-            </S.DefectRow>
-          </S.StyledCard>
+              <S.DefectRow>
+                <S.DefectInfo>
+                  <span className="title">Прогар змеевика печи П-1</span>
+                  <span className="desc">Неконтролируемый перегрев труб печи П-1, угроза пожара (п. 7.9.7).</span>
+                </S.DefectInfo>
+                <Switch size="small" checked={defects.coil_overheat} onChange={v => handleDefectChange('coil_overheat', v)} />
+              </S.DefectRow>
+
+              <S.DefectRow>
+                <S.DefectInfo>
+                  <span className="title">Зависание клапана сброса V-2</span>
+                  <span className="desc">Клапан V-2 блокируется в закрытом состоянии. Угроза взрыва К-1.</span>
+                </S.DefectInfo>
+                <Switch size="small" checked={defects.valve_jam} onChange={v => handleDefectChange('valve_jam', v)} />
+              </S.DefectRow>
+            </S.StyledCard>
+          </S.TopCardsRow>
 
           {/* Журнал аудита действий оператора */}
           <S.StretchCard title="Мониторинг журнала событий">

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "backend": "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000",
+    "backend": "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload",
     "frontend": "npm run dev --prefix frontend",
     "dev": "npx -y concurrently \"npm run backend\" \"npm run frontend\""
   }

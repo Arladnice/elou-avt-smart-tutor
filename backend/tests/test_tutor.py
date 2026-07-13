@@ -93,10 +93,28 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_error_analyzer_shutdown_success(self):
         """Проверяет оценку идеального сценария останова печи."""
+        for actions in [["SP_DOWN", "V2_OPEN", "V1_CLOSE"], ["SP_DOWN", "V_2_OPEN", "V_1_CLOSE"]]:
+            score, errors, recs = self.analyzer.evaluate_session(actions, "shutdown")
+            self.assertEqual(score, 100)
+            self.assertEqual(len(errors), 0)
+
+    def test_error_analyzer_shutdown_with_sensor_temperatures(self):
+        """Проверяет оценку останова печи в зависимости от температуры."""
         actions = ["SP_DOWN", "V2_OPEN", "V1_CLOSE"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "shutdown")
+        
+        # 1. Температура остыла до 150°C (нормальный останов)
+        score, errors, recs = self.analyzer.evaluate_session(
+            actions, "shutdown", final_sensors={"T_1": 150.0, "L_1": 50.0}
+        )
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
+        
+        # 2. Температура горячая - 280°C (превышает порог 245°C)
+        score, errors, recs = self.analyzer.evaluate_session(
+            actions, "shutdown", final_sensors={"T_1": 280.0, "L_1": 50.0}
+        )
+        self.assertLess(score, 100)
+        self.assertTrue(any(e["title"] == "Температурный режим не достигнут" for e in errors))
 
     def test_error_analyzer_column_shutdown_success(self):
         """Проверяет оценку идеального сценария останова колонны."""

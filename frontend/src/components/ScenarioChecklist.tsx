@@ -10,11 +10,65 @@ interface TaskInfo {
   isDone: boolean;
 }
 
+const scenarioNames: Record<string, string> = {
+  startup: 'Пуск установки',
+  shutdown: 'Аварийный останов печи П-1',
+  column_shutdown: 'Останов колонны К-1',
+  overpressure_relief: 'Ликвидация роста давления',
+  recirculation: 'Перевод на рециркуляцию'
+};
+
 const ScenarioChecklist: React.FC = () => {
-  const { scenarioId, valves, sensors } = useSimulator();
+  const { scenarioId, valves, sensors, setpoints, defects, status } = useSimulator();
 
   // Определение шагов на основе текущего состояния симулятора
   const getTasks = (): TaskInfo[] => {
+    const emergencyTasks: TaskInfo[] = [];
+
+    // При отказе сырьевого насоса необходимо снизить нагрев печи
+    if (defects?.pump_fail) {
+      const limitTemp = scenarioId === 'startup' ? 240 : 245;
+      emergencyTasks.push({
+        id: 'pump_fail_recovery',
+        title: 'Аварийное снижение нагрева печи П-1',
+        hint: `Понизьте уставку температуры печи Т-1 ниже ${limitTemp}°C (сейчас: ${setpoints?.T_1_Sp ?? '...'}°C) для предотвращения прогара сухого змеевика.`,
+        isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp,
+      });
+    }
+
+    // При прогаре змеевика печи необходимо снизить нагрев и открыть сброс V-2
+    if (defects?.coil_overheat) {
+      const limitTemp = scenarioId === 'startup' ? 240 : 245;
+      if (!emergencyTasks.some(t => t.id === 'pump_fail_recovery')) {
+        emergencyTasks.push({
+          id: 'coil_overheat_temp',
+          title: 'Локализация пожара печи П-1 (снижение нагрева)',
+          hint: `Понизьте уставку температуры печи Т-1 ниже ${limitTemp}°C (сейчас: ${setpoints?.T_1_Sp ?? '...'}°C) для отсечки топлива.`,
+          isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp,
+        });
+      }
+      emergencyTasks.push({
+        id: 'coil_overheat_pressure',
+        title: 'Сброс давления из колонны К-1',
+        hint: 'Откройте регулирующий клапан сброса V-2 в положение ОТКРЫТО для стравливания газов.',
+        isDone: valves.V_2,
+      });
+    }
+
+    // При заклинивании V-2 необходим аварийный останов (ESD)
+    if (defects?.valve_jam) {
+      emergencyTasks.push({
+        id: 'valve_jam_esd',
+        title: 'Аварийный останов установки (ПАЗ)',
+        hint: 'Нажмите красную кнопку аварийного останова (ESD) на панели управления для предотвращения взрыва колонны К-1.',
+        isDone: status === 'esd',
+      });
+    }
+
+    if (emergencyTasks.length > 0) {
+      return emergencyTasks;
+    }
+
     if (scenarioId === 'startup') {
       return [
         {
@@ -129,21 +183,33 @@ const ScenarioChecklist: React.FC = () => {
     return 'pending';
   };
 
-  const scenarioNames: Record<string, string> = {
-    startup: 'Пуск установки',
-    shutdown: 'Аварийный останов печи П-1',
-    column_shutdown: 'Останов колонны К-1',
-    overpressure_relief: 'Ликвидация роста давления',
-    recirculation: 'Перевод на рециркуляцию'
+
+
+  const isEmergency = !!(defects?.pump_fail || defects?.coil_overheat || defects?.valve_jam);
+
+  const getEmergencyTitle = (): string => {
+    const list: string[] = [];
+    if (defects?.pump_fail) list.push('Отказ Н-1');
+    if (defects?.coil_overheat) list.push('Прогар П-1');
+    if (defects?.valve_jam) list.push('Зависание V-2');
+    return `Авария: ${list.join(' + ')}`;
   };
 
   return (
     <S.ChecklistContainer
+      isEmergency={isEmergency}
       title={
-        <>
-          <ListTodo size={14} color="#00e5ff" />
-          Задачи Сценария: {scenarioNames[scenarioId] || 'Обучение'}
-        </>
+        isEmergency ? (
+          <S.EmergencyTitle>
+            <ListTodo size={14} />
+            {getEmergencyTitle()}
+          </S.EmergencyTitle>
+        ) : (
+          <>
+            <ListTodo size={14} color="#00e5ff" />
+            Задачи Сценария: {scenarioNames[scenarioId] || 'Обучение'}
+          </>
+        )
       }
       bordered={false}
     >

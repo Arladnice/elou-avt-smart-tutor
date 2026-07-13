@@ -13,6 +13,11 @@ export const HeaderContainer = styled.header`
   background-color: ${props => props.theme.colors.surface};
   border-bottom: 1px solid ${props => props.theme.colors.border};
   padding: 0 20px;
+  height: 100%;
+
+  @media (max-height: 950px) {
+    padding: 0 12px;
+  }
 `;
 
 export const Title = styled.h1`
@@ -24,6 +29,7 @@ export const Title = styled.h1`
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
 
   &::before {
     content: '';
@@ -31,6 +37,17 @@ export const Title = styled.h1`
     width: 8px;
     height: 16px;
     background-color: ${props => props.theme.colors.accent};
+  }
+
+  @media (max-height: 950px) {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    gap: 5px;
+
+    &::before {
+      width: 6px;
+      height: 12px;
+    }
   }
 `;
 
@@ -45,6 +62,13 @@ export const StatusIndicator = styled.div<{ status: 'running' | 'paused' | 'esd'
   padding: 4px 12px;
   border-radius: 4px;
   border: 1px solid ${props => props.theme.colors.border};
+  white-space: nowrap;
+
+  @media (max-height: 950px) {
+    font-size: 10px;
+    padding: 2px 8px;
+    gap: 4px;
+  }
 
   &::before {
     content: '';
@@ -72,6 +96,10 @@ export const InfoPanel = styled.div`
   display: flex;
   align-items: center;
   gap: 24px;
+
+  @media (max-height: 950px) {
+    gap: 12px;
+  }
 `;
 
 export const InfoItem = styled.div`
@@ -80,10 +108,16 @@ export const InfoItem = styled.div`
   gap: 8px;
   font-size: 13px;
   color: ${props => props.theme.colors.textMuted};
+  white-space: nowrap;
 
   strong {
     color: ${props => props.theme.colors.text};
     font-family: ${props => props.theme.fonts.mono};
+  }
+
+  @media (max-height: 950px) {
+    font-size: 10.5px;
+    gap: 4px;
   }
 `;
 
@@ -91,6 +125,10 @@ export const Actions = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+
+  @media (max-height: 950px) {
+    gap: 6px;
+  }
 `;
 
 export const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' | 'success' }>`
@@ -105,6 +143,13 @@ export const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondar
   cursor: pointer;
   border: 1px solid transparent;
   transition: ${props => props.theme.transitions.default};
+  white-space: nowrap;
+
+  @media (max-height: 950px) {
+    font-size: 10px;
+    padding: 4px 10px;
+    gap: 4px;
+  }
 
   ${props => {
     if (props.variant === 'danger') {

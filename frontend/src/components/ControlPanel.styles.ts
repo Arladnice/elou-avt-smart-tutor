@@ -7,11 +7,17 @@ export const PanelContainer = styled(Card)`
   color: ${props => props.theme.colors.text};
   border-radius: 6px;
   overflow: hidden;
+  flex-shrink: 0;
 
   .ant-card-head {
     border-bottom: 1px solid ${props => props.theme.colors.border};
     padding: 0 16px;
     min-height: 40px;
+
+    @media (max-height: 950px) {
+      padding: 0 12px;
+      min-height: 32px;
+    }
   }
 
   .ant-card-head-title {
@@ -23,6 +29,12 @@ export const PanelContainer = styled(Card)`
     align-items: center;
     gap: 8px;
     padding: 10px 0;
+
+    @media (max-height: 950px) {
+      font-size: 11px;
+      padding: 6px 0;
+      gap: 6px;
+    }
   }
 
   .ant-card-body {
@@ -30,6 +42,11 @@ export const PanelContainer = styled(Card)`
     display: flex;
     flex-direction: column;
     gap: 10px;
+
+    @media (max-height: 950px) {
+      padding: 6px 10px;
+      gap: 6px;
+    }
   }
 `;
 
@@ -37,6 +54,10 @@ export const ControlGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
+
+  @media (max-height: 950px) {
+    gap: 2px;
+  }
 `;
 
 export const Label = styled.div`
@@ -46,6 +67,10 @@ export const Label = styled.div`
   font-size: 12px;
   font-weight: 600;
   color: ${props => props.theme.colors.text};
+
+  @media (max-height: 950px) {
+    font-size: 11px;
+  }
 `;
 
 export const SwitchRow = styled.div`
@@ -56,12 +81,20 @@ export const SwitchRow = styled.div`
   padding: 5px 10px;
   border-radius: 4px;
   border: 1px solid ${props => props.theme.colors.border};
+
+  @media (max-height: 950px) {
+    padding: 3px 8px;
+  }
 `;
 
 export const SwitchLabel = styled.span`
   font-size: 12px;
   font-weight: 500;
   color: ${props => props.theme.colors.textMuted};
+
+  @media (max-height: 950px) {
+    font-size: 11px;
+  }
 
   strong {
     color: ${props => props.theme.colors.text};
@@ -83,4 +116,8 @@ export const SwitchColumn = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  @media (max-height: 950px) {
+    gap: 4px;
+  }
 `;

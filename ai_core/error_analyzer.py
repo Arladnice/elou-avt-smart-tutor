@@ -107,6 +107,9 @@ class ErrorAnalyzer:
         # Создаем копию списка действий, чтобы не менять оригинальный
         actions = list(actions)
         
+        # Нормализуем действия: заменяем V_1, V_2, V_3 на V1, V2, V3 для совместимости с физическим симулятором
+        actions = [a.replace("V_1", "V1").replace("V_2", "V2").replace("V_3", "V3") for a in actions]
+        
         # Динамический учет начального состояния клапанов для корректного LCS-выравнивания
         if scenario_id == "startup":
             # Если V-1 не закрывали в самом начале, считаем что он был открыт
@@ -162,6 +165,22 @@ class ErrorAnalyzer:
                 else:
                     errors.append(TECH_REGULATIONS["P1_DRY_HEAT"])
                     recommendations.append("При прекращении подачи сырья немедленно снизьте уставку температуры печи П-1, так как нагрев сухого змеевика приведет к его прогару.")
+                    return 30, errors, recommendations
+
+            # В. Парирование зависания клапана сброса V-2 (valve_jam)
+            if "valve_jam" in defects_triggered:
+                has_esd = "ESD" in actions
+                if has_esd:
+                    recommendations.append("Поздравляем! Вы успешно локализовали неисправность 'Зависание клапана сброса V-2'.")
+                    recommendations.append("Вы своевременно задействовали систему аварийного останова (ESD) для предотвращения аварии.")
+                    return 100, [], recommendations
+                else:
+                    errors.append({
+                        "clause": "Раздел 3.5 / п. 7.10.4",
+                        "title": "Угроза взрыва колонны К-1",
+                        "text": "При зависании клапана сброса V-2 в закрытом состоянии оператор обязан немедленно активировать систему ручного аварийного останова (ESD)."
+                    })
+                    recommendations.append("При зависании клапана V-2 немедленно нажмите красную кнопку аварийного останова ESD.")
                     return 30, errors, recommendations
         
         # Получаем эталонную последовательность
@@ -264,8 +283,13 @@ class ErrorAnalyzer:
         # Выполняется только если данные датчиков переданы (для совместимости с юнит-тестами)
         # ----------------------------------------------------------------
         if final_sensors is not None and not defects_triggered:
-            furnace_temp = final_sensors.get("furnaceTemp", 280.0)
-            column_level = final_sensors.get("columnLevel", 50.0)
+            furnace_temp = final_sensors.get("T_1")
+            if furnace_temp is None:
+                furnace_temp = final_sensors.get("furnaceTemp", 280.0)
+                
+            column_level = final_sensors.get("L_1")
+            if column_level is None:
+                column_level = final_sensors.get("columnLevel", 50.0)
 
             # a) Минимальное время стабилизации
             if scenario_id == "startup" and time_elapsed < STARTUP_MIN_TIME_SEC:

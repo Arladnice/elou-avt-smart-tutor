@@ -7,6 +7,10 @@ export const GridContainer = styled.div`
   height: 100vh;
   width: 100vw;
   background-color: ${props => props.theme.colors.background};
+
+  @media (max-height: 950px) {
+    grid-template-rows: 48px 1fr;
+  }
 `;
 
 export const MainArea = styled.main`
@@ -16,6 +20,45 @@ export const MainArea = styled.main`
   padding: 12px;
   overflow: hidden;
   height: calc(100vh - 60px);
+
+  @media (max-height: 950px) {
+    gap: 8px;
+    padding: 8px;
+    height: calc(100vh - 48px);
+  }
+`;
+
+export const LeftColumn = styled.div`
+  display: grid;
+  grid-template-rows: 1fr;
+  height: 100%;
+  overflow: hidden;
+
+  @media (max-height: 780px) {
+    grid-template-rows: 1fr 100px;
+    gap: 8px;
+  }
+`;
+
+export const LeftLogWrapper = styled.div`
+  display: none;
+
+  @media (max-height: 780px) {
+    display: block;
+    height: 100%;
+    min-height: 0;
+  }
+`;
+
+export const SidebarLogWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 140px;
+
+  @media (max-height: 780px) {
+    display: none;
+  }
 `;
 
 export const Sidebar = styled.aside`
@@ -24,6 +67,10 @@ export const Sidebar = styled.aside`
   gap: 12px;
   overflow-y: auto;
   height: 100%;
+
+  @media (max-height: 950px) {
+    gap: 8px;
+  }
   
   /* Кастомный тонкий скроллбар для SCADA-интерфейса */
   &::-webkit-scrollbar {

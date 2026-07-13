@@ -3,8 +3,25 @@ import { useSimulator } from '../context/SimulatorContext';
 import { Activity, Flame, TrendingUp } from 'lucide-react';
 import * as S from './FlowScheme.styles';
 
+// Метод генерации пути SVG для sparkline внутри прямоугольника
+// x: старт, y: старт, w: ширина, h: высота
+const generateSparklineD = (history: number[], x: number, y: number, w: number, h: number, minVal: number, maxVal: number) => {
+  if (history.length < 2) return '';
+  const points = history.map((val, idx) => {
+    const px = x + (idx / (history.length - 1)) * w;
+    // Нормируем y в пределах высоты прямоугольника
+    const range = maxVal - minVal;
+    const normalizedVal = range > 0 ? (val - minVal) / range : 0.5;
+    // Ограничиваем значение в диапазоне [0, 1], чтобы линия не выходила за рамки
+    const clampedVal = Math.max(0, Math.min(1, normalizedVal));
+    const py = y + h - clampedVal * h;
+    return `${px},${py}`;
+  });
+  return `M ${points.join(' L ')}`;
+};
+
 const FlowScheme: React.FC = () => {
-  const { sensors, valves, toggleValve, status, isOnline, wsLatency } = useSimulator();
+  const { sensors, valves, toggleValve, status, isOnline, wsLatency, defects } = useSimulator();
 
   // Локальная история для sparklines (К2: тренды и "инженерная интуиция")
   const [tempHistory, setTempHistory] = useState<number[]>([]);
@@ -24,22 +41,7 @@ const FlowScheme: React.FC = () => {
     toggleValve(valveId);
   };
 
-  // Метод генерации пути SVG для sparkline внутри прямоугольника
-  // x: старт, y: старт, w: ширина, h: высота
-  const generateSparklineD = (history: number[], x: number, y: number, w: number, h: number, minVal: number, maxVal: number) => {
-    if (history.length < 2) return '';
-    const points = history.map((val, idx) => {
-      const px = x + (idx / (history.length - 1)) * w;
-      // Нормируем y в пределах высоты прямоугольника
-      const range = maxVal - minVal;
-      const normalizedVal = range > 0 ? (val - minVal) / range : 0.5;
-      // Ограничиваем значение в диапазоне [0, 1], чтобы линия не выходила за рамки
-      const clampedVal = Math.max(0, Math.min(1, normalizedVal));
-      const py = y + h - clampedVal * h;
-      return `${px},${py}`;
-    });
-    return `M ${points.join(' L ')}`;
-  };
+
 
   return (
     <S.SchemeContainer>
@@ -76,6 +78,29 @@ const FlowScheme: React.FC = () => {
         {/* Вход сырья */}
         <S.PipeLine d="M 50,250 L 180,250" isActive={valves.V_1} />
         <S.PipeFlow d="M 50,250 L 180,250" isActive={valves.V_1} />
+
+        {/* Сырьевой насос Н-1 */}
+        <g transform="translate(45, 250)">
+          <circle 
+            cx="0" 
+            cy="0" 
+            r="12" 
+            fill="#131924" 
+            stroke={defects?.pump_fail ? "#ff4d4f" : "#e1e7f0"} 
+            strokeWidth={defects?.pump_fail ? "2" : "1.5"} 
+          />
+          <polygon points="-4,-6 -4,6 6,0" fill={defects?.pump_fail ? "#ff4d4f" : "#e1e7f0"} />
+          <text 
+            x="0" 
+            y="-18" 
+            fill={defects?.pump_fail ? "#ff4d4f" : "#e1e7f0"} 
+            fontSize="9" 
+            textAnchor="middle" 
+            fontWeight="bold"
+          >
+            Н-1
+          </text>
+        </g>
 
         {/* Из печи в колонну */}
         <S.PipeLine d="M 280,250 L 400,250" isActive={valves.V_1} />

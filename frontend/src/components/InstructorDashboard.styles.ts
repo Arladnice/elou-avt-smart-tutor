@@ -8,6 +8,10 @@ export const Container = styled.div`
   width: 100vw;
   background-color: ${props => props.theme.colors.background};
   color: ${props => props.theme.colors.text};
+
+  @media (max-height: 950px) {
+    grid-template-rows: 48px 1fr;
+  }
 `;
 
 export const Header = styled.header`
@@ -17,6 +21,10 @@ export const Header = styled.header`
   background-color: ${props => props.theme.colors.surface};
   border-bottom: 1px solid ${props => props.theme.colors.border};
   padding: 0 20px;
+
+  @media (max-height: 950px) {
+    padding: 0 16px;
+  }
 `;
 
 export const Title = styled.h1`
@@ -44,6 +52,11 @@ export const Content = styled.main`
   gap: 16px;
   padding: 16px;
   overflow: hidden;
+
+  @media (max-height: 950px) {
+    gap: 10px;
+    padding: 10px;
+  }
 `;
 
 export const PanelColumn = styled.div`
@@ -52,6 +65,10 @@ export const PanelColumn = styled.div`
   gap: 16px;
   height: 100%;
   overflow: hidden;
+
+  @media (max-height: 950px) {
+    gap: 10px;
+  }
 `;
 
 export const StyledCard = styled(Card)`
@@ -64,6 +81,11 @@ export const StyledCard = styled(Card)`
     border-bottom: 1px solid ${props => props.theme.colors.border};
     padding: 0 16px;
     min-height: 40px;
+
+    @media (max-height: 950px) {
+      padding: 0 12px;
+      min-height: 32px;
+    }
   }
 
   .ant-card-head-title {
@@ -71,10 +93,18 @@ export const StyledCard = styled(Card)`
     font-size: 13px;
     font-weight: 600;
     text-transform: uppercase;
+
+    @media (max-height: 950px) {
+      font-size: 11px;
+    }
   }
 
   .ant-card-body {
     padding: 16px;
+
+    @media (max-height: 950px) {
+      padding: 10px 12px;
+    }
   }
 `;
 
@@ -92,6 +122,26 @@ export const StretchCard = styled(StyledCard)`
     flex-direction: column;
     overflow: hidden;
   }
+
+  &&& {
+    .ant-table-thead > tr > th {
+      @media (max-height: 950px) {
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+    }
+    .ant-table-tbody > tr > td {
+      @media (max-height: 950px) {
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+    }
+    .ant-pagination {
+      @media (max-height: 950px) {
+        margin: 8px 0 0 0;
+      }
+    }
+  }
 `;
 
 export const MonitorRow = styled.div`
@@ -99,6 +149,11 @@ export const MonitorRow = styled.div`
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 16px;
+
+  @media (max-height: 950px) {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
 `;
 
 export const MonitorItem = styled.div`
@@ -110,17 +165,29 @@ export const MonitorItem = styled.div`
   flex-direction: column;
   align-items: center;
 
+  @media (max-height: 950px) {
+    padding: 6px;
+  }
+
   .lbl {
     font-size: 11px;
     color: ${props => props.theme.colors.textMuted};
     text-transform: uppercase;
     margin-bottom: 4px;
+
+    @media (max-height: 950px) {
+      font-size: 10px;
+    }
   }
 
   .val {
     font-size: 18px;
     font-weight: 700;
     font-family: monospace;
+
+    @media (max-height: 950px) {
+      font-size: 15px;
+    }
   }
 `;
 
@@ -148,6 +215,11 @@ export const DefectRow = styled.div`
   &:last-child {
     margin-bottom: 0;
   }
+
+  @media (max-height: 950px) {
+    padding: 4px 8px;
+    margin-bottom: 4px;
+  }
 `;
 
 export const DefectInfo = styled.div`
@@ -159,12 +231,20 @@ export const DefectInfo = styled.div`
     font-weight: 600;
     color: ${props => props.theme.colors.text};
     line-height: 1.3;
+
+    @media (max-height: 950px) {
+      font-size: 11px;
+    }
   }
 
   .desc {
     font-size: 10.5px;
     color: ${props => props.theme.colors.textMuted};
     line-height: 1.25;
+
+    @media (max-height: 950px) {
+      font-size: 9.5px;
+    }
   }
 `;
 
@@ -221,6 +301,10 @@ export const ProcessControlLayout = styled.div`
   display: flex;
   flex-direction: column;
   gap: 14px;
+
+  @media (max-height: 950px) {
+    gap: 8px;
+  }
 `;
 
 export const ScenarioLabel = styled.span`
@@ -229,6 +313,10 @@ export const ScenarioLabel = styled.span`
   color: #7c8ba1;
   display: block;
   margin-bottom: 6px;
+
+  @media (max-height: 950px) {
+    margin-bottom: 4px;
+  }
 `;
 
 export const ScenarioRadioGroup = styled(Radio.Group)`
@@ -236,12 +324,38 @@ export const ScenarioRadioGroup = styled(Radio.Group)`
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   width: 100%;
+
+  @media (max-height: 950px) {
+    gap: 6px;
+  }
 `;
 
 export const ScenarioRadioButton = styled(Radio.Button)<{ fullWidth?: boolean }>`
   text-align: center;
   border-radius: 4px;
   ${props => props.fullWidth && `grid-column: span 2;`}
+
+  && {
+    @media (max-height: 950px) {
+      font-size: 10px;
+      height: auto;
+      min-height: 28px;
+      line-height: 1.25;
+      padding: 3px 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: normal;
+      text-align: center;
+
+      & > span:last-child {
+        display: block;
+        white-space: normal;
+        word-break: break-word;
+        text-align: center;
+      }
+    }
+  }
 `;
 
 export const ControlRow = styled.div`
@@ -272,6 +386,10 @@ export const SensorValue = styled.span<{ isAlert: boolean; isWarning?: boolean }
     props.isWarning ? '#ffcc00' : 
     '#00e5ff'
   };
+
+  @media (max-height: 950px) {
+    font-size: 15px;
+  }
 `;
 
 export const LiveTelemetryGrid = styled.div`
@@ -279,6 +397,11 @@ export const LiveTelemetryGrid = styled.div`
   grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
   font-size: 12px;
+
+  @media (max-height: 950px) {
+    gap: 8px;
+    font-size: 11px;
+  }
 `;
 
 export const LiveTelemetrySpan = styled.div<{ span?: number }>`
@@ -468,6 +591,79 @@ export const TableCardTitle = styled.div`
     font-weight: 400;
     text-transform: none;
     color: ${props => props.theme.colors.textMuted};
+  }
+`;
+
+export const TopCardsRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-shrink: 0;
+
+  @media (max-height: 950px) {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 10px;
+    align-items: stretch;
+  }
+`;
+
+export const TimeControlRow = styled.div`
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  @media (max-height: 950px) {
+    margin-top: 8px;
+    gap: 6px;
+  }
+`;
+
+export const SnapshotControlRow = styled.div`
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  @media (max-height: 950px) {
+    margin-top: 6px;
+    gap: 6px;
+  }
+`;
+
+export const ActionButton = styled(Button)`
+  && {
+    flex: 1;
+    height: 32px;
+    font-size: 12px;
+
+    @media (max-height: 950px) {
+      height: 26px;
+      font-size: 11px;
+      padding: 0 4px;
+    }
+  }
+`;
+
+export const SpeedButton = styled(Button)`
+  && {
+    width: 45px;
+    height: 32px;
+    padding: 0;
+
+    @media (max-height: 950px) {
+      width: 36px;
+      height: 26px;
+    }
+  }
+`;
+
+export const CompactScenarioLabel = styled(ScenarioLabel)`
+  margin-bottom: 0;
+  
+  @media (max-height: 950px) {
+    margin-bottom: 0;
   }
 `;
 

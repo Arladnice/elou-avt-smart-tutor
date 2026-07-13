@@ -55,7 +55,7 @@ const AiAssistant: React.FC = () => {
         <Progress 
           type="dashboard" 
           percent={riskLevel} 
-          width={75}
+          width={62}
           strokeColor={getProgressColor()}
           trailColor="#1b2332"
           format={percent => (
