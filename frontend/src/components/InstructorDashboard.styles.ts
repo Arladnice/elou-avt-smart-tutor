@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { Card, Radio, Button, Table } from 'antd';
+import { Card, Radio, Button, Table, Badge } from 'antd';
 
 export const Container = styled.div`
   display: grid;
@@ -121,6 +121,7 @@ export const StretchCard = styled(StyledCard)`
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding: 0;
   }
 
   &&& {
@@ -142,6 +143,11 @@ export const StretchCard = styled(StyledCard)`
       }
     }
   }
+`;
+
+export const FlexRow = styled.div`
+  display: flex;
+  gap: 8px;
 `;
 
 export const MonitorRow = styled.div`
@@ -572,6 +578,14 @@ export const StatusText = styled.span<{ color: string }>`
   font-size: 11px;
 `;
 
+export const StatusBadge = styled(Badge)<{ $color?: string }>`
+  && {
+    .ant-badge-status-text {
+      color: ${props => props.$color || props.theme.colors.text};
+    }
+  }
+`;
+
 export const ScoreText = styled.strong<{ color: string }>`
   color: ${props => props.color};
 `;
@@ -666,4 +680,139 @@ export const CompactScenarioLabel = styled(ScenarioLabel)`
     margin-bottom: 0;
   }
 `;
+
+/* Метрики Инфраструктуры и Настройки Зонтичного мониторинга */
+export const TabsContainer = styled.div`
+  display: flex;
+  border-bottom: 1px solid ${props => props.theme.colors.border};
+  padding: 0 16px;
+  background-color: #0b0f17;
+  gap: 16px;
+  flex-shrink: 0;
+`;
+
+export const TabItem = styled.button<{ active: boolean }>`
+  background: none;
+  border: none;
+  border-bottom: 2px solid ${props => props.active ? '#00e5ff' : 'transparent'};
+  color: ${props => props.active ? '#00e5ff' : props.theme.colors.textMuted};
+  font-size: 12px;
+  font-weight: 600;
+  padding: 10px 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #00e5ff;
+  }
+
+  @media (max-height: 950px) {
+    font-size: 11px;
+    padding: 8px 2px;
+  }
+`;
+
+export const InfraGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  
+  @media (max-height: 950px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 10px;
+  }
+`;
+
+export const MetricCard = styled.div<{ active?: boolean }>`
+  background-color: #0b0f17;
+  border: 1px solid ${props => props.active ? '#00ff66' : props.theme.colors.border};
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .title {
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: ${props => props.theme.colors.textMuted};
+  }
+
+  .val {
+    font-size: 18px;
+    font-weight: bold;
+    color: ${props => props.theme.colors.text};
+    
+    @media (max-height: 950px) {
+      font-size: 15px;
+    }
+  }
+
+  .desc {
+    font-size: 9px;
+    color: ${props => props.theme.colors.textMuted};
+  }
+`;
+
+export const SettingsLayout = styled.div`
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+
+  @media (max-height: 950px) {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px;
+  }
+`;
+
+export const SettingBox = styled.div`
+  background-color: #0b0f17;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .header {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #00e5ff;
+    border-bottom: 1px solid ${props => props.theme.colors.border};
+    padding-bottom: 4px;
+  }
+`;
+
+export const MuteItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+
+  .label {
+    color: ${props => props.theme.colors.text};
+  }
+
+  .desc {
+    font-size: 9px;
+    color: ${props => props.theme.colors.textMuted};
+    margin-left: 6px;
+  }
+`;
+
 
