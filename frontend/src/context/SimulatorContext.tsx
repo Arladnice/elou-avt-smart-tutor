@@ -5,6 +5,9 @@ export interface LogEntry {
   time: string;
   type: 'info' | 'warning' | 'error';
   message: string;
+  severity?: 'CRITICAL' | 'WARNING' | 'INFO' | 'NO_DATA';
+  repeat_count?: number;
+  fingerprint?: string;
 }
 
 export interface ScoreCardData {
@@ -54,6 +57,10 @@ interface SimulatorContextType {
   isPaused: boolean;
   hasSnapshot: boolean;
   
+  webhookUrl: string;
+  webhookActive: boolean;
+  mutes: string[];
+  
   loginUser: (name: string, role: 'operator' | 'instructor') => void;
   logoutUser: () => void;
   selectScenario: (scenId: string) => void;
@@ -67,13 +74,15 @@ interface SimulatorContextType {
   togglePause: (paused: boolean) => void;
   saveState: () => void;
   loadState: () => void;
+  configureWebhook: (url: string, active: boolean) => void;
+  toggleMute: (fingerprint: string, state: boolean) => void;
 }
 
 const SimulatorContext = createContext<SimulatorContextType | undefined>(undefined);
 
 export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [username, setUsername] = useState(() => sessionStorage.getItem('ktk_username') || '');
-  const [role, setRole] = useState<'operator' | 'instructor'>(() => (sessionStorage.getItem('ktk_role') as any) || 'operator');
+  const [role, setRole] = useState<'operator' | 'instructor'>(() => (sessionStorage.getItem('ktk_role') as 'operator' | 'instructor' | null) || 'operator');
   const [operatorName, setOperatorName] = useState('Оператор');
   const [scenarioId, setScenarioId] = useState('startup');
   
@@ -98,6 +107,10 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isPaused, setIsPaused] = useState(false);
   const [hasSnapshot, setHasSnapshot] = useState(false);
   
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookActive, setWebhookActive] = useState(false);
+  const [mutes, setMutes] = useState<string[]>([]);
+  
   const wsRef = useRef<WebSocket | null>(null);
   const latencyTimerRef = useRef<number | null>(null);
 
@@ -115,7 +128,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
-    let pingInterval: any = null;
+    let pingInterval: ReturnType<typeof setInterval> | null = null;
 
     ws.onopen = () => {
       setIsOnline(true);
@@ -151,6 +164,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (data.speedMultiplier !== undefined) setSpeedMultiplier(data.speedMultiplier);
       if (data.isPaused !== undefined) setIsPaused(data.isPaused);
       if (data.hasSnapshot !== undefined) setHasSnapshot(data.hasSnapshot);
+      if (data.webhookUrl !== undefined) setWebhookUrl(data.webhookUrl);
+      if (data.webhookActive !== undefined) setWebhookActive(data.webhookActive);
+      if (data.mutes !== undefined) setMutes(data.mutes);
       if (data.operatorName) {
         setOperatorName(data.operatorName);
       }
@@ -255,7 +271,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // -------------------------------------------------------------
   // УПРАВЛЯЮЩИЕ ФУНКЦИИ
   // -------------------------------------------------------------
-  const sendWsAction = (actionPayload: any) => {
+  const sendWsAction = (actionPayload: object) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       latencyTimerRef.current = Date.now();
       wsRef.current.send(JSON.stringify(actionPayload));
@@ -415,6 +431,23 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const configureWebhook = (url: string, active: boolean) => {
+    if (isOnline) {
+      sendWsAction({ type: 'configure_webhook', url, active });
+    } else {
+      setWebhookUrl(url);
+      setWebhookActive(active);
+    }
+  };
+
+  const toggleMute = (fingerprint: string, state: boolean) => {
+    if (isOnline) {
+      sendWsAction({ type: 'toggle_mute', fingerprint, state });
+    } else {
+      setMutes(prev => state ? [...prev, fingerprint] : prev.filter(f => f !== fingerprint));
+    }
+  };
+
   return (
     <SimulatorContext.Provider value={{
       status,
@@ -437,6 +470,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       speedMultiplier,
       isPaused,
       hasSnapshot,
+      webhookUrl,
+      webhookActive,
+      mutes,
       loginUser,
       logoutUser,
       selectScenario,
@@ -449,7 +485,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       changeSpeed,
       togglePause,
       saveState,
-      loadState
+      loadState,
+      configureWebhook,
+      toggleMute
     }}>
       {children}
     </SimulatorContext.Provider>

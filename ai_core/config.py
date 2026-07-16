@@ -56,3 +56,12 @@ COLUMN_LEVEL_BALANCE_MAX = 80.0   # %
 # Timeouts
 STARTUP_MIN_TIME_SEC = 45         # Минимальное время сессии для стабилизации пуска
 SESSION_MAX_TIME_SEC = 300        # Максимальное время сессии (5 минут)
+
+# === Alert Escalation Thresholds ===
+FURNACE_TEMP_CRITICAL_LEVEL = 350.0        # °C
+COLUMN_PRES_CRITICAL_LEVEL = 0.43          # МПа
+COLUMN_LEVEL_HIGH_CRITICAL_LEVEL = 90.0    # %
+COLUMN_LEVEL_LOW_CRITICAL_LEVEL = 10.0     # %
+ESCALATION_WARNING_DELAY_SEC = 30.0        # секунд
+ESCALATION_CRITICAL_DELAY_SEC = 60.0       # секунд
+

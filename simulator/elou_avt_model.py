@@ -1,5 +1,6 @@
 import random
 import math
+import copy
 
 class ELOUAVTSimulator:
     """
@@ -190,7 +191,6 @@ class ELOUAVTSimulator:
 
     def get_snapshot(self) -> dict:
         """Создает полную копию состояния симулятора для сохранения (снапшот)."""
-        import copy
         return {
             "status": self.status,
             "time_elapsed": self.time_elapsed,
@@ -203,7 +203,6 @@ class ELOUAVTSimulator:
 
     def load_snapshot(self, snapshot: dict):
         """Восстанавливает состояние симулятора из сохраненного снапшота."""
-        import copy
         self.status = snapshot["status"]
         self.time_elapsed = snapshot["time_elapsed"]
         self.valves = copy.deepcopy(snapshot["valves"])

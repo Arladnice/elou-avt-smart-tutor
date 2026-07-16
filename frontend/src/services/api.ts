@@ -32,6 +32,41 @@ export interface LoginResponse {
   role: 'operator' | 'instructor';
 }
 
+export interface TelemetryContext {
+  sensors: {
+    T_1: number;
+    P_1: number;
+    L_1: number;
+  };
+  valves: {
+    V_1: boolean;
+    V_2: boolean;
+    V_3: boolean;
+  };
+  setpoints: {
+    T_1_Sp: number;
+  };
+  defects: {
+    pump_fail: boolean;
+    coil_overheat: boolean;
+    valve_jam: boolean;
+  };
+  status: 'running' | 'esd' | 'accident' | 'success';
+  scenarioId: string;
+  riskLevel: number;
+}
+
+export interface SystemMetrics {
+  cpu_percent: number;
+  memory_used_mb: number;
+  memory_percent: number;
+  db_size_kb: number;
+  active_ws_connections: number;
+  processed_events_total: number;
+  avg_ping_latency_ms: number;
+  is_ollama_available: boolean;
+}
+
 export const apiService = {
   /**
    * Performs authentication for an operator or instructor
@@ -71,5 +106,31 @@ export const apiService = {
     if (!response.ok) {
       throw new Error('Failed to clear sessions');
     }
+  },
+
+  /**
+   * Sends chat message list and telemetry context to AI chatbot
+   */
+  async sendAiChat(messages: Array<{ role: string; content: string }>, telemetry: TelemetryContext): Promise<{ content: string }> {
+    const response = await fetch(`${BASE_URL}/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, telemetry }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to send message to AI chatbot');
+    }
+    return response.json();
+  },
+
+  /**
+   * Fetches server performance & monitoring metrics (USE metrics)
+   */
+  async fetchSystemMetrics(): Promise<SystemMetrics> {
+    const response = await fetch(`${BASE_URL}/health/metrics`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch system metrics');
+    }
+    return response.json();
   },
 };

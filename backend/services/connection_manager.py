@@ -1,6 +1,8 @@
 import time
 import json
 import logging
+import asyncio
+import urllib.request
 from typing import List, Set
 from fastapi import WebSocket
 
@@ -37,6 +39,15 @@ class ConnectionManager:
         self.speed_multiplier = 1.0
         self.is_paused = False
         self.snapshot_data = None
+
+        # Зонтичные функции (К8: Лекция Игоря Капитульского)
+        self.webhook_url: str = ""
+        self.webhook_active: bool = False
+        self.processed_events_total: int = 0
+        self.mutes: Set[str] = set() # Заглушенные параметры (например, "column_pres_high")
+        self.critical_alert_active: bool = False
+        self.critical_alert_start_time: float = 0.0
+        self.operator_reacted_to_critical: bool = False
 
     async def connect(self, websocket: WebSocket, role: str):
         """Подключает клиента и регистрирует в соответствующем наборе сокетов."""
@@ -157,7 +168,10 @@ class ConnectionManager:
             "scoreCard": score_card,
             "speedMultiplier": self.speed_multiplier,
             "isPaused": self.is_paused,
-            "hasSnapshot": self.snapshot_data is not None
+            "hasSnapshot": self.snapshot_data is not None,
+            "webhookUrl": self.webhook_url,
+            "webhookActive": self.webhook_active,
+            "mutes": list(self.mutes)
         }
 
     def save_completed_session(self):
@@ -184,15 +198,80 @@ class ConnectionManager:
         
         log_audit_event("SYSTEM", "SESSION_SAVE", f"Сохранена учебная сессия оператора {op_name} (Оценка: {card['grade']})")
 
-    def add_log(self, log_type: str, message: str):
-        """Добавляет запись во временный журнал событий сессии."""
+    def send_webhook_notification(self, log_entry: dict):
+        """Отправляет уведомление о событии на внешний вебхук (К8: Зонтичные функции)."""
+        if not self.webhook_url or not self.webhook_active:
+            return
+            
+        async def post_webhook():
+            try:
+                payload = {
+                    "event": "alarm",
+                    "operator": self.active_operator_name,
+                    "scenario": self.active_scenario,
+                    "severity": log_entry.get("severity", "INFO"),
+                    "message": log_entry.get("message"),
+                    "time": log_entry.get("time"),
+                    "timestamp": time.time()
+                }
+                req = urllib.request.Request(
+                    self.webhook_url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                # Малый таймаут, чтобы не вешать симуляцию
+                with urllib.request.urlopen(req, timeout=2.0) as resp:
+                    pass
+            except Exception as e:
+                logger.error("Ошибка отправки вебхука на %s: %s", self.webhook_url, e)
+                
+        asyncio.create_task(post_webhook())
+
+    def add_log(self, log_type: str, message: str, severity: str = None, fingerprint: str = None):
+        """Добавляет запись во временный журнал событий сессии с дедупликацией и классификацией."""
+        # Проверяем, не заглушено ли данное событие (К8: Downtime/Mute)
+        if fingerprint in self.mutes:
+            return
+
+        self.processed_events_total += 1
+        
+        if not severity:
+            if log_type == "error":
+                severity = "CRITICAL"
+            elif log_type == "warning":
+                severity = "WARNING"
+            else:
+                severity = "INFO"
+                
         time_str = f"{self.simulator.time_elapsed // 60:02d}:{self.simulator.time_elapsed % 60:02d}"
-        self.logs.append({
+        
+        # Если задан fingerprint, проверим последнее событие в логе для дедупликации
+        if fingerprint and self.logs:
+            last_log = self.logs[-1]
+            if last_log.get("fingerprint") == fingerprint:
+                count = last_log.get("repeat_count", 1) + 1
+                last_log["repeat_count"] = count
+                last_log["message"] = message
+                last_log["time"] = time_str
+                last_log["type"] = log_type
+                last_log["severity"] = severity
+                return
+                
+        new_entry = {
             "id": str(int(time.time() * 1000) + random_id()),
             "time": time_str,
             "type": log_type,
-            "message": message
-        })
+            "severity": severity,
+            "message": message,
+            "fingerprint": fingerprint,
+            "repeat_count": 1
+        }
+        self.logs.append(new_entry)
+        
+        # Если критический алерт, шлем вебхук наружу
+        if severity == "CRITICAL":
+            self.send_webhook_notification(new_entry)
 
 # Глобальный экземпляр ConnectionManager для использования во всех модулях
 manager = ConnectionManager()

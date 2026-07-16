@@ -47,26 +47,24 @@ class CodeQualityChecker:
     def analyze(self):
         """Perform the main analysis or operation"""
         if self.verbose:
-            print("📊 Analyzing...")
+            print("📊 Deep static analysis initiated...")
         
-        # Main logic here
-        self.results['status'] = 'success'
-        self.results['target'] = str(self.target_path)
-        self.results['findings'] = []
+        # Переиспользуем логику PrAnalyzer для согласованности
+        from .pr_analyzer import PrAnalyzer
+        analyzer = PrAnalyzer(str(self.target_path), verbose=self.verbose)
+        analyzer.analyze()
         
-        # Add analysis results
+        self.results = analyzer.results
+        
         if self.verbose:
-            print(f"✓ Analysis complete: {len(self.results.get('findings', []))} findings")
-    
+            print("✓ Deep analysis complete.")
+
     def generate_report(self):
         """Generate and display the report"""
-        print("\n" + "="*50)
-        print("REPORT")
-        print("="*50)
-        print(f"Target: {self.results.get('target')}")
-        print(f"Status: {self.results.get('status')}")
-        print(f"Findings: {len(self.results.get('findings', []))}")
-        print("="*50 + "\n")
+        from .pr_analyzer import PrAnalyzer
+        analyzer = PrAnalyzer(str(self.target_path), verbose=self.verbose)
+        analyzer.results = self.results
+        analyzer.generate_report()
 
 def main():
     """Main entry point"""
