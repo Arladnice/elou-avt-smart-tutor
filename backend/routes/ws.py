@@ -42,6 +42,9 @@ async def websocket_endpoint(websocket: WebSocket):
             cmd = json.loads(data)
             action_type = cmd.get("type")
             
+            if role == "operator" and action_type in ["toggle_valve", "change_setpoint", "trigger_esd"]:
+                manager.operator_reacted_to_critical = True
+                
             if action_type == "toggle_valve":
                 valve_id = cmd.get("valve_id")
                 state = cmd.get("state")
@@ -107,6 +110,25 @@ async def websocket_endpoint(websocket: WebSocket):
                     log_audit_event("INSTRUCTOR", "LOAD_STATE", "Откат к снапшоту")
                 else:
                     manager.add_log("warning", "ИНСТРУКТОР: Невозможно выполнить откат (снапшот не найден).")
+
+            elif action_type == "configure_webhook":
+                url = cmd.get("url", "")
+                active = bool(cmd.get("active", False))
+                manager.webhook_url = url
+                manager.webhook_active = active
+                manager.add_log("info", f"ИНСТРУКТОР: Настроен внешний вебхук: {url} ({'АКТИВЕН' if active else 'НЕАКТИВЕН'})")
+                log_audit_event("INSTRUCTOR", "WEBHOOK_CONFIG", f"URL: {url}, Active: {active}")
+
+            elif action_type == "toggle_mute":
+                fingerprint = cmd.get("fingerprint", "")
+                state = bool(cmd.get("state", False))
+                if state:
+                    manager.mutes.add(fingerprint)
+                    manager.add_log("warning", f"ИНСТРУКТОР: Сигнал '{fingerprint}' заглушен (Downtime).")
+                else:
+                    manager.mutes.discard(fingerprint)
+                    manager.add_log("info", f"ИНСТРУКТОР: Сигнал '{fingerprint}' разблокирован.")
+                log_audit_event("INSTRUCTOR", "TOGGLE_MUTE", f"Fingerprint: {fingerprint}, State: {state}")
 
             elif action_type == "complete":
                 if manager.simulator.status == "running":
