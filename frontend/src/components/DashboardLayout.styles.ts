@@ -54,7 +54,7 @@ export const SidebarLogWrapper = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 140px;
+  min-height: 100px;
 
   @media (max-height: 780px) {
     display: none;
@@ -64,12 +64,12 @@ export const SidebarLogWrapper = styled.div`
 export const Sidebar = styled.aside`
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
+  gap: 8px;
+  overflow: hidden;
   height: 100%;
 
   @media (max-height: 950px) {
-    gap: 8px;
+    gap: 6px;
   }
   
   /* Кастомный тонкий скроллбар для SCADA-интерфейса */
