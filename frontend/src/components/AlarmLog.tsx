@@ -1,17 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
 import type { LogEntry } from '../context/SimulatorContext';
-import { Terminal, AlertTriangle, Info, AlertOctagon, HelpCircle } from 'lucide-react';
+import { AlertTriangle, Info, AlertOctagon, HelpCircle } from 'lucide-react';
 import * as S from './AlarmLog.styles';
 
 const AlarmLog: React.FC = () => {
   const { logs } = useSimulator();
   const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
   const consoleEndRef = useRef<HTMLDivElement>(null);
+  const consoleRef = useRef<HTMLDivElement>(null);
 
-  // Автоматический скролл вниз при добавлении новых логов
+  // Автоматический скролл вниз при добавлении новых логов (только внутри контейнера)
   useEffect(() => {
-    consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = consoleRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [logs, filterSeverity]);
 
   const getSeverity = (log: LogEntry): 'CRITICAL' | 'WARNING' | 'INFO' | 'NO_DATA' => {
@@ -34,52 +38,45 @@ const AlarmLog: React.FC = () => {
   });
 
   return (
-    <S.LogContainer>
-      <S.LogHeader>
-        <S.HeaderTitle>
-          <Terminal size={14} />
-          Журнал событий и тревог установки (SCADA Alarms)
-        </S.HeaderTitle>
-        
-        <S.FilterWrapper>
-          <S.FilterButton 
-            active={filterSeverity === null} 
-            onClick={() => setFilterSeverity(null)}
-          >
-            Все
-          </S.FilterButton>
-          <S.FilterButton 
-            active={filterSeverity === 'CRITICAL'} 
-            sevColor="#ff3333" 
-            onClick={() => setFilterSeverity('CRITICAL')}
-          >
-            🔴 Критич.
-          </S.FilterButton>
-          <S.FilterButton 
-            active={filterSeverity === 'WARNING'} 
-            sevColor="#ffcc00" 
-            onClick={() => setFilterSeverity('WARNING')}
-          >
-            🟡 Предупр.
-          </S.FilterButton>
-          <S.FilterButton 
-            active={filterSeverity === 'INFO'} 
-            sevColor="#00e5ff" 
-            onClick={() => setFilterSeverity('INFO')}
-          >
-            🔵 Инфо
-          </S.FilterButton>
-          <S.FilterButton 
-            active={filterSeverity === 'NO_DATA'} 
-            sevColor="#7c8ba1" 
-            onClick={() => setFilterSeverity('NO_DATA')}
-          >
-            ⚫ Off-line
-          </S.FilterButton>
-        </S.FilterWrapper>
-      </S.LogHeader>
+    <S.LogContent>
+      <S.FilterWrapper>
+        <S.FilterButton 
+          active={filterSeverity === null} 
+          onClick={() => setFilterSeverity(null)}
+        >
+          Все
+        </S.FilterButton>
+        <S.FilterButton 
+          active={filterSeverity === 'CRITICAL'} 
+          sevColor="#ff3333" 
+          onClick={() => setFilterSeverity('CRITICAL')}
+        >
+          🔴 Критич.
+        </S.FilterButton>
+        <S.FilterButton 
+          active={filterSeverity === 'WARNING'} 
+          sevColor="#ffcc00" 
+          onClick={() => setFilterSeverity('WARNING')}
+        >
+          🟡 Предупр.
+        </S.FilterButton>
+        <S.FilterButton 
+          active={filterSeverity === 'INFO'} 
+          sevColor="#00e5ff" 
+          onClick={() => setFilterSeverity('INFO')}
+        >
+          🔵 Инфо
+        </S.FilterButton>
+        <S.FilterButton 
+          active={filterSeverity === 'NO_DATA'} 
+          sevColor="#7c8ba1" 
+          onClick={() => setFilterSeverity('NO_DATA')}
+        >
+          ⚫ Off-line
+        </S.FilterButton>
+      </S.FilterWrapper>
       
-      <S.LogConsole>
+      <S.LogConsole ref={consoleRef}>
         {filteredLogs.map(log => {
           const severity = getSeverity(log);
           return (
@@ -97,8 +94,9 @@ const AlarmLog: React.FC = () => {
         })}
         <div ref={consoleEndRef} />
       </S.LogConsole>
-    </S.LogContainer>
+    </S.LogContent>
   );
 };
 
 export default AlarmLog;
+

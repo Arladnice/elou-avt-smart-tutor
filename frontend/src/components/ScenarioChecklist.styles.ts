@@ -1,5 +1,4 @@
 import styled, { keyframes } from 'styled-components';
-import { Card } from 'antd';
 
 export const pulse = keyframes`
   0% { opacity: 0.8; filter: drop-shadow(0 0 0px rgba(255, 77, 79, 0)); }
@@ -7,51 +6,10 @@ export const pulse = keyframes`
   100% { opacity: 0.8; filter: drop-shadow(0 0 0px rgba(255, 77, 79, 0)); }
 `;
 
-export const ChecklistContainer = styled(Card)<{ isEmergency?: boolean }>`
-  background-color: ${props => props.theme.colors.surface};
-  border-color: ${props => props.isEmergency ? 'rgba(255, 77, 79, 0.4)' : props.theme.colors.border};
+export const ChecklistContent = styled.div`
+  display: flex;
+  flex-direction: column;
   color: ${props => props.theme.colors.text};
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: ${props => props.isEmergency ? '0 0 10px rgba(255, 77, 79, 0.1)' : 'none'};
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-
-  .ant-card-head {
-    border-bottom: 1px solid ${props => props.isEmergency ? 'rgba(255, 77, 79, 0.2)' : props.theme.colors.border};
-    padding: 0 16px;
-    min-height: 40px;
-
-    @media (max-height: 950px) {
-      padding: 0 12px;
-      min-height: 32px;
-    }
-  }
-
-  .ant-card-head-title {
-    color: ${props => props.theme.colors.textMuted};
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 0;
-
-    @media (max-height: 950px) {
-      font-size: 11px;
-      padding: 6px 0;
-      gap: 6px;
-    }
-  }
-
-  .ant-card-body {
-    padding: 8px 12px;
-
-    @media (max-height: 950px) {
-      padding: 6px 10px;
-    }
-  }
 `;
 
 export const EmergencyTitle = styled.span`

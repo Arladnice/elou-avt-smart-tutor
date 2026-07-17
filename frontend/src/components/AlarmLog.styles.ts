@@ -1,39 +1,14 @@
 import styled from 'styled-components';
 
-export const LogContainer = styled.div`
-  background-color: ${props => props.theme.colors.surface};
-  border: 1px solid ${props => props.theme.colors.border};
-  border-radius: 6px;
+export const LogContent = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  color: ${props => props.theme.colors.text};
 `;
 
-export const LogHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  border-bottom: 1px solid ${props => props.theme.colors.border};
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: ${props => props.theme.colors.textMuted};
-  background-color: #0b0f17;
-
-  @media (max-height: 950px) {
-    padding: 6px 12px;
-    font-size: 11px;
-  }
-`;
-
-export const HeaderTitle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
 
 export const FilterWrapper = styled.div`
   display: flex;
@@ -41,6 +16,7 @@ export const FilterWrapper = styled.div`
   gap: 4px;
   text-transform: none;
   font-family: inherit;
+  margin-bottom: 8px;
 `;
 
 export const FilterButton = styled.button<{ active: boolean; sevColor?: string }>`

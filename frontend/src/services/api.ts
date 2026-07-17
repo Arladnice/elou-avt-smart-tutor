@@ -11,7 +11,7 @@ export interface Session {
   scenario_id: string;
   duration_sec: number;
   score: number;
-  status: 'running' | 'esd' | 'accident' | 'success';
+  status: 'running' | 'paused' | 'esd' | 'accident' | 'success';
   integrity_valid: boolean;
   violations?: Array<{
     title: string;
@@ -51,7 +51,7 @@ export interface TelemetryContext {
     coil_overheat: boolean;
     valve_jam: boolean;
   };
-  status: 'running' | 'esd' | 'accident' | 'success';
+  status: 'running' | 'paused' | 'esd' | 'accident' | 'success';
   scenarioId: string;
   riskLevel: number;
 }
@@ -111,16 +111,30 @@ export const apiService = {
   /**
    * Sends chat message list and telemetry context to AI chatbot
    */
-  async sendAiChat(messages: Array<{ role: string; content: string }>, telemetry: TelemetryContext): Promise<{ content: string }> {
-    const response = await fetch(`${BASE_URL}/ai/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, telemetry }),
-    });
-    if (!response.ok) {
-      throw new Error('Failed to send message to AI chatbot');
+  async sendAiChat(messages: Array<{ role: string; content: string }>, telemetry: TelemetryContext, mode: 'auto' | 'rag' | 'llm' = 'auto'): Promise<{ content: string; mode_used?: string }> {
+    // Увеличенный таймаут для ожидания генерации локальной LLM (~2-4 мин при ~2 tok/s)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 минут
+
+    try {
+      const response = await fetch(`${BASE_URL}/ai/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, telemetry, mode }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new Error('Failed to send message to AI chatbot');
+      }
+      return response.json();
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        throw new Error('Превышено время ожидания ответа от ИИ (5 мин). Попробуйте повторить вопрос.');
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeoutId);
     }
-    return response.json();
   },
 
   /**

@@ -120,77 +120,98 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     if (!username) return;
     
-    // Динамический WebSocket URL:
-    // При деплое (HF Spaces) — wss://<host>/ws, локально — из VITE_WS_URL
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsBase = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
-    const wsUrl = `${wsBase}/ws?role=${role}&username=${encodeURIComponent(username)}&scenario=${scenarioId}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
+    let isMounted = true;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
     let pingInterval: ReturnType<typeof setInterval> | null = null;
+    let ws: WebSocket | null = null;
 
-    ws.onopen = () => {
-      setIsOnline(true);
-      setLogs(prev => [
-        ...prev, 
-        { id: Date.now().toString(), time: '00:00', type: 'info', message: 'Установлено соединение с сервером КТК ЭЛОУ-АВТ.' }
-      ]);
-      pingInterval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+    const connectWebSocket = () => {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsBase = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
+      const wsUrl = `${wsBase}/ws?role=${role}&username=${encodeURIComponent(username)}&scenario=${scenarioId}`;
+      
+      ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setIsOnline(true);
+        setLogs(prev => [
+          ...prev, 
+          { id: Date.now().toString(), time: '00:00', type: 'info', message: 'Установлено соединение с сервером КТК ЭЛОУ-АВТ.' }
+        ]);
+        pingInterval = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+          }
+        }, 3000);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'pong') {
+          const latency = Date.now() - data.timestamp;
+          setWsLatency(latency);
+          return;
         }
-      }, 3000);
+        setStatus(data.status);
+        setTimeElapsed(data.timeElapsed);
+        setValves(data.valves);
+        setSensors(data.sensors);
+        setSetpoints(data.setpoints);
+        setDefects(data.defects);
+        setRiskLevel(data.riskLevel);
+        setPredictions(data.predictions);
+        setLogs(data.logs);
+        setScoreCard(data.scoreCard);
+        setAccidentReason(data.accidentReason);
+        if (data.speedMultiplier !== undefined) setSpeedMultiplier(data.speedMultiplier);
+        if (data.isPaused !== undefined) setIsPaused(data.isPaused);
+        if (data.hasSnapshot !== undefined) setHasSnapshot(data.hasSnapshot);
+        if (data.webhookUrl !== undefined) setWebhookUrl(data.webhookUrl);
+        if (data.webhookActive !== undefined) setWebhookActive(data.webhookActive);
+        if (data.mutes !== undefined) setMutes(data.mutes);
+        if (data.operatorName) {
+          setOperatorName(data.operatorName);
+        }
+        if (data.scenarioId) {
+          setScenarioId(data.scenarioId);
+        }
+      };
+
+      ws.onerror = () => {
+        // Ошибка обрабатывается в onclose
+      };
+
+      ws.onclose = () => {
+        setIsOnline(false);
+        if (pingInterval) clearInterval(pingInterval);
+        
+        setLogs(prev => {
+          const lastLog = prev[prev.length - 1];
+          // Дедупликация сообщения о потере связи
+          if (lastLog?.message.includes('Потеряно соединение')) return prev;
+          return [
+            ...prev, 
+            { id: Date.now().toString(), time: '00:00', type: 'warning', message: 'Потеряно соединение с сервером. Попытка переподключения через 3 секунды...' }
+          ];
+        });
+
+        // Пытаемся переподключиться
+        if (isMounted) {
+          reconnectTimer = setTimeout(() => {
+            connectWebSocket();
+          }, 3000);
+        }
+      };
     };
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'pong') {
-        const latency = Date.now() - data.timestamp;
-        setWsLatency(latency);
-        return;
-      }
-      setStatus(data.status);
-      setTimeElapsed(data.timeElapsed);
-      setValves(data.valves);
-      setSensors(data.sensors);
-      setSetpoints(data.setpoints);
-      setDefects(data.defects);
-      setRiskLevel(data.riskLevel);
-      setPredictions(data.predictions);
-      setLogs(data.logs);
-      setScoreCard(data.scoreCard);
-      setAccidentReason(data.accidentReason);
-      if (data.speedMultiplier !== undefined) setSpeedMultiplier(data.speedMultiplier);
-      if (data.isPaused !== undefined) setIsPaused(data.isPaused);
-      if (data.hasSnapshot !== undefined) setHasSnapshot(data.hasSnapshot);
-      if (data.webhookUrl !== undefined) setWebhookUrl(data.webhookUrl);
-      if (data.webhookActive !== undefined) setWebhookActive(data.webhookActive);
-      if (data.mutes !== undefined) setMutes(data.mutes);
-      if (data.operatorName) {
-        setOperatorName(data.operatorName);
-      }
-      if (data.scenarioId) {
-        setScenarioId(data.scenarioId);
-      }
-    };
-
-    ws.onerror = () => {
-      setIsOnline(false);
-    };
-
-    ws.onclose = () => {
-      setIsOnline(false);
-      if (pingInterval) clearInterval(pingInterval);
-      setLogs(prev => [
-        ...prev, 
-        { id: Date.now().toString(), time: '00:00', type: 'warning', message: 'Потеряно соединение с сервером. Тренажер переведен в автономный mock-режим.' }
-      ]);
-    };
+    connectWebSocket();
 
     return () => {
-      ws.close();
+      isMounted = false;
+      clearTimeout(reconnectTimer);
       if (pingInterval) clearInterval(pingInterval);
+      if (ws) ws.close();
     };
   }, [username, role, scenarioId]);
 
@@ -428,6 +449,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setLogs([{ id: '1', time: '00:00', type: 'info', message: 'Система перезапущена локально.' }]);
       setScoreCard(null);
       setAccidentReason('');
+      setIsPaused(false);
+      setSpeedMultiplier(1.0);
+      setHasSnapshot(false);
     }
   };
 

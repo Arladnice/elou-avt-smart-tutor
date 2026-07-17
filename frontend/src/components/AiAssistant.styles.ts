@@ -1,57 +1,11 @@
 import styled from 'styled-components';
-import { Card } from 'antd';
 
-export const AssistantContainer = styled(Card)`
-  background-color: ${props => props.theme.colors.surface};
-  border-color: ${props => props.theme.colors.border};
-  color: ${props => props.theme.colors.text};
-  border-radius: 6px;
-  overflow: hidden;
-  flex: 2;
-  min-height: 160px;
+export const AssistantContent = styled.div`
   display: flex;
   flex-direction: column;
-
-  .ant-card-head {
-    border-bottom: 1px solid ${props => props.theme.colors.border};
-    padding: 0 12px;
-    min-height: 34px;
-
-    @media (max-height: 950px) {
-      padding: 0 10px;
-      min-height: 28px;
-    }
-  }
-
-  .ant-card-head-title {
-    color: ${props => props.theme.colors.textMuted};
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 0;
-
-    @media (max-height: 950px) {
-      font-size: 11px;
-      padding: 4px 0;
-      gap: 6px;
-    }
-  }
-
-  .ant-card-body {
-    padding: 6px 10px;
-    display: flex;
-    flex-direction: column;
-    height: calc(100% - 34px);
-    overflow: hidden;
-
-    @media (max-height: 950px) {
-      padding: 4px 8px;
-      height: calc(100% - 28px);
-    }
-  }
+  flex: 2;
+  min-height: 160px;
+  color: ${props => props.theme.colors.text};
 `;
 
 export const TabsHeader = styled.div`
@@ -87,6 +41,33 @@ export const TabButton = styled.button<{ active: boolean }>`
   @media (max-height: 950px) {
     font-size: 10px;
     padding: 2px 6px;
+  }
+`;
+
+export const ModeSelector = styled.div`
+  display: flex;
+  margin-left: auto;
+  align-items: center;
+  gap: 4px;
+  background: ${props => props.theme.colors.surfaceLight || '#131b26'};
+  padding: 2px;
+  border-radius: 4px;
+  border: 1px solid ${props => props.theme.colors.border};
+`;
+
+export const ModeOption = styled.button<{ active: boolean }>`
+  background: ${props => props.active ? '#00e5ff22' : 'transparent'};
+  border: 1px solid ${props => props.active ? '#00e5ff' : 'transparent'};
+  color: ${props => props.active ? '#00e5ff' : props.theme.colors.textMuted};
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #00e5ff;
   }
 `;
 
@@ -197,24 +178,42 @@ export const ProgressPercent = styled.span<{ color: string }>`
 export const ChatContainer = styled.div`
   display: flex;
   flex-direction: column;
-  height: 100%;
   flex: 1;
-  overflow: hidden;
 `;
 
 export const MessagesBox = styled.div`
   flex: 1;
+  height: 280px;
+  max-height: 280px;
   overflow-y: auto;
-  padding: 4px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 6px;
   background-color: ${props => props.theme.colors.background};
   border: 1px solid ${props => props.theme.colors.border};
-  border-radius: 4px;
+  border-radius: 6px;
+  
+  /* Кастомный видимый скроллбар внутри чата */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #00e5ff;
+  }
   
   @media (max-height: 950px) {
+    height: 220px;
+    max-height: 220px;
     gap: 6px;
     margin-bottom: 6px;
   }

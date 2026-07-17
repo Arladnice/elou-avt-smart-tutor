@@ -1,52 +1,13 @@
 import styled from 'styled-components';
-import { Card } from 'antd';
 
-export const PanelContainer = styled(Card)`
-  background-color: ${props => props.theme.colors.surface};
-  border-color: ${props => props.theme.colors.border};
+export const PanelContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   color: ${props => props.theme.colors.text};
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
 
-  .ant-card-head {
-    border-bottom: 1px solid ${props => props.theme.colors.border};
-    padding: 0 16px;
-    min-height: 40px;
-
-    @media (max-height: 950px) {
-      padding: 0 12px;
-      min-height: 32px;
-    }
-  }
-
-  .ant-card-head-title {
-    color: ${props => props.theme.colors.textMuted};
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 0;
-
-    @media (max-height: 950px) {
-      font-size: 11px;
-      padding: 6px 0;
-      gap: 6px;
-    }
-  }
-
-  .ant-card-body {
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-
-    @media (max-height: 950px) {
-      padding: 6px 10px;
-      gap: 6px;
-    }
+  @media (max-height: 950px) {
+    gap: 6px;
   }
 `;
 

@@ -26,6 +26,12 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.actions_taken.clear()
         manager.telemetry_history.clear()
         manager.logs.clear()
+        # Сбрасываем переменные управления сессией при подключении нового оператора
+        manager.is_paused = False
+        manager.speed_multiplier = 1.0
+        manager.snapshot_data = None
+        manager.critical_alert_active = False
+        manager.operator_reacted_to_critical = False
         if scenario == "startup":
             manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
             manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
@@ -149,6 +155,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 manager.defects_triggered.clear()
                 manager.telemetry_history.clear()
                 manager.logs.clear()
+                # Сбрасываем переменные управления сессией
+                manager.is_paused = False
+                manager.speed_multiplier = 1.0
+                manager.snapshot_data = None
+                manager.critical_alert_active = False
+                manager.operator_reacted_to_critical = False
                 if scen_id == "startup":
                     manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
                     manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
@@ -163,6 +175,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 manager.defects_triggered.clear()
                 manager.telemetry_history.clear()
                 manager.logs.clear()
+                # Сбрасываем переменные управления сессией
+                manager.is_paused = False
+                manager.speed_multiplier = 1.0
+                manager.snapshot_data = None
+                manager.critical_alert_active = False
+                manager.operator_reacted_to_critical = False
                 if manager.active_scenario == "startup":
                     manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
                     manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")

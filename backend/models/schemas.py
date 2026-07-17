@@ -26,10 +26,12 @@ class ChatRequest(BaseModel):
     """Запрос к ИИ-чату с контекстом телеметрии."""
     messages: List[ChatMessage]
     telemetry: Dict[str, Any]
+    mode: Literal["auto", "rag", "llm"] = "auto"
 
 class ChatResponse(BaseModel):
     """Ответ ИИ-чата."""
     content: str
+    mode_used: str = "auto"
 
 class WebhookConfigRequest(BaseModel):
     """Запрос на настройку внешнего вебхука (К8: Зонтичные функции)."""

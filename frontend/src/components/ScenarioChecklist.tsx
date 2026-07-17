@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSimulator } from '../context/SimulatorContext';
-import { ListTodo, CheckCircle2, Circle, PlayCircle } from 'lucide-react';
+import { CheckCircle2, Circle, PlayCircle } from 'lucide-react';
 import * as S from './ScenarioChecklist.styles';
 
 interface TaskInfo {
@@ -16,6 +16,29 @@ const scenarioNames: Record<string, string> = {
   column_shutdown: 'Останов колонны К-1',
   overpressure_relief: 'Ликвидация роста давления',
   recirculation: 'Перевод на рециркуляцию'
+};
+
+/**
+ * Хук для получения информации о текущем сценарии.
+ * Используется в DashboardLayout для формирования заголовка CollapsibleCard.
+ */
+export const useScenarioInfo = () => {
+  const { scenarioId, defects } = useSimulator();
+  const isEmergency = !!(defects?.pump_fail || defects?.coil_overheat || defects?.valve_jam);
+
+  const getEmergencyTitle = (): string => {
+    const list: string[] = [];
+    if (defects?.pump_fail) list.push('Отказ Н-1');
+    if (defects?.coil_overheat) list.push('Прогар П-1');
+    if (defects?.valve_jam) list.push('Зависание V-2');
+    return `Авария: ${list.join(' + ')}`;
+  };
+
+  const title = isEmergency
+    ? getEmergencyTitle()
+    : `Задачи Сценария: ${scenarioNames[scenarioId] || 'Обучение'}`;
+
+  return { title, isEmergency };
 };
 
 const ScenarioChecklist: React.FC = () => {
@@ -183,36 +206,8 @@ const ScenarioChecklist: React.FC = () => {
     return 'pending';
   };
 
-
-
-  const isEmergency = !!(defects?.pump_fail || defects?.coil_overheat || defects?.valve_jam);
-
-  const getEmergencyTitle = (): string => {
-    const list: string[] = [];
-    if (defects?.pump_fail) list.push('Отказ Н-1');
-    if (defects?.coil_overheat) list.push('Прогар П-1');
-    if (defects?.valve_jam) list.push('Зависание V-2');
-    return `Авария: ${list.join(' + ')}`;
-  };
-
   return (
-    <S.ChecklistContainer
-      isEmergency={isEmergency}
-      title={
-        isEmergency ? (
-          <S.EmergencyTitle>
-            <ListTodo size={14} />
-            {getEmergencyTitle()}
-          </S.EmergencyTitle>
-        ) : (
-          <>
-            <ListTodo size={14} color="#00e5ff" />
-            Задачи Сценария: {scenarioNames[scenarioId] || 'Обучение'}
-          </>
-        )
-      }
-      bordered={false}
-    >
+    <S.ChecklistContent>
       <S.TasksList>
         {tasks.map((task, index) => {
           const taskStatus = getTaskStatus(index, task.isDone);
@@ -231,8 +226,9 @@ const ScenarioChecklist: React.FC = () => {
           );
         })}
       </S.TasksList>
-    </S.ChecklistContainer>
+    </S.ChecklistContent>
   );
 };
 
 export default ScenarioChecklist;
+

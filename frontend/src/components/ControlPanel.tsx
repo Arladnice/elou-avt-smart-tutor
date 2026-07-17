@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSimulator } from '../context/SimulatorContext';
 import { Slider, Switch } from 'antd';
-import { Settings, Thermometer, Radio } from 'lucide-react';
+import { Thermometer, Radio } from 'lucide-react';
 import * as S from './ControlPanel.styles';
 
 const ControlPanel: React.FC = () => {
@@ -13,15 +13,7 @@ const ControlPanel: React.FC = () => {
   }, [setpoints.T_1_Sp]);
 
   return (
-    <S.PanelContainer 
-      title={
-        <>
-          <Settings size={14} />
-          Панель Управления Уставками
-        </>
-      }
-      bordered={false}
-    >
+    <S.PanelContent>
       {/* Управление температурой печи */}
       <S.ControlGroup>
         <S.Label>
@@ -87,8 +79,9 @@ const ControlPanel: React.FC = () => {
           </S.SwitchRow>
         </S.SwitchColumn>
       </S.ControlGroup>
-    </S.PanelContainer>
+    </S.PanelContent>
   );
 };
 
 export default ControlPanel;
+

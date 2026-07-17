@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
 import { Progress, Input, Button } from 'antd';
-import { Brain, MessageSquare, Send, Zap } from 'lucide-react';
+import { MessageSquare, Send, Zap } from 'lucide-react';
 import { apiService } from '../services/api';
 import * as S from './AiAssistant.styles';
 
@@ -13,6 +13,7 @@ interface ChatMessage {
 const AiAssistant: React.FC = () => {
   const { riskLevel, sensors, valves, status, setpoints, defects, scenarioId } = useSimulator();
   const [activeTab, setActiveTab] = useState<'risk' | 'chat'>('risk');
+  const [mode, setMode] = useState<'auto' | 'rag' | 'llm'>('rag');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -21,12 +22,23 @@ const AiAssistant: React.FC = () => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [typingSeconds, setTypingSeconds] = useState(0);
+  const messagesBoxRef = useRef<HTMLDivElement>(null);
 
-  // Автоматическая прокрутка чата вниз при добавлении сообщений
+  // Автоматическая прокрутка только внутри контейнера чата (без сдвига всей страницы)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const box = messagesBoxRef.current;
+    if (box) {
+      box.scrollTop = box.scrollHeight;
+    }
   }, [messages, isTyping, activeTab]);
+
+  // Таймер ожидания при генерации ответа
+  useEffect(() => {
+    if (!isTyping) { setTypingSeconds(0); return; }
+    const timer = setInterval(() => setTypingSeconds(s => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, [isTyping]);
 
   const getAiMessage = () => {
     if (status === 'esd') {
@@ -83,12 +95,16 @@ const AiAssistant: React.FC = () => {
         riskLevel
       };
       
-      const res = await apiService.sendAiChat(updatedMessages, telemetryContext);
+      const res = await apiService.sendAiChat(updatedMessages, telemetryContext, mode);
       setMessages(prev => [...prev, { role: 'assistant', content: res.content }]);
     } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : '';
+      const displayMsg = errorMsg.includes('Превышено время')
+        ? errorMsg
+        : 'Ошибка связи с ИИ-ассистентом. Пожалуйста, убедитесь, что бэкенд-сервер доступен.';
       setMessages(prev => [
         ...prev, 
-        { role: 'assistant', content: 'Ошибка связи с ИИ-ассистентом. Пожалуйста, убедитесь, что бэкенд-сервер доступен.' }
+        { role: 'assistant', content: displayMsg }
       ]);
     } finally {
       setIsTyping(false);
@@ -107,15 +123,7 @@ const AiAssistant: React.FC = () => {
   ];
 
   return (
-    <S.AssistantContainer 
-      title={
-        <>
-          <Brain size={14} color="#00e5ff" />
-          Интеллектуальный ИИ-Помощник (Smart-MVP)
-        </>
-      }
-      bordered={false}
-    >
+    <S.AssistantContent>
       <S.TabsHeader>
         <S.TabButton active={activeTab === 'risk'} onClick={() => setActiveTab('risk')}>
           <Zap size={12} />
@@ -123,8 +131,21 @@ const AiAssistant: React.FC = () => {
         </S.TabButton>
         <S.TabButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>
           <MessageSquare size={12} />
-          Диалог с ИИ (Qwen/RAG)
+          Диалог с ИИ
         </S.TabButton>
+        {activeTab === 'chat' && (
+          <S.ModeSelector>
+            <S.ModeOption active={mode === 'rag'} onClick={() => setMode('rag')} title="Мгновенный ответ из регламента по текущей телеметрии (0 мс)">
+              ⚡ RAG (0с)
+            </S.ModeOption>
+            <S.ModeOption active={mode === 'auto'} onClick={() => setMode('auto')} title="Мгновенная справка RAG + попытка дополнения от LLM">
+              🔮 Auto
+            </S.ModeOption>
+            <S.ModeOption active={mode === 'llm'} onClick={() => setMode('llm')} title="Запрос только к нейросети LM Studio">
+              🤖 LLM
+            </S.ModeOption>
+          </S.ModeSelector>
+        )}
       </S.TabsHeader>
 
       {activeTab === 'risk' ? (
@@ -151,7 +172,7 @@ const AiAssistant: React.FC = () => {
         </S.AssessmentLayout>
       ) : (
         <S.ChatContainer>
-          <S.MessagesBox>
+          <S.MessagesBox ref={messagesBoxRef}>
             {messages.map((m, idx) => (
               <S.MessageRow key={idx} isUser={m.role === 'user'}>
                 <S.MessageBubble isUser={m.role === 'user'}>
@@ -162,11 +183,15 @@ const AiAssistant: React.FC = () => {
             {isTyping && (
               <S.MessageRow isUser={false}>
                 <S.MessageBubble isUser={false}>
-                  <S.TypingIndicator>ИИ печатает ответ...</S.TypingIndicator>
+                  <S.TypingIndicator>
+                    {typingSeconds < 10
+                      ? 'ИИ генерирует ответ...'
+                      : `ИИ генерирует ответ (${typingSeconds} сек)... Локальная модель может отвечать до 3 мин.`
+                    }
+                  </S.TypingIndicator>
                 </S.MessageBubble>
               </S.MessageRow>
             )}
-            <div ref={messagesEndRef} />
           </S.MessagesBox>
 
           <S.SuggestionsBox>
@@ -196,7 +221,7 @@ const AiAssistant: React.FC = () => {
           </S.InputWrapper>
         </S.ChatContainer>
       )}
-    </S.AssistantContainer>
+    </S.AssistantContent>
   );
 };
 

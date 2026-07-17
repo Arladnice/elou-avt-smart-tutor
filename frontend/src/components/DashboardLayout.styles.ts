@@ -29,23 +29,21 @@ export const MainArea = styled.main`
 `;
 
 export const LeftColumn = styled.div`
-  display: grid;
-  grid-template-rows: 1fr;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
-
-  @media (max-height: 780px) {
-    grid-template-rows: 1fr 100px;
-    gap: 8px;
-  }
+  gap: 8px;
 `;
 
 export const LeftLogWrapper = styled.div`
   display: none;
 
   @media (max-height: 780px) {
-    display: block;
-    height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    max-height: 40%;
     min-height: 0;
   }
 `;
@@ -65,7 +63,7 @@ export const Sidebar = styled.aside`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow: hidden;
+  overflow-y: auto;
   height: 100%;
 
   @media (max-height: 950px) {
