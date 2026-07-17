@@ -1,8 +1,38 @@
-# Компьютерный тренажерный комплекс ЭЛОУ-АВТ (ИИ-модуль)
+# 🏭 ЭЛОУ-АВТ Smart Tutor
 
-Интеллектуальный модуль в составе Компьютерного тренажерного комплекса (КТК) для обучения операторов технологической установки первичной переработки нефти **ЭЛОУ-АВТ**.
+> **Интеллектуальный тренажёр-симулятор** промышленной нефтеперерабатывающей установки с AI-аналитикой действий оператора в реальном времени.
 
-Проект разрабатывается в рамках IT-чемпионата нефтяной отрасли («Энерготехнохаб Петербург» / CASE-IN).
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-onrender.com-brightgreen?style=for-the-badge&logo=render)](https://elou-avt-smart-tutor.onrender.com/)
+[![React](https://img.shields.io/badge/React_19-TypeScript-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-LSTM-EE4C2C?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)](https://www.docker.com/)
+[![Status](https://img.shields.io/badge/Status-In%20Development-orange?style=for-the-badge)]()
+
+> ⚠️ **Проект находится в активной разработке.** Ведётся в рамках IT-чемпионата нефтяной отрасли («Энерготехнохаб Петербург» / CASE-IN).
+
+---
+
+## ✨ Что это такое
+
+**ЭЛОУ-АВТ Smart Tutor** — это fullstack-приложение, которое симулирует работу реальной промышленной установки первичной переработки нефти. Оператор управляет клапанами и нагревом через SCADA-интерфейс в реальном времени, а встроенный ИИ-модуль:
+
+- 🔮 **Предсказывает** риски аварии на 15 секунд вперёд (LSTM-нейросеть, ONNX Runtime)
+- 🧠 **Анализирует ошибки** оператора через алгоритм DTW (Dynamic Time Warping)
+- 🔒 **Защищает** результаты обучения от фальсификации (SHA-256 + соль)
+
+---
+
+## 🛠 Tech Stack
+
+| Слой | Технологии |
+|---|---|
+| **Frontend** | React 19, TypeScript, Ant Design, styled-components, Recharts, Vite |
+| **Backend** | Python, FastAPI, Pydantic, WebSocket, SQLite |
+| **AI / ML** | PyTorch (LSTM, 2 слоя, 64 нейрона), ONNX Runtime, NumPy (DTW, polyfit) |
+| **Simulator** | Физическая модель тепломассообмена на NumPy |
+| **DevOps** | Docker, docker-compose, oxlint, CI |
+| **Security** | SHA-256 + SECRET_SALT (целостность базы сессий) |
 
 ---
 
