@@ -1,3 +1,6 @@
+# PDF-презентации (тяжёлые бинарники, сконвертированы в .md)
+docs/presentations/*.pdf
+
 # Logs
 logs
 *.log
