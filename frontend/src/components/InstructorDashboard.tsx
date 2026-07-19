@@ -1,16 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
-import { Switch, Badge, Alert, Modal, message, Button } from 'antd';
+import { Switch, Alert, Modal, message, Button } from 'antd';
 import { ShieldCheck, Users, Play, AlertTriangle, LogOut, Trash2, Info, AlertOctagon } from 'lucide-react';
 import { apiService, type Session } from '../services/api';
 import { getTableColumns, SCENARIO_NAMES } from './InstructorDashboard.config';
 import * as S from './InstructorDashboard.styles';
 
 const getStatusBadge = (s: string) => {
-  if (s === 'running') return <Badge status="processing" text="Работа" style={{ color: '#00ff66' }} />;
-  if (s === 'esd') return <Badge status="warning" text="Аварийный Останов" style={{ color: '#ffcc00' }} />;
-  if (s === 'accident') return <Badge status="error" text="АВАРИЯ" style={{ color: '#ff3333' }} />;
-  return <Badge status="default" text="Пауза" style={{ color: '#7c8ba1' }} />;
+  if (s === 'running') return <S.StatusBadge status="processing" text="Работа" $color="#00ff66" />;
+  if (s === 'esd') return <S.StatusBadge status="warning" text="Аварийный Останов" $color="#ffcc00" />;
+  if (s === 'accident') return <S.StatusBadge status="error" text="АВАРИЯ" $color="#ff3333" />;
+  return <S.StatusBadge status="default" text="Пауза" $color="#7c8ba1" />;
 };
 
 const InstructorDashboard: React.FC = () => {
@@ -216,7 +216,7 @@ const InstructorDashboard: React.FC = () => {
                   <S.CompactScenarioLabel>
                     Управление временем симуляции:
                   </S.CompactScenarioLabel>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <S.FlexRow>
                     <S.ActionButton 
                       type={isPaused ? "primary" : "default"} 
                       danger={isPaused}
@@ -236,14 +236,14 @@ const InstructorDashboard: React.FC = () => {
                     >
                       2x
                     </S.SpeedButton>
-                  </div>
+                  </S.FlexRow>
                 </S.TimeControlRow>
 
                 <S.SnapshotControlRow>
                   <S.CompactScenarioLabel>
                     Контрольные точки (Снапшоты):
                   </S.CompactScenarioLabel>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <S.FlexRow>
                     <S.ActionButton 
                       onClick={saveState}
                     >
@@ -256,7 +256,7 @@ const InstructorDashboard: React.FC = () => {
                     >
                       Откатиться
                     </S.ActionButton>
-                  </div>
+                  </S.FlexRow>
                 </S.SnapshotControlRow>
               </S.ProcessControlLayout>
             </S.StyledCard>
@@ -417,14 +417,14 @@ const InstructorDashboard: React.FC = () => {
             <S.TableWrapper ref={tableContainerRef}>
               <S.StyledTable
                 dataSource={history}
-                columns={columns as any}
+                columns={columns}
                 rowKey="id"
                 pagination={{ pageSize, showSizeChanger: false, hideOnSinglePage: true }}
                 size="small"
                 onRow={(record) => {
                   return {
                     onClick: () => {
-                      setSelectedSession(record as Session);
+                      setSelectedSession(record);
                       setIsModalVisible(true);
                     }
                   };
@@ -477,7 +477,7 @@ const InstructorDashboard: React.FC = () => {
             <S.ModalSection>
               <S.SectionTitle>Зафиксированные нарушения регламента:</S.SectionTitle>
               {selectedSession.violations && selectedSession.violations.length > 0 ? (
-                selectedSession.violations.map((v: any) => (
+                selectedSession.violations.map((v: NonNullable<Session['violations']>[number]) => (
                   <S.ViolationCard key={v.title}>
                     <S.ViolationHeader>{v.title} ({v.clause})</S.ViolationHeader>
                     <S.ViolationText>{v.text}</S.ViolationText>
@@ -492,7 +492,7 @@ const InstructorDashboard: React.FC = () => {
               <S.SectionTitle>Журнал действий оператора:</S.SectionTitle>
               <S.SessionLogBox>
                 {selectedSession.session_logs && selectedSession.session_logs.length > 0 ? (
-                  selectedSession.session_logs.map((log: any) => (
+                  selectedSession.session_logs.map((log: NonNullable<Session['session_logs']>[number]) => (
                     <S.SessionLogRow key={log.id} type={log.type}>
                       [{log.time}] {log.message}
                     </S.SessionLogRow>

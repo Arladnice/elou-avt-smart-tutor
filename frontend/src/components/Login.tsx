@@ -57,7 +57,7 @@ const Login: React.FC = () => {
             <S.Label>Технологическая роль:</S.Label>
             <S.StyledSelect 
               value={role} 
-              onChange={v => setRole(v as any)}
+              onChange={v => setRole(v as 'operator' | 'instructor')}
               options={[
                 { value: 'operator', label: 'Оператор (SCADA-управление)' },
                 { value: 'instructor', label: 'Инструктор (Контроль и сбои)' }

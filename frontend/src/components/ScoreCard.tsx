@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSimulator } from '../context/SimulatorContext';
+import { useSimulator, type ScoreCardData } from '../context/SimulatorContext';
 import { Modal, List } from 'antd';
 import { Award, AlertOctagon, RefreshCw, LogOut, CheckCircle2 } from 'lucide-react';
 import * as S from './ScoreCard.styles';
@@ -83,17 +83,20 @@ const ScoreCard: React.FC = () => {
             </S.SectionTitle>
             <S.StyledList
               dataSource={scoreCard.errors}
-              renderItem={(err: any) => (
-                <List.Item>
-                  <S.ErrorItemContainer>
-                    <S.ErrorItemHeader>
-                      <S.ErrorTitle>{err.title}</S.ErrorTitle>
-                      <S.ErrorClause>{err.clause}</S.ErrorClause>
-                    </S.ErrorItemHeader>
-                    <S.ErrorText>{err.text}</S.ErrorText>
-                  </S.ErrorItemContainer>
-                </List.Item>
-              )}
+              renderItem={(err: unknown) => {
+                const errorItem = err as ScoreCardData['errors'][number];
+                return (
+                  <List.Item>
+                    <S.ErrorItemContainer>
+                      <S.ErrorItemHeader>
+                        <S.ErrorTitle>{errorItem.title}</S.ErrorTitle>
+                        <S.ErrorClause>{errorItem.clause}</S.ErrorClause>
+                      </S.ErrorItemHeader>
+                      <S.ErrorText>{errorItem.text}</S.ErrorText>
+                    </S.ErrorItemContainer>
+                  </List.Item>
+                );
+              }}
             />
           </>
         )}

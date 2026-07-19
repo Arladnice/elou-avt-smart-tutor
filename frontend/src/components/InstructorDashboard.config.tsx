@@ -1,7 +1,7 @@
 import type { ColumnsType } from 'antd/es/table';
 import type { Session } from '../services/api';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
-import { StatusText, ScoreText, EllipsisCell } from './InstructorDashboard.styles';
+import { StatusText, ScoreText, EllipsisCell, NowrapSpan } from './InstructorDashboard.styles';
 
 // Helper: Format duration from seconds to MM:SS
 export const formatDuration = (v: number): string => {
@@ -47,7 +47,7 @@ export const getTableColumns = (): ColumnsType<Session> => [
     title: 'Время (с)',
     dataIndex: 'duration_sec',
     key: 'duration_sec',
-    render: (v: number) => <span style={{ whiteSpace: 'nowrap' }}>{formatDuration(v)}</span>
+    render: (v: number) => <NowrapSpan>{formatDuration(v)}</NowrapSpan>
   },
   {
     title: 'Оценка (DTW)',
@@ -55,7 +55,7 @@ export const getTableColumns = (): ColumnsType<Session> => [
     key: 'score',
     render: (v: number, record: Session) => {
       const { color, grade } = getScoreDetails(v, record.status);
-      return <ScoreText color={color} style={{ whiteSpace: 'nowrap' }}>{grade} ({v}%)</ScoreText>;
+      return <ScoreText color={color}>{grade} ({v}%)</ScoreText>;
     }
   },
   {

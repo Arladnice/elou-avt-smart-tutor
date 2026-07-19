@@ -446,7 +446,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setValves({ V_1: true, V_2: false, V_3: true });
       setSetpoints({ T_1_Sp: 280 });
       setSensors({ T_1: 280, P_1: 0.25, L_1: 50 });
-      setDefects({ pump_fail: false, coil_overheat: false, valve_jam: false });
+      setDefects({ pump_fail: false, coil_overheat: false, valve_jam: false, power_fail: false, air_fail: false, steam_fail: false });
       setRiskLevel(5);
       setPredictions([280, 0.25, 50]);
       setLogs([{ id: '1', time: '00:00', type: 'info', message: 'Система перезапущена локально.' }]);

@@ -463,7 +463,7 @@ export const StyledTable = styled(Table)`
       cursor: pointer;
     }
   }
-`;
+` as typeof Table;
 
 // Modal stylings
 
@@ -588,6 +588,11 @@ export const StatusBadge = styled(Badge)<{ $color?: string }>`
 
 export const ScoreText = styled.strong<{ color: string }>`
   color: ${props => props.color};
+  white-space: nowrap;
+`;
+
+export const NowrapSpan = styled.span`
+  white-space: nowrap;
 `;
 
 export const TableCardTitle = styled.div`
