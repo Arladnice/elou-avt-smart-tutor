@@ -300,6 +300,50 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         sessions = get_sessions()
         self.assertFalse(sessions[0]["integrity_valid"])
 
+    def test_defect_power_fail(self):
+        """Тест-01: Проверка эффекта неисправности power_fail (отказ электроснабжения)."""
+        sim = ELOUAVTSimulator()
+        sim.reset("shutdown")  # В shutdown V-1 открыт, T_sp = 280
+        self.assertEqual(sim.setpoints["T_1_Sp"], 280.0)
+        
+        # Активируем отказ электроснабжения
+        sim.set_defect("power_fail", True)
+        self.assertEqual(sim.setpoints["T_1_Sp"], 20.0, "Уставка температуры должна упасть до 20°C при отключении питания")
+        
+        # Делаем шаг и проверяем, что сырье не подается и начинается остывание
+        state = sim.step()
+        self.assertLess(state["sensors"]["T_1"], 280.0, "Температура должна снижаться из-за остановки горелок")
+
+    def test_defect_air_fail(self):
+        """Тест-02: Проверка эффекта неисправности air_fail (отказ воздуха КИПиА)."""
+        sim = ELOUAVTSimulator()
+        sim.reset("shutdown")  # В shutdown V_1 и V_3 открыты, V_2 закрыт
+        self.assertTrue(sim.valves["V_1"])
+        self.assertTrue(sim.valves["V_3"])
+        
+        # Активируем отказ воздуха КИПиА
+        sim.set_defect("air_fail", True)
+        self.assertFalse(sim.valves["V_1"], "Клапан V-1 должен закрыться в безопасное положение при air_fail")
+        self.assertFalse(sim.valves["V_3"], "Клапан V-3 должен закрыться в безопасное положение при air_fail")
+        
+        # Попытка открыть V-1 и V-3 или изменить V-2 блокируется при air_fail
+        sim.set_valve("V_1", True)
+        sim.set_valve("V_2", True)
+        self.assertFalse(sim.valves["V_1"], "Клапан V-1 не должен открываться без воздуха КИПиА")
+        self.assertFalse(sim.valves["V_2"], "Клапан V-2 должен быть заблокирован при air_fail")
+
+    def test_defect_pump_interlock_low_level(self):
+        """Тест-03: Проверка блокировки сухого хода насосов при уровне L-1 < 15%."""
+        sim = ELOUAVTSimulator()
+        sim.reset("shutdown")
+        sim.sensors["L_1"] = 14.0  # Уровень ниже порога 15%
+        
+        # Делаем шаг симуляции и проверяем, что расход сырья F_in = 0, поэтому уровень не растет от V_1
+        prev_L = sim.sensors["L_1"]
+        # Поскольку V_3 открыт (дренаж), без прихода сырья уровень должен уменьшиться
+        state = sim.step()
+        self.assertLess(state["sensors"]["L_1"], prev_L, "При L-1 < 15% блокируются сырьевые насосы (F_in = 0), поэтому уровень уменьшается при открытом дренаже V-3")
+
     @classmethod
     def tearDownClass(cls):
         # Удаляем тестовую БД после завершения тестов

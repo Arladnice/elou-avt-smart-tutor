@@ -22,25 +22,88 @@ def load_kb_file(filename: str) -> str:
             logger.error("Ошибка чтения файла БЗ %s: %s", filename, e)
     return ""
 
+def get_scenario_checklist_progress(telemetry: Dict[str, Any]) -> str:
+    """Генерирует точный статус выполнения чек-листа сценария для передачи в LLM."""
+    scenario_id = telemetry.get("scenarioId", "startup")
+    sensors = telemetry.get("sensors", {})
+    valves = telemetry.get("valves", {})
+    
+    t1 = sensors.get("T_1", 280.0)
+    l1 = sensors.get("L_1", 50.0)
+    v1 = valves.get("V_1", False)
+    v2 = valves.get("V_2", False)
+    v3 = valves.get("V_3", False)
+    
+    tasks = []
+    if scenario_id == "startup":
+        tasks = [
+            ("1. Подача сырья в змеевик П-1 (Открыть V-1)", v1),
+            ("2. Разогрев печи (Поднять уставку и выйти на Т-1 >= 280°C)", t1 >= 280.0),
+            ("3. Регулирование дренажа (Открыть V-3 при уровне L-1 >= 20%)", v3 and l1 >= 20.0)
+        ]
+    elif scenario_id == "shutdown":
+        tasks = [
+            ("1. Снижение нагрева печи П-1 (Понизить уставку, Т-1 <= 245°C)", t1 <= 245.0),
+            ("2. Сброс давления в колонне K-1 (Открыть сброс V-2)", v2),
+            ("3. Перекрытие подачи сырья (Закрыть V-1 и дождаться уровня L-1 < 15%)", (not v1) and l1 < 15.0)
+        ]
+    elif scenario_id == "column_shutdown":
+        tasks = [
+            ("1. Снижение нагрева печи П-1 (Т-1 <= 245°C)", t1 <= 245.0),
+            ("2. Перекрытие подачи сырья (Закрыть V-1)", not v1),
+            ("3. Прекращение дренажа куба K-1 (Закрыть V-3, уровень L-1 < 15%)", (not v3) and l1 < 15.0)
+        ]
+    elif scenario_id == "overpressure_relief":
+        tasks = [
+            ("1. Сброс избыточного давления (Открыть V-2)", v2),
+            ("2. Снижение тепловой нагрузки (Т-1 <= 245°C)", t1 <= 245.0)
+        ]
+    elif scenario_id == "recirculation":
+        tasks = [
+            ("1. Снижение нагрева сырья в печи П-1 (Т-1 <= 250°C)", t1 <= 250.0),
+            ("2. Прекращение вывода кубового остатка (Закрыть V-3)", not v3),
+            ("3. Открытие сдувки на факел (Открыть V-2)", v2)
+        ]
+        
+    lines = []
+    active_found = False
+    for title, is_done in tasks:
+        if is_done:
+            lines.append(f"[x] ВЫПОЛНЕН: {title}")
+        elif not active_found:
+            lines.append(f"[-->] ТЕКУЩИЙ АКТИВНЫЙ ШАГ: {title}")
+            active_found = True
+        else:
+            lines.append(f"[ ] ОЖИДАЕТ: {title}")
+            
+    return "\n".join(lines) if lines else f"Сценарий: {scenario_id}"
+
 def get_telemetry_summary(telemetry: Dict[str, Any]) -> str:
-    """Формирует текстовое описание текущего состояния установки."""
+    """Формирует текстовое описание текущего состояния установки и целей сценария."""
     sensors = telemetry.get("sensors", {})
     valves = telemetry.get("valves", {})
     setpoints = telemetry.get("setpoints", {})
     defects = telemetry.get("defects", {})
     status = telemetry.get("status", "running")
     risk = telemetry.get("riskLevel", 0)
+    scenario_id = telemetry.get("scenarioId", "startup")
     
     valves_str = ", ".join(f"{k}: {'ОТКРЫТ' if v else 'ЗАКРЫТ'}" for k, v in valves.items())
     defects_list = [k for k, v in defects.items() if v]
     defects_str = ", ".join(defects_list) if defects_list else "нет активных неисправностей"
     
+    checklist_status = get_scenario_checklist_progress(telemetry)
+    
     return (
-        f"Текущий статус установки: {status}. Уровень риска аварии: {risk}%.\n"
+        f"=== ТЕКУЩИЙ ПРОГРЕСС ПО ЧЕК-ЛИСТУ СЦЕНАРИЯ ({scenario_id}) ===\n"
+        f"{checklist_status}\n\n"
+        f"=== ПОКАЗАНИЯ ДАТЧИКОВ И ОБОРУДОВАНИЯ ===\n"
+        f"Статус установки: {status}. Уровень риска аварии: {risk}%.\n"
         f"Показания датчиков: Температура Т-1 = {sensors.get('T_1')} °C (уставка {setpoints.get('T_1_Sp')} °C), "
         f"Давление P-1 = {sensors.get('P_1')} МПа, Уровень L-1 = {sensors.get('L_1')}%.\n"
         f"Состояние клапанов: {valves_str}.\n"
-        f"Нештатные ситуации: {defects_str}."
+        f"Нештатные ситуации: {defects_str}.\n\n"
+        f"ВАЖНО ДЛЯ ИИ-ТЬЮТОРА: Если оператор спрашивает, что делать дальше, ориентируйся ТОЛЬКО на строку '[-->] ТЕКУЩИЙ АКТИВНЫЙ ШАГ' и подсказывай действие именно по нему."
     )
 
 def query_local_llm(messages: List[Dict[str, str]], model: str = "local-model") -> str:
@@ -50,7 +113,7 @@ def query_local_llm(messages: List[Dict[str, str]], model: str = "local-model") 
         "model": model,
         "messages": messages,
         "temperature": 0.3,
-        "max_tokens": 150
+        "max_tokens": 1024
     }
     
     req = urllib.request.Request(
@@ -64,7 +127,16 @@ def query_local_llm(messages: List[Dict[str, str]], model: str = "local-model") 
         # Устанавливаем таймаут 300 секунд (5 минут) для гарантии того, что модель успеет сгенерировать ответ
         with urllib.request.urlopen(req, timeout=300) as response:
             res_data = json.loads(response.read().decode("utf-8"))
-            return res_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            choice = res_data.get("choices", [{}])[0]
+            message = choice.get("message", {})
+            content = message.get("content", "")
+            reasoning = message.get("reasoning_content", "")
+            finish_reason = choice.get("finish_reason", "")
+            
+            if not content and reasoning and finish_reason == "length":
+                logger.warning("Модель исчерпала лимит токенов в блоке рассуждений (reasoning_tokens). Увеличьте max_tokens.")
+            
+            return content
     except urllib.error.HTTPError as e:
         err_body = e.read().decode("utf-8", errors="ignore")
         logger.error("Ошибка HTTP от LM Studio: %s - %s", e.code, err_body)

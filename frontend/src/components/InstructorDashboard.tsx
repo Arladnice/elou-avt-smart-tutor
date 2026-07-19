@@ -128,7 +128,7 @@ const InstructorDashboard: React.FC = () => {
     }
   }, [status]);
 
-  const handleDefectChange = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', checked: boolean) => {
+  const handleDefectChange = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam' | 'power_fail' | 'air_fail' | 'steam_fail', checked: boolean) => {
     triggerDefect(defectId, checked);
     message.info(`Неисправность "${defectId}" -> ${checked ? 'АКТИВИРОВАНА' : 'ОТКЛЮЧЕНА'}`);
   };
@@ -285,6 +285,30 @@ const InstructorDashboard: React.FC = () => {
                   <span className="desc">Клапан V-2 блокируется в закрытом состоянии. Угроза взрыва К-1.</span>
                 </S.DefectInfo>
                 <Switch size="small" checked={defects.valve_jam} onChange={v => handleDefectChange('valve_jam', v)} />
+              </S.DefectRow>
+
+              <S.DefectRow>
+                <S.DefectInfo>
+                  <span className="title">Отказ электроснабжения (power_fail)</span>
+                  <span className="desc">Останов всех насосов и падение уставки горелок П-1 до 20°C.</span>
+                </S.DefectInfo>
+                <Switch size="small" checked={defects.power_fail} onChange={v => handleDefectChange('power_fail', v)} />
+              </S.DefectRow>
+
+              <S.DefectRow>
+                <S.DefectInfo>
+                  <span className="title">Отказ воздуха КИПиА (air_fail)</span>
+                  <span className="desc">Клапаны V-1 и V-3 закрываются в безопасное положение, V-2 блокируется.</span>
+                </S.DefectInfo>
+                <Switch size="small" checked={defects.air_fail} onChange={v => handleDefectChange('air_fail', v)} />
+              </S.DefectRow>
+
+              <S.DefectRow>
+                <S.DefectInfo>
+                  <span className="title">Срыв подачи отпарного пара (steam_fail)</span>
+                  <span className="desc">Нарушение отпарки в стриппинге, рост давления P-1 и уровня L-1.</span>
+                </S.DefectInfo>
+                <Switch size="small" checked={defects.steam_fail} onChange={v => handleDefectChange('steam_fail', v)} />
               </S.DefectRow>
             </S.StyledCard>
           </S.TopCardsRow>

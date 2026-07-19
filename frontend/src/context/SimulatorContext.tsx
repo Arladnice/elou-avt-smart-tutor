@@ -38,6 +38,9 @@ interface SimulatorContextType {
     pump_fail: boolean;
     coil_overheat: boolean;
     valve_jam: boolean;
+    power_fail: boolean;
+    air_fail: boolean;
+    steam_fail: boolean;
   };
   riskLevel: number;
   predictions: number[]; // Прогнозируемые параметры [temp, pres, level] на t+15 с
@@ -67,7 +70,7 @@ interface SimulatorContextType {
   toggleValve: (valveId: 'V_1' | 'V_2' | 'V_3') => void;
   changeSetpoint: (temp: number) => void;
   triggerEsd: () => void;
-  triggerDefect: (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', state: boolean) => void;
+  triggerDefect: (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam' | 'power_fail' | 'air_fail' | 'steam_fail', state: boolean) => void;
   resetSession: () => void;
   completeSession: () => void;
   changeSpeed: (multiplier: number) => void;
@@ -91,7 +94,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [valves, setValves] = useState({ V_1: true, V_2: false, V_3: true });
   const [setpoints, setSetpoints] = useState({ T_1_Sp: 280 });
   const [sensors, setSensors] = useState({ T_1: 280, P_1: 0.25, L_1: 50 });
-  const [defects, setDefects] = useState({ pump_fail: false, coil_overheat: false, valve_jam: false });
+  const [defects, setDefects] = useState({ pump_fail: false, coil_overheat: false, valve_jam: false, power_fail: false, air_fail: false, steam_fail: false });
   const [riskLevel, setRiskLevel] = useState(5);
   const [predictions, setPredictions] = useState<number[]>([280, 0.25, 50]);
   const [logs, setLogs] = useState<LogEntry[]>([
@@ -359,7 +362,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const triggerDefect = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam', state: boolean) => {
+  const triggerDefect = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam' | 'power_fail' | 'air_fail' | 'steam_fail', state: boolean) => {
     if (isOnline) {
       sendWsAction({ type: 'trigger_defect', defect_id: defectId, state });
     } else {

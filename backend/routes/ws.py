@@ -86,7 +86,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 defect_names_ru = {
                     "pump_fail": "Отказ сырьевого насоса",
                     "coil_overheat": "Прогар змеевика печи П-1",
-                    "valve_jam": "Заедание клапана сброса V-2"
+                    "valve_jam": "Заедание клапана сброса V-2",
+                    "power_fail": "Отказ электроснабжения",
+                    "air_fail": "Отказ воздуха КИПиА",
+                    "steam_fail": "Срыв подачи отпарного пара"
                 }
                 status_ru = "АКТИВИРОВАНА" if state else "ДЕАКТИВИРОВАНА"
                 manager.add_log("error" if state else "info", f"ИНСТРУКТОР: Неисправность '{defect_names_ru.get(defect_id, defect_id)}' {status_ru}!")

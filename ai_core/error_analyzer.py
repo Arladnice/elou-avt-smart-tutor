@@ -62,6 +62,11 @@ TECH_REGULATIONS = {
         "clause": "Раздел 7.9.1 / п. 7.7.1.14",
         "title": "Нарушение материального баланса колонны К-1",
         "text": f"Уровень в кубе колонны К-1 вышел за пределы рабочего диапазона. Уровень должен быть в диапазоне {COLUMN_LEVEL_BALANCE_MIN}-{COLUMN_LEVEL_BALANCE_MAX}% при завершении сессии пуска."
+    },
+    "TEMP_TOO_HIGH": {
+        "clause": "Раздел 7.7.1 / п. 7.10.3",
+        "title": "Превышение температуры предупреждения (опасность коксования)",
+        "text": f"Фактическая температура печи П-1 превысила допустимый порог нормального режима ({FURNACE_TEMP_WARNING}°C). Работа в зоне предупреждения ведет к термическому разложению углеводородов и отложению кокса на трубках змеевика."
     }
 }
 
@@ -224,8 +229,8 @@ class ErrorAnalyzer:
                 if "V1_CLOSE" not in actions[:last_close] and "SP_DOWN" not in actions[:last_close]:
                     has_drain_block = True
 
-        # г) Форсированный нагрев печи (многократное повышение уставки без стабилизации)
-        if actions.count("SP_UP") >= 3:
+        # г) Форсированный нагрев печи (слишком быстрое/частое дергание уставки без стабилизации времени)
+        if actions.count("SP_UP") >= 15 and time_elapsed < 60:
             has_forced_heating = True
 
         # д) Открытие сброса V-2 без необходимости
@@ -313,6 +318,12 @@ class ErrorAnalyzer:
             if scenario_id == "startup" and not (COLUMN_LEVEL_BALANCE_MIN <= column_level <= COLUMN_LEVEL_BALANCE_MAX):
                 errors.append(TECH_REGULATIONS["LEVEL_UNBALANCED"])
                 recommendations.insert(0, f"Уровень в кубе колонны K-1 ({column_level:.1f}%) вышел за пределы рабочего диапазона {COLUMN_LEVEL_BALANCE_MIN}-{COLUMN_LEVEL_BALANCE_MAX}%. Балансируйте дренажным клапаном V-3.")
+                final_score -= 20
+
+            # e) Температура печи не должна превышать порог предупреждения (310°C)
+            if furnace_temp > FURNACE_TEMP_WARNING:
+                errors.append(TECH_REGULATIONS["TEMP_TOO_HIGH"])
+                recommendations.insert(0, f"Температура печи в конце сессии составила {furnace_temp:.1f}°C, что превышает порог нормального режима {FURNACE_TEMP_WARNING}°C. Не допускайте перегрева и риска коксования труб.")
                 final_score -= 20
 
         final_score = max(0, min(100, final_score))
