@@ -49,8 +49,11 @@ class CodeQualityChecker:
         if self.verbose:
             print("📊 Deep static analysis initiated...")
         
-        # Переиспользуем логику PrAnalyzer для согласованности
-        from .pr_analyzer import PrAnalyzer
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        try:
+            from pr_analyzer import PrAnalyzer
+        except ImportError:
+            from .pr_analyzer import PrAnalyzer
         analyzer = PrAnalyzer(str(self.target_path), verbose=self.verbose)
         analyzer.analyze()
         
@@ -61,7 +64,11 @@ class CodeQualityChecker:
 
     def generate_report(self):
         """Generate and display the report"""
-        from .pr_analyzer import PrAnalyzer
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        try:
+            from pr_analyzer import PrAnalyzer
+        except ImportError:
+            from .pr_analyzer import PrAnalyzer
         analyzer = PrAnalyzer(str(self.target_path), verbose=self.verbose)
         analyzer.results = self.results
         analyzer.generate_report()
