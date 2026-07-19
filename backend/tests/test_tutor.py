@@ -202,6 +202,30 @@ class TestKTKComponents(unittest.TestCase):
         self.assertEqual(len(errors), 0)
         self.assertTrue(any("прогар змеевика" in r.lower() for r in recs))
 
+    def test_integration_testcase_6_power_fail_recovery(self):
+        """Интеграционный тест: Тест-кейс 6 (Парирование отказа электроснабжения power_fail)"""
+        actions = ["SP_DOWN", "V1_CLOSE"]
+        score, errors, recs = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"power_fail"})
+        self.assertEqual(score, 100)
+        self.assertEqual(len(errors), 0)
+        self.assertTrue(any("обесточиван" in r.lower() for r in recs))
+
+    def test_integration_testcase_7_air_fail_recovery(self):
+        """Интеграционный тест: Тест-кейс 7 (Парирование отказа воздуха КИПиА air_fail)"""
+        actions = ["ESD"]
+        score, errors, recs = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"air_fail"})
+        self.assertEqual(score, 100)
+        self.assertEqual(len(errors), 0)
+        self.assertTrue(any("воздух" in r.lower() for r in recs))
+
+    def test_integration_testcase_8_steam_fail_recovery(self):
+        """Интеграционный тест: Тест-кейс 8 (Парирование срыва отпарного пара steam_fail)"""
+        actions = ["SP_DOWN", "V3_OPEN"]
+        score, errors, recs = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"steam_fail"})
+        self.assertEqual(score, 100)
+        self.assertEqual(len(errors), 0)
+        self.assertTrue(any("пар" in r.lower() for r in recs))
+
 class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def setUp(self):
         from backend.db.database import init_db

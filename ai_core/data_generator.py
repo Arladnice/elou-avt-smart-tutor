@@ -21,6 +21,7 @@ def generate_telemetry_data(output_path, num_samples=100000):
         "time_elapsed", "valve_V1", "valve_V2", "valve_V3", 
         "furnaceTempSp", "furnaceTemp", "columnPres", "columnLevel",
         "defect_pump_fail", "defect_coil_overheat", "defect_valve_jam",
+        "defect_power_fail", "defect_air_fail", "defect_steam_fail",
         "accident_risk", "status"
     ]
     
@@ -37,7 +38,10 @@ def generate_telemetry_data(output_path, num_samples=100000):
                 print(f"Сгенерировано: {records_generated} / {num_samples} строк ({records_generated/num_samples*100:.1f}%)")
                 last_reported = records_generated
             sim.reset()
-            scenario_type = random.choice(["normal", "startup", "defect_overheat", "defect_pump", "defect_jam"])
+            scenario_type = random.choice([
+                "normal", "startup", "defect_overheat", "defect_pump", "defect_jam",
+                "defect_power", "defect_air", "defect_steam"
+            ])
             
             # Длина одной симуляционной сессии
             session_length = random.randint(100, 300)
@@ -47,16 +51,16 @@ def generate_telemetry_data(output_path, num_samples=100000):
                 if scenario_type == "startup":
                     # Пуск: начинаем с низкой температуры и постепенно поднимаем уставку
                     if step == 0:
-                        sim.sensors["furnaceTemp"] = 150.0
-                        sim.setpoints["furnaceTempSp"] = 150.0
-                        sim.valves["V1"] = True
-                        sim.valves["V2"] = False
-                        sim.valves["V3"] = False
+                        sim.sensors["T_1"] = 150.0
+                        sim.setpoints["T_1_Sp"] = 150.0
+                        sim.valves["V_1"] = True
+                        sim.valves["V_2"] = False
+                        sim.valves["V_3"] = False
                     elif step == 20:
-                        sim.setpoints["furnaceTempSp"] = 220.0
-                        sim.valves["V3"] = True # Открываем дренаж по мере накопления
+                        sim.setpoints["T_1_Sp"] = 220.0
+                        sim.valves["V_3"] = True # Открываем дренаж по мере накопления
                     elif step == 60:
-                        sim.setpoints["furnaceTempSp"] = 280.0
+                        sim.setpoints["T_1_Sp"] = 280.0
                         
                 elif scenario_type == "defect_overheat":
                     # На 30 секунде инструктор инжектирует перегрев
@@ -67,9 +71,9 @@ def generate_telemetry_data(output_path, num_samples=100000):
                         action_delay = random.randint(10, 40)
                         if step > 30 + action_delay:
                             # Пытается снизить уставку печи или открыть V-2 для сброса давления
-                            sim.setpoints["furnaceTempSp"] = max(240.0, sim.setpoints["furnaceTempSp"] - 2.0)
-                            if sim.sensors["columnPres"] > 0.35:
-                                sim.valves["V2"] = True
+                            sim.setpoints["T_1_Sp"] = max(240.0, sim.setpoints["T_1_Sp"] - 2.0)
+                            if sim.sensors["P_1"] > 0.35:
+                                sim.valves["V_2"] = True
                                 
                 elif scenario_type == "defect_pump":
                     # Отказ сырьевого насоса на 40 секунде
@@ -80,37 +84,77 @@ def generate_telemetry_data(output_path, num_samples=100000):
                         action_delay = random.randint(5, 25)
                         if step > 40 + action_delay:
                             # Должен срочно снизить уставку нагрева печи П-1 (т.к. нет сырья)
-                            sim.setpoints["furnaceTempSp"] = 100.0 # гасим горелки
-                            sim.valves["V3"] = False # перекрываем слив
+                            sim.setpoints["T_1_Sp"] = 100.0 # гасим горелки
+                            sim.valves["V_3"] = False # перекрываем слив
                             
                 elif scenario_type == "defect_jam":
                     # Высокое давление, но клапан V2 заклинило
                     if step == 15:
-                        sim.setpoints["furnaceTempSp"] = 330.0 # провоцируем нагрев
+                        sim.setpoints["T_1_Sp"] = 330.0 # провоцируем нагрев
                     if step == 35:
                         sim.set_defect("valve_jam", True)
-                        sim.valves["V2"] = True # оператор пытается открыть, но он заклинен
+                        sim.valves["V_2"] = True # оператор пытается открыть, но он заклинен
                     if step > 50:
                         # Умный оператор делает аварийный останов (ESD)
                         if random.random() < 0.2:
                             sim.status = "esd"
                             
+                elif scenario_type == "defect_power":
+                    # Отказ электроснабжения на 30 секунде
+                    if step == 30:
+                        sim.set_defect("power_fail", True)
+                    # Реакция:
+                    if step > 30:
+                        action_delay = random.randint(5, 20)
+                        if step > 30 + action_delay:
+                            sim.setpoints["T_1_Sp"] = 100.0
+                            sim.valves["V_1"] = False
+                            if sim.sensors["P_1"] > 0.35:
+                                sim.valves["V_2"] = True
+
+                elif scenario_type == "defect_air":
+                    # Отказ воздуха КИПиА на 35 секунде
+                    if step == 35:
+                        sim.set_defect("air_fail", True)
+                    # Реакция:
+                    if step > 35:
+                        action_delay = random.randint(10, 30)
+                        if step > 35 + action_delay:
+                            if random.random() < 0.5:
+                                sim.status = "esd"
+                            else:
+                                sim.setpoints["T_1_Sp"] = max(100.0, sim.setpoints["T_1_Sp"] - 5.0)
+
+                elif scenario_type == "defect_steam":
+                    # Срыв подачи отпарного пара на 25 секунде
+                    if step == 25:
+                        sim.set_defect("steam_fail", True)
+                    # Реакция:
+                    if step > 25:
+                        action_delay = random.randint(10, 35)
+                        if step > 25 + action_delay:
+                            sim.setpoints["T_1_Sp"] = max(240.0, sim.setpoints["T_1_Sp"] - 3.0)
+                            if sim.sensors["L_1"] > 70:
+                                sim.valves["V_3"] = True
+                            if sim.sensors["P_1"] > 0.38:
+                                sim.valves["V_2"] = True
+
                 else:  # normal
                     # Небольшие случайные колебания уставки и клапанов вокруг нормы
                     if step % 50 == 0:
-                        sim.setpoints["furnaceTempSp"] = round(random.uniform(270.0, 290.0), 1)
-                    if sim.sensors["columnLevel"] > 75:
-                        sim.valves["V3"] = True
-                    elif sim.sensors["columnLevel"] < 35:
-                        sim.valves["V3"] = False
+                        sim.setpoints["T_1_Sp"] = round(random.uniform(270.0, 290.0), 1)
+                    if sim.sensors["L_1"] > 75:
+                        sim.valves["V_3"] = True
+                    elif sim.sensors["L_1"] < 35:
+                        sim.valves["V_3"] = False
 
                 # Делаем шаг симуляции
                 state = sim.step()
                 
                 # Вычисляем риск аварии (упрощенная оценка для обучения модели)
-                temp = state["sensors"]["furnaceTemp"]
-                pres = state["sensors"]["columnPres"]
-                level = state["sensors"]["columnLevel"]
+                temp = state["sensors"]["T_1"]
+                pres = state["sensors"]["P_1"]
+                level = state["sensors"]["L_1"]
                 
                 risk = 0.0
                 if temp > 310:
@@ -127,14 +171,17 @@ def generate_telemetry_data(output_path, num_samples=100000):
                 # Записываем строку в датасет
                 writer.writerow([
                     state["timeElapsed"],
-                    1 if state["valves"]["V1"] else 0,
-                    1 if state["valves"]["V2"] else 0,
-                    1 if state["valves"]["V3"] else 0,
-                    state["setpoints"]["furnaceTempSp"],
+                    1 if state["valves"]["V_1"] else 0,
+                    1 if state["valves"]["V_2"] else 0,
+                    1 if state["valves"]["V_3"] else 0,
+                    state["setpoints"]["T_1_Sp"],
                     temp, pres, level,
                     1 if state["defects"]["pump_fail"] else 0,
                     1 if state["defects"]["coil_overheat"] else 0,
                     1 if state["defects"]["valve_jam"] else 0,
+                    1 if state["defects"]["power_fail"] else 0,
+                    1 if state["defects"]["air_fail"] else 0,
+                    1 if state["defects"]["steam_fail"] else 0,
                     round(risk, 2),
                     state["status"]
                 ])
