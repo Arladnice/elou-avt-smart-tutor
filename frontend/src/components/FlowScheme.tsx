@@ -86,19 +86,19 @@ const FlowScheme: React.FC = () => {
             cy="0" 
             r="12" 
             fill="#131924" 
-            stroke={defects?.pump_fail ? "#ff4d4f" : "#e1e7f0"} 
-            strokeWidth={defects?.pump_fail ? "2" : "1.5"} 
+            stroke={(defects?.pump_fail || defects?.power_fail) ? "#ff4d4f" : "#e1e7f0"} 
+            strokeWidth={(defects?.pump_fail || defects?.power_fail) ? "2" : "1.5"} 
           />
-          <polygon points="-4,-6 -4,6 6,0" fill={defects?.pump_fail ? "#ff4d4f" : "#e1e7f0"} />
+          <polygon points="-4,-6 -4,6 6,0" fill={(defects?.pump_fail || defects?.power_fail) ? "#ff4d4f" : "#e1e7f0"} />
           <text 
             x="0" 
             y="-18" 
-            fill={defects?.pump_fail ? "#ff4d4f" : "#e1e7f0"} 
+            fill={(defects?.pump_fail || defects?.power_fail) ? "#ff4d4f" : "#e1e7f0"} 
             fontSize="9" 
             textAnchor="middle" 
             fontWeight="bold"
           >
-            Н-1
+            {defects?.power_fail ? "Н-1 (0В)" : "Н-1"}
           </text>
         </g>
 
@@ -117,19 +117,23 @@ const FlowScheme: React.FC = () => {
         {/* ОБОРУДОВАНИЕ */}
         {/* 1. Нагревательная Печь П-1 */}
         <g transform="translate(180, 160)">
-          <rect x="0" y="0" width="100" height="150" rx="8" fill="url(#furnaceGrad)" stroke="#ff4444" strokeWidth="1.5" />
-          <text x="50" y="30" fill="#ff4444" fontSize="11" fontWeight="700" textAnchor="middle">ПЕЧЬ П-1</text>
+          <rect x="0" y="0" width="100" height="150" rx="8" fill="url(#furnaceGrad)" stroke={(defects?.coil_overheat || defects?.power_fail) ? "#ff4444" : "#ff4444"} strokeWidth={(defects?.coil_overheat || defects?.power_fail) ? "2.5" : "1.5"} />
+          <text x="50" y="30" fill="#ff4444" fontSize="11" fontWeight="700" textAnchor="middle">
+            {defects?.power_fail ? "ПЕЧЬ (0В)" : "ПЕЧЬ П-1"}
+          </text>
           
           {/* Пламя печи */}
-          <S.FlameWrapper isActive={valves.V_1} transform="translate(35, 112)">
-            <Flame size={30} color={valves.V_1 ? "#ff6600" : "#ff3333"} />
+          <S.FlameWrapper isActive={valves.V_1 && !defects?.power_fail} transform="translate(35, 112)">
+            <Flame size={30} color={(valves.V_1 && !defects?.power_fail) ? "#ff6600" : "#ff3333"} />
           </S.FlameWrapper>
         </g>
 
         {/* 2. Ректификационная Колонна К-1 */}
         <g transform="translate(400, 80)">
-          <rect x="0" y="0" width="120" height="290" rx="20" fill="url(#columnGrad)" stroke="#3e537a" strokeWidth="2" />
-          <text x="60" y="25" fill="#e1e7f0" fontSize="12" fontWeight="700" textAnchor="middle">КОЛОННА К-1</text>
+          <rect x="0" y="0" width="120" height="290" rx="20" fill="url(#columnGrad)" stroke={defects?.steam_fail ? "#ff4d4f" : "#3e537a"} strokeWidth={defects?.steam_fail ? "2.5" : "2"} />
+          <text x="60" y="25" fill={defects?.steam_fail ? "#ff4d4f" : "#e1e7f0"} fontSize="11" fontWeight="700" textAnchor="middle">
+            {defects?.steam_fail ? "К-1 (СРЫВ ПАРА)" : "КОЛОННА К-1"}
+          </text>
           
           {/* Индикатор уровня жидкости */}
           <rect x="15" y="60" width="90" height="200" fill="#131924" rx="4" stroke="#222c3e" />
@@ -151,22 +155,28 @@ const FlowScheme: React.FC = () => {
         {/* Клапан V-1 (Вход в печь) */}
         <S.ValveGroup isOpen={valves.V_1} transform="translate(100, 250)" onClick={() => handleValveClick('V_1')}>
           <polygon points="-12,-10 12,10 12,-10 -12,10" />
-          <circle cx="0" cy="0" r="4" />
-          <text x="0" y="-16" fill="#e1e7f0" fontSize="9" textAnchor="middle">V-1</text>
+          <circle cx="0" cy="0" r="4" fill={defects?.air_fail ? "#ffcc00" : undefined} />
+          <text x="0" y="-16" fill={defects?.air_fail ? "#ffcc00" : "#e1e7f0"} fontSize="9" textAnchor="middle">
+            {defects?.air_fail ? "V-1 (КИПиА)" : "V-1"}
+          </text>
         </S.ValveGroup>
 
         {/* Клапан V-2 (Сброс давления) */}
         <S.ValveGroup isOpen={valves.V_2} transform="translate(560, 40)" onClick={() => handleValveClick('V_2')}>
           <polygon points="-12,-10 12,10 12,-10 -12,10" />
-          <circle cx="0" cy="0" r="4" />
-          <text x="0" y="-16" fill="#e1e7f0" fontSize="9" textAnchor="middle">V-2 (Сброс)</text>
+          <circle cx="0" cy="0" r="4" fill={defects?.air_fail ? "#ffcc00" : undefined} />
+          <text x="0" y="-16" fill={defects?.air_fail ? "#ffcc00" : "#e1e7f0"} fontSize="9" textAnchor="middle">
+            {defects?.air_fail ? "V-2 (КИПиА)" : "V-2 (Сброс)"}
+          </text>
         </S.ValveGroup>
 
         {/* Клапан V-3 (Дренаж) */}
         <S.ValveGroup isOpen={valves.V_3} transform="translate(560, 410)" onClick={() => handleValveClick('V_3')}>
           <polygon points="-12,-10 12,10 12,-10 -12,10" />
-          <circle cx="0" cy="0" r="4" />
-          <text x="0" y="-16" fill="#e1e7f0" fontSize="9" textAnchor="middle">V-3</text>
+          <circle cx="0" cy="0" r="4" fill={defects?.air_fail ? "#ffcc00" : undefined} />
+          <text x="0" y="-16" fill={defects?.air_fail ? "#ffcc00" : "#e1e7f0"} fontSize="9" textAnchor="middle">
+            {defects?.air_fail ? "V-3 (КИПиА)" : "V-3"}
+          </text>
         </S.ValveGroup>
 
         {/* ИНФОРМАТОРЫ ДАТЧИКОВ И ИХ СПАРКЛАЙНЫ */}

@@ -15,6 +15,8 @@ class ELOUAVTSimulator:
         self.reset()
 
     def reset(self, scenario_id: str = "shutdown"):
+        self.scenario_id = scenario_id
+        self._startup_filled = False
         # Активные неисправности (задаются инструктором)
         self.defects = {
             "pump_fail": False,       # Отказ сырьевого насоса (сырье не идет даже при открытом V_1)
@@ -117,8 +119,9 @@ class ELOUAVTSimulator:
         # 1. Моделирование расхода сырья (F_in) с учетом неисправностей и блокировок ПАЗ
         # -------------------------------------------------------------
         F_in = 0.0
-        # Блокировка сырьевых насосов при падении уровня в колонне К-1 ниже 15% (защита от сухого хода, п. 7.9.1)
-        pump_interlock_active = (L < 15.0)
+        # Блокировка насосов при падении уровня в колонне К-1 ниже 15% (защита от сухого хода, п. 7.9.1)
+        # В режиме пуска ("startup") до первоначального заполнения колонны насос Н-1 (через V-1) должен беспрепятственно нагнетать сырьё для набора уровня L-1.
+        pump_interlock_active = (L < 15.0) if getattr(self, "scenario_id", "") != "startup" else False
         if V_1 and not self.defects["pump_fail"] and not self.defects["power_fail"] and not pump_interlock_active:
             F_in = 1.0  # Номинальный расход сырья
 
@@ -152,7 +155,8 @@ class ELOUAVTSimulator:
         dL = 0.0
         if F_in > 0.0:
             dL += 0.5
-        if V_3 and not self.defects["power_fail"]:
+        # Кубовый насос отбора (через V-3) останавливается при сработке блокировки сухого хода (L < 15%) или отказе питания
+        if V_3 and not self.defects["power_fail"] and not (L < 15.0):
             dL -= 0.6
             
         # При срыве подачи пара в стриппинге (steam_fail) ухудшается отпарка легких фракций, накопление жидкости растет
@@ -161,11 +165,21 @@ class ELOUAVTSimulator:
             
         next_L = L + dL + (random.random() - 0.5) * 0.1
         next_L = max(0.0, min(100.0, next_L))
+        if next_L >= 15.0:
+            self._startup_filled = True
 
         # -------------------------------------------------------------
         # 4. Моделирование давления в колонне К-1 (Давление P)
         # -------------------------------------------------------------
-        dP = (next_T - 280.0) * 0.0002 + (next_L - 50.0) * 0.0001 - (P - 0.25) * 0.05
+        if getattr(self, "scenario_id", "") == "startup" and not getattr(self, "_startup_filled", False):
+            # В режиме технологического пуска давление P-1 плавно поднимается от атмосферного (0.05 МПа) до рабочего (0.25 МПа)
+            # пропорционально прогреву печи и заполнению колонны парами/жидкостью
+            temp_factor = min(1.0, max(0.0, (next_T - 100.0) / 180.0))
+            level_factor = min(1.0, max(0.0, next_L / 30.0))
+            P_target = 0.05 + 0.20 * temp_factor * level_factor
+            dP = (P_target - P) * 0.1
+        else:
+            dP = (next_T - 280.0) * 0.0002 + (next_L - 50.0) * 0.0001 - (P - 0.25) * 0.05
         
         # Сброс давления через предохранительный/регулирующий клапан V_2
         if V_2 and not self.defects["valve_jam"]:
@@ -197,7 +211,7 @@ class ELOUAVTSimulator:
         elif next_T >= 380.0:
             self.status = "accident"
             self.accident_reason = "Критический перегрев печи П-1 (выше 380°C). Прогар змеевика, коксование и пожар в топочной камере!"
-        elif next_L <= 5.0 and self.time_elapsed > 40:
+        elif next_L <= 5.0 and (self.time_elapsed > 40 if getattr(self, "scenario_id", "") != "startup" else (self.time_elapsed > 180 or getattr(self, "_startup_filled", False))):
             self.status = "accident"
             self.accident_reason = "Аварийно низкий уровень в колонне К-1 (ниже 5%). Срыв сырьевых насосов, сухой ход и разрушение торцевых уплотнений (п. 7.9.1 техрегламента)!"
         elif next_L >= 98.0:
@@ -220,6 +234,8 @@ class ELOUAVTSimulator:
     def get_snapshot(self) -> dict:
         """Создает полную копию состояния симулятора для сохранения (снапшот)."""
         return {
+            "scenario_id": getattr(self, "scenario_id", "shutdown"),
+            "_startup_filled": getattr(self, "_startup_filled", False),
             "status": self.status,
             "time_elapsed": self.time_elapsed,
             "valves": copy.deepcopy(self.valves),
@@ -231,6 +247,8 @@ class ELOUAVTSimulator:
 
     def load_snapshot(self, snapshot: dict):
         """Восстанавливает состояние симулятора из сохраненного снапшота."""
+        self.scenario_id = snapshot.get("scenario_id", "shutdown")
+        self._startup_filled = snapshot.get("_startup_filled", False)
         self.status = snapshot["status"]
         self.time_elapsed = snapshot["time_elapsed"]
         self.valves = copy.deepcopy(snapshot["valves"])

@@ -64,7 +64,7 @@ export const PanelColumn = styled.div`
   flex-direction: column;
   gap: 16px;
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
 
   @media (max-height: 950px) {
     gap: 10px;
@@ -110,14 +110,14 @@ export const StyledCard = styled(Card)`
 
 export const StretchCard = styled(StyledCard)`
   flex: 1;
-  min-height: 0;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 
   .ant-card-body {
     flex: 1;
-    min-height: 0;
+    min-height: 140px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -341,25 +341,31 @@ export const ScenarioRadioButton = styled(Radio.Button)<{ fullWidth?: boolean }>
   border-radius: 4px;
   ${props => props.fullWidth && `grid-column: span 2;`}
 
-  && {
-    @media (max-height: 950px) {
-      font-size: 10px;
-      height: auto;
-      min-height: 28px;
-      line-height: 1.25;
-      padding: 3px 6px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      white-space: normal;
-      text-align: center;
+  &&& {
+    height: auto;
+    min-height: 40px;
+    line-height: 1.3;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: normal;
+    text-align: center;
+    font-size: 13px;
 
-      & > span:last-child {
-        display: block;
-        white-space: normal;
-        word-break: break-word;
-        text-align: center;
-      }
+    & > span:last-child {
+      display: block;
+      white-space: normal;
+      word-break: break-word;
+      text-align: center;
+      width: 100%;
+    }
+
+    @media (max-height: 950px) {
+      font-size: 11px;
+      min-height: 32px;
+      line-height: 1.25;
+      padding: 4px 6px;
     }
   }
 `;
@@ -614,16 +620,19 @@ export const TableCardTitle = styled.div`
 `;
 
 export const TopCardsRow = styled.div`
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
   gap: 16px;
+  align-items: stretch;
   flex-shrink: 0;
 
   @media (max-height: 950px) {
-    display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
     gap: 10px;
-    align-items: stretch;
+  }
+
+  @media (max-width: 1100px) {
+    display: flex;
+    flex-direction: column;
   }
 `;
 

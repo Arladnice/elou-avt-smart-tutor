@@ -24,13 +24,23 @@ const scenarioNames: Record<string, string> = {
  */
 export const useScenarioInfo = () => {
   const { scenarioId, defects } = useSimulator();
-  const isEmergency = !!(defects?.pump_fail || defects?.coil_overheat || defects?.valve_jam);
+  const isEmergency = !!(
+    defects?.pump_fail ||
+    defects?.coil_overheat ||
+    defects?.valve_jam ||
+    defects?.power_fail ||
+    defects?.air_fail ||
+    defects?.steam_fail
+  );
 
   const getEmergencyTitle = (): string => {
     const list: string[] = [];
     if (defects?.pump_fail) list.push('Отказ Н-1');
     if (defects?.coil_overheat) list.push('Прогар П-1');
     if (defects?.valve_jam) list.push('Зависание V-2');
+    if (defects?.power_fail) list.push('Обесточивание');
+    if (defects?.air_fail) list.push('Отказ КИПиА');
+    if (defects?.steam_fail) list.push('Срыв отпарки');
     return `Авария: ${list.join(' + ')}`;
   };
 
@@ -54,8 +64,8 @@ const ScenarioChecklist: React.FC = () => {
       emergencyTasks.push({
         id: 'pump_fail_recovery',
         title: 'Аварийное снижение нагрева печи П-1',
-        hint: `Понизьте уставку температуры печи Т-1 ниже ${limitTemp}°C (сейчас: ${setpoints?.T_1_Sp ?? '...'}°C) для предотвращения прогара сухого змеевика.`,
-        isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp,
+        hint: `Понизьте уставку и дождитесь снижения фактической температуры Т-1 ниже ${limitTemp}°C (сейчас факт: ${sensors?.T_1?.toFixed(1) ?? '...'}°C, уставка: ${setpoints?.T_1_Sp ?? '...'}°C) для предотвращения прогара сухого змеевика.`,
+        isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp && (sensors?.T_1 ?? 999) <= limitTemp,
       });
     }
 
@@ -66,8 +76,8 @@ const ScenarioChecklist: React.FC = () => {
         emergencyTasks.push({
           id: 'coil_overheat_temp',
           title: 'Локализация пожара печи П-1 (снижение нагрева)',
-          hint: `Понизьте уставку температуры печи Т-1 ниже ${limitTemp}°C (сейчас: ${setpoints?.T_1_Sp ?? '...'}°C) для отсечки топлива.`,
-          isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp,
+          hint: `Понизьте уставку и дождитесь остывания фактической температуры Т-1 ниже ${limitTemp}°C (сейчас факт: ${sensors?.T_1?.toFixed(1) ?? '...'}°C, уставка: ${setpoints?.T_1_Sp ?? '...'}°C) для отсечки топлива.`,
+          isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp && (sensors?.T_1 ?? 999) <= limitTemp,
         });
       }
       emergencyTasks.push({
@@ -85,6 +95,43 @@ const ScenarioChecklist: React.FC = () => {
         title: 'Аварийный останов установки (ПАЗ)',
         hint: 'Нажмите красную кнопку аварийного останова (ESD) на панели управления для предотвращения взрыва колонны К-1.',
         isDone: status === 'esd',
+      });
+    }
+
+    // При отказе электроснабжения (power_fail) останавливаются насосы и гаснет печь
+    if (defects?.power_fail) {
+      emergencyTasks.push({
+        id: 'power_fail_action',
+        title: 'Обесточивание: Перекрытие подачи сырья V-1',
+        hint: 'При отказе электроснабжения остановились насосы и упала уставка печи. Убедитесь, что задвижка V-1 закрыта для предотвращения обратного тока и гидроудара.',
+        isDone: !valves.V_1,
+      });
+    }
+
+    // При отказе воздуха КИПиА (air_fail) клапаны V-1 и V-3 закрываются в безопасное положение
+    if (defects?.air_fail) {
+      const limitTemp = scenarioId === 'startup' ? 240 : 245;
+      emergencyTasks.push({
+        id: 'air_fail_action',
+        title: 'Отказ КИПиА: Снижение нагрева П-1 / ПАЗ (ESD)',
+        hint: `При потере пневмопитания регулирующие клапаны V-1 и V-3 перешли в закрытое положение (Fail-Closed), а V-2 заблокирован. Из-за прекращения подачи сырья немедленно снизьте уставку нагрева Т-1 ниже ${limitTemp}°C (сейчас факт: ${sensors?.T_1?.toFixed(1) ?? '...'}°C, уставка: ${setpoints?.T_1_Sp ?? '...'}°C) или нажмите кнопку ПАЗ (ESD).`,
+        isDone: status === 'esd' || ((setpoints?.T_1_Sp ?? 280) < limitTemp && (sensors?.T_1 ?? 999) <= limitTemp),
+      });
+    }
+
+    // При срыве подачи отпарного пара (steam_fail) нарушается стриппинг и растёт давление/уровень
+    if (defects?.steam_fail) {
+      emergencyTasks.push({
+        id: 'steam_fail_pressure',
+        title: 'Срыв пара: Сброс давления V-2',
+        hint: 'Из-за нарушения отпарки в стриппинге растёт давление P-1. Откройте клапан сброса V-2 для стравливания паров на факел.',
+        isDone: valves.V_2,
+      });
+      emergencyTasks.push({
+        id: 'steam_fail_level',
+        title: 'Срыв пара: Дренаж куба V-3',
+        hint: 'Для компенсации роста уровня кубовой жидкости L-1 откройте клапан дренажа V-3.',
+        isDone: valves.V_3,
       });
     }
 

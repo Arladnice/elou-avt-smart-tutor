@@ -27,15 +27,40 @@ def get_scenario_checklist_progress(telemetry: Dict[str, Any]) -> str:
     scenario_id = telemetry.get("scenarioId", "startup")
     sensors = telemetry.get("sensors", {})
     valves = telemetry.get("valves", {})
+    setpoints = telemetry.get("setpoints", {})
+    defects = telemetry.get("defects", {})
     
     t1 = sensors.get("T_1", 280.0)
+    t1_sp = setpoints.get("T_1_Sp", 280.0)
     l1 = sensors.get("L_1", 50.0)
     v1 = valves.get("V_1", False)
     v2 = valves.get("V_2", False)
     v3 = valves.get("V_3", False)
     
-    tasks = []
-    if scenario_id == "startup":
+    emergency_tasks = []
+    if defects.get("pump_fail"):
+        limit_temp = 240.0 if scenario_id == "startup" else 245.0
+        emergency_tasks.append(("Аварийное снижение нагрева печи Т-1", t1_sp < limit_temp and t1 <= limit_temp))
+    if defects.get("coil_overheat"):
+        limit_temp = 240.0 if scenario_id == "startup" else 245.0
+        emergency_tasks.append(("Локализация пожара (снижение нагрева Т-1)", t1_sp < limit_temp and t1 <= limit_temp))
+        emergency_tasks.append(("Сброс давления из колонны (Открыть V-2)", v2))
+    if defects.get("valve_jam"):
+        status = telemetry.get("status", "running")
+        emergency_tasks.append(("Аварийный останов установки (Нажать ПАЗ / ESD)", status == "esd"))
+    if defects.get("power_fail"):
+        emergency_tasks.append(("Обесточивание: Перекрытие подачи сырья (Закрыть V-1)", not v1))
+    if defects.get("air_fail"):
+        limit_temp = 240.0 if scenario_id == "startup" else 245.0
+        status = telemetry.get("status", "running")
+        emergency_tasks.append(("Отказ КИПиА: Снижение нагрева П-1 или кнопка ПАЗ (ESD)", status == "esd" or (t1_sp < limit_temp and t1 <= limit_temp)))
+    if defects.get("steam_fail"):
+        emergency_tasks.append(("Срыв пара: Сброс давления (Открыть V-2)", v2))
+        emergency_tasks.append(("Срыв пара: Дренаж куба (Открыть V-3)", v3))
+
+    if emergency_tasks:
+        tasks = emergency_tasks
+    elif scenario_id == "startup":
         tasks = [
             ("1. Подача сырья в змеевик П-1 (Открыть V-1)", v1),
             ("2. Разогрев печи (Поднять уставку и выйти на Т-1 >= 280°C)", t1 >= 280.0),

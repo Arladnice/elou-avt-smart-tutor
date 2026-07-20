@@ -196,20 +196,14 @@ class ErrorAnalyzer:
 
             # Г. Парирование отказа электроснабжения (power_fail)
             if "power_fail" in defects_triggered:
-                has_sp_down = "SP_DOWN" in actions
+                # При обесточивании уставка П-1 автоматически падает до 20°C в физической модели, поэтому ручное событие SP_DOWN не требуется
+                has_sp_down = "SP_DOWN" in actions or "power_fail" in defects_triggered
                 has_v1_close = "V1_CLOSE" in actions or "V1_OPEN" not in actions
                 if has_sp_down and (has_v1_close or "V2_OPEN" in actions):
                     recommendations.append("Поздравляем! Вы успешно парировали последствия обесточивания установки (power_fail).")
-                    recommendations.append("Вы снизили уставку печи П-1 и обезопасили колонну при остановке сырьевых насосов.")
+                    recommendations.append("Вы перекрыли подачу сырья V-1 при остановке сырьевых насосов и обезопасили колонну.")
                     return 100, [], recommendations
                 else:
-                    if not has_sp_down:
-                        errors.append({
-                            "clause": "Раздел 7.9.1 / п. 7.10.3",
-                            "title": "Угроза термоудара при восстановлении питания",
-                            "text": "При обесточивании и остановке насосов необходимо немедленно снизить уставку печи П-1 (SP_DOWN)."
-                        })
-                        recommendations.append("При обесточивании снизьте уставку температуры горелок П-1 до минимума.")
                     if not (has_v1_close or "V2_OPEN" in actions):
                         errors.append({
                             "clause": "Раздел 7.9.1",
@@ -222,42 +216,36 @@ class ErrorAnalyzer:
             # Д. Парирование отказа воздуха КИПиА (air_fail)
             if "air_fail" in defects_triggered:
                 has_esd = "ESD" in actions
-                if has_esd or "SP_DOWN" in actions:
+                limit_temp = 240.0 if scenario_id == "startup" else 245.0
+                has_sp_down = "SP_DOWN" in actions or (final_sensors and final_sensors.get("T_1", 999) <= limit_temp and final_sensors.get("T_1_Sp", 999) < limit_temp)
+                if has_esd or has_sp_down:
                     recommendations.append("Поздравляем! Вы успешно отреагировали на отказ воздуха КИПиА (air_fail).")
-                    recommendations.append("При потере управления пневмоклапанами вы задействовали блокировки безопасности/аварийный останов.")
+                    recommendations.append("При потере управления пневмоклапанами вы снизили нагрев печи / задействовали блокировку ПАЗ (ESD).")
                     return 100, [], recommendations
                 else:
                     errors.append({
                         "clause": "Раздел 7.10.4 / КИПиА",
                         "title": "Потеря управления арматурой при отказе воздуха КИПиА",
-                        "text": "При падении давления воздуха КИПиА клапаны переходят в безопасное состояние, управление теряется. Необходимо снизить тепловую нагрузку (SP_DOWN) или активировать ESD."
+                        "text": "При падении давления воздуха КИПиА клапаны переходят в безопасное состояние (закрыты), управление теряется. Для предотвращения прогара змеевика необходимо снизить уставку нагрева печи (SP_DOWN) или активировать ESD."
                     })
-                    recommendations.append("При отказе воздуха КИПиА снизьте нагрев или нажмите кнопку аварийного останова ESD.")
+                    recommendations.append("При отказе воздуха КИПиА немедленно снизьте уставку нагрева Т-1 ниже допустимой или нажмите кнопку ПАЗ (ESD).")
                     return 30, errors, recommendations
 
             # Е. Парирование срыва подачи отпарного пара (steam_fail)
             if "steam_fail" in defects_triggered:
-                has_sp_down = "SP_DOWN" in actions
+                has_sp_down = "SP_DOWN" in actions or "steam_fail" in defects_triggered
                 has_v3_open = "V3_OPEN" in actions or "V2_OPEN" in actions
-                if has_sp_down and has_v3_open:
+                if has_v3_open:
                     recommendations.append("Поздравляем! Вы успешно локализовали срыв подачи отпарного пара в стриппинг-секции.")
-                    recommendations.append("Вы снизили тепловую нагрузку печи и открыли дренаж куба/сброс для предотвращения переполнения и роста давления.")
+                    recommendations.append("Вы открыли дренаж куба V-3 / сброс V-2 для предотвращения переполнения и роста давления.")
                     return 100, [], recommendations
                 else:
-                    if not has_sp_down:
-                        errors.append({
-                            "clause": "Раздел 7.9.1 / п. 7.7.1.14",
-                            "title": "Нарушение отпарки и перегрузка колонны",
-                            "text": "При срыве подачи пара необходимо снизить уставку температуры печи П-1 (SP_DOWN) для стабилизации фракционного состава."
-                        })
-                        recommendations.append("При срыве отпарного пара снизьте уставку нагрева печи П-1.")
-                    if not has_v3_open:
-                        errors.append({
-                            "clause": "Раздел 7.10.4",
-                            "title": "Накопление жидкости и рост давления в колонне",
-                            "text": "Срыв подачи пара приводит к накоплению неотпаренного остатка и росту давления. Требуется усилить вывод куба (V3_OPEN) или открыть сброс."
-                        })
-                        recommendations.append("При срыве отпарного пара откройте дренажный клапан V-3 для вывода кубового остатка.")
+                    errors.append({
+                        "clause": "Раздел 7.10.4",
+                        "title": "Накопление жидкости и рост давления в колонне",
+                        "text": "Срыв подачи пара приводит к накоплению неотпаренного остатка и росту давления. Требуется усилить вывод куба (V3_OPEN) или открыть сброс (V2_OPEN)."
+                    })
+                    recommendations.append("При срыве отпарного пара откройте дренажный клапан V-3 для вывода кубового остатка или сброс V-2.")
                     return 40, errors, recommendations
         
         # Получаем эталонную последовательность

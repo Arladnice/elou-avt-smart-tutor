@@ -71,6 +71,21 @@ class TestKTKComponents(unittest.TestCase):
         self.assertEqual(self.simulator.sensors["T_1"], 280.0)
         self.assertEqual(self.simulator.sensors["L_1"], 50.0)
 
+    def test_simulator_startup_physics(self):
+        """Проверяет корректное заполнение уровня и рост давления при технологическом пуске."""
+        self.simulator.reset("startup")
+        self.simulator.set_valve("V_1", True)
+        self.simulator.set_setpoint("T_1_Sp", 280.0)
+        
+        # Моделируем 60 секунд пуска
+        for _ in range(60):
+            state = self.simulator.step()
+            self.assertEqual(state["status"], "running")
+            
+        self.assertGreater(state["sensors"]["L_1"], 25.0)  # Уровень должен стабильно расти (>25% за 60 секунд)
+        self.assertGreater(state["sensors"]["T_1"], 150.0) # Печь прогревается (>150°C)
+        self.assertGreater(state["sensors"]["P_1"], 0.08)  # Давление растёт от атмосферного (0.05 МПа)
+
     def test_simulator_snapshots(self):
         """Проверяет создание снимка состояния симулятора и откат к нему."""
         self.simulator.reset("shutdown")
@@ -362,11 +377,11 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         sim.reset("shutdown")
         sim.sensors["L_1"] = 14.0  # Уровень ниже порога 15%
         
-        # Делаем шаг симуляции и проверяем, что расход сырья F_in = 0, поэтому уровень не растет от V_1
+        # Делаем шаг симуляции и проверяем, что расход сырья F_in = 0 и кубовый насос V-3 остановлен (защита от сухого хода)
         prev_L = sim.sensors["L_1"]
-        # Поскольку V_3 открыт (дренаж), без прихода сырья уровень должен уменьшиться
         state = sim.step()
-        self.assertLess(state["sensors"]["L_1"], prev_L, "При L-1 < 15% блокируются сырьевые насосы (F_in = 0), поэтому уровень уменьшается при открытом дренаже V-3")
+        # При сработке блокировки сухого хода (L < 15%) насосы остановлены (dL = 0), уровень изменяется только в пределах случайного шума (+-0.05%) и не растет от V_1 (+0.5%)
+        self.assertLessEqual(state["sensors"]["L_1"], prev_L + 0.1, "При L-1 < 15% блокируется подача сырья (F_in = 0), поэтому уровень не растет от V_1")
 
     @classmethod
     def tearDownClass(cls):
