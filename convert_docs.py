@@ -16,6 +16,8 @@ def get_topic(filename):
         return "ИТ_архитектура"
     elif "кейс" in name_lower or "case" in name_lower:
         return "Кейс"
+    elif "ml" in name_lower or "двойник" in name_lower or "мл" in name_lower:
+        return "ML_в_цифровых_двойниках"
     else:
         return "Общее_Исходные_данные"
 
