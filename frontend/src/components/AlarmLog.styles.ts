@@ -106,3 +106,40 @@ export const RepeatBadge = styled.span<{ severity: string }>`
   display: inline-block;
   vertical-align: middle;
 `;
+
+export const FeedbackWrapper = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+`;
+
+export const FeedbackActionBtn = styled.button<{ fbType: 'confirm' | 'reject' }>`
+  background-color: ${props => props.fbType === 'confirm' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(255, 77, 79, 0.15)'};
+  border: 1px solid ${props => props.fbType === 'confirm' ? '#52c41a' : '#ff4d4f'};
+  color: ${props => props.fbType === 'confirm' ? '#52c41a' : '#ff4d4f'};
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    opacity: 0.85;
+    transform: scale(1.03);
+  }
+`;
+
+export const FeedbackBadge = styled.span<{ fbType: 'confirmed' | 'false_alarm' }>`
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 8px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: ${props => props.fbType === 'confirmed' ? '#52c41a' : '#ff4d4f'};
+  background-color: ${props => props.fbType === 'confirmed' ? 'rgba(82, 196, 26, 0.12)' : 'rgba(255, 77, 79, 0.12)'};
+  border: 1px solid ${props => props.fbType === 'confirmed' ? 'rgba(82, 196, 26, 0.4)' : 'rgba(255, 77, 79, 0.4)'};
+`;
+

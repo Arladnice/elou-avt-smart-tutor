@@ -18,7 +18,7 @@ def generate_telemetry_data(output_path, num_samples=100000):
     sim = ELOUAVTSimulator()
     
     headers = [
-        "time_elapsed", "valve_V1", "valve_V2", "valve_V3", 
+        "session_id", "time_elapsed", "valve_V1", "valve_V2", "valve_V3", 
         "furnaceTempSp", "furnaceTemp", "columnPres", "columnLevel",
         "defect_pump_fail", "defect_coil_overheat", "defect_valve_jam",
         "defect_power_fail", "defect_air_fail", "defect_steam_fail",
@@ -27,6 +27,7 @@ def generate_telemetry_data(output_path, num_samples=100000):
     
     records_generated = 0
     last_reported = 0
+    session_id = 0
     
     with open(output_path, mode="w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -37,6 +38,7 @@ def generate_telemetry_data(output_path, num_samples=100000):
             if records_generated - last_reported >= 10000:
                 print(f"Сгенерировано: {records_generated} / {num_samples} строк ({records_generated/num_samples*100:.1f}%)")
                 last_reported = records_generated
+            session_id += 1
             sim.reset()
             scenario_type = random.choice([
                 "normal", "startup", "defect_overheat", "defect_pump", "defect_jam",
@@ -170,6 +172,7 @@ def generate_telemetry_data(output_path, num_samples=100000):
                 
                 # Записываем строку в датасет
                 writer.writerow([
+                    session_id,
                     state["timeElapsed"],
                     1 if state["valves"]["V_1"] else 0,
                     1 if state["valves"]["V_2"] else 0,

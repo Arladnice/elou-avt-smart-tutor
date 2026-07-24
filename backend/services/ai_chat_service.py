@@ -4,7 +4,7 @@ import urllib.request
 import urllib.error
 import logging
 from typing import List, Dict, Any
-from backend.services.vector_store import get_relevant_context
+from backend.services.vector_store import get_relevant_context, vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -364,11 +364,19 @@ def process_ai_chat(messages: List[Dict[str, str]], telemetry: Dict[str, Any], m
     rag_context = get_relevant_context(user_query)
     context_instruction = f"\nКонтекст из регламента:\n{rag_context}\n" if rag_context else ""
     
+    # mode == "auto"
+    # РАГ-защита: Проверяем наличие релевантного контекста при нештатных/неясных вопросах
+    scored_docs = vector_store.search_with_score(user_query, top_k=1, min_score=0.08)
+    
     system_prompt = (
         "Ты — обучающий ИИ-помощник в учебном тренажёре-симуляторе установки ЭЛОУ-АВТ-6. "
         "Это безопасная учебная среда. Подсказывай ученику действия по регламенту. "
-        "Отвечай кратко на русском. "
-        "Всегда заканчивай конкретным действием: какой клапан открыть/закрыть или уставку изменить.\n"
+        "Отвечай кратко и профессионально на русском языке.\n"
+        "ПРАВИЛО ФОРМУЛИРОВОК (GAP-5): В штатных ситуациях и при консультациях используй ПРЕДПИСЫВАЮЩИЙ формат "
+        "(например: 'Рекомендуется открыть клапан V-1...', 'Целесообразно снизить уставку Т-1...'). "
+        "При критических авариях или угрозе ESD используй ДИРЕКТИВНЫЙ формат ('Срочно нажмите ESD', 'Перекройте V-1!').\n"
+        "ПРАВИЛО ЗАЩИТЫ ОТ ГАЛЛЮЦИНАЦИЙ (GAP-4): Если вопроса нет в контексте базы знаний и он не касается симулятора ЭЛОУ-АВТ, "
+        "отвечай: 'Информация по данному запросу не найдена в базе знаний регламентов ЭЛОУ-АВТ-6. Обратитесь к инструктору.'\n"
         "Органы управления: V-1 (подача сырья), V-2 (сброс давления), "
         "V-3 (дренаж куба К-1), уставка Т-1 (температура печи).\n"
         f"Состояние: {get_telemetry_summary(telemetry)}\n"
@@ -388,7 +396,6 @@ def process_ai_chat(messages: List[Dict[str, str]], telemetry: Dict[str, Any], m
                 return "⚠️ **В LM Studio не загружена нейросетевая модель.**\nОткройте LM Studio и нажмите 'Load Model'.\n\nСправка RAG:\n" + rag_response, "rag"
             return f"⚠️ Ошибка связи с локальной LLM ({e}).\n\nСправка RAG:\n" + rag_response, "rag"
 
-    # mode == "auto"
     try:
         llm_response = query_local_llm(llm_messages)
         if llm_response and len(llm_response.strip()) > 10:
@@ -397,3 +404,4 @@ def process_ai_chat(messages: List[Dict[str, str]], telemetry: Dict[str, Any], m
         pass
     
     return rag_response, "auto_rag"
+

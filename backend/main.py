@@ -16,7 +16,7 @@ if ROOT_DIR not in sys.path:
 from backend.db.database import init_db
 from backend.services.simulation_loop import simulation_loop
 from backend.utils.security import log_audit_event
-from backend.routes import auth, sessions, ws, health, ai_chat
+from backend.routes import auth, sessions, ws, health, ai_chat, alarm_feedback
 
 # Setup logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -63,6 +63,8 @@ app.include_router(sessions.router)
 app.include_router(ws.router)
 app.include_router(health.router)
 app.include_router(ai_chat.router)
+app.include_router(alarm_feedback.router)
+
 
 
 # Раздача собранного фронтенда (SPA) — для деплоя в одном контейнере (HF Spaces)

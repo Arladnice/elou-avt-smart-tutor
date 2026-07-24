@@ -49,4 +49,9 @@ class SystemMetrics(BaseModel):
     avg_ping_latency_ms: float
     is_ollama_available: bool
 
-
+class AlarmFeedbackRequest(BaseModel):
+    """Запрос на фидбек к аларму ИИ (GAP-6: Обратная связь для замкнутого контура)."""
+    alarm_id: str = Field(..., description="Идентификатор аларма")
+    feedback: Literal["confirmed", "false_alarm"] = Field(..., description="Оценка аларма: подтвержден или ложная тревога")
+    instructor_name: str = Field(default="Инструктор", description="Имя инструктора")
+    details: str = Field(default="", description="Дополнительное примечание")

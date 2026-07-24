@@ -23,7 +23,10 @@ FORECAST_HORIZON = 15
 LEARNING_RATE = 0.001
 EPOCHS = 15
 BATCH_SIZE = 128
-TRAIN_VAL_SPLIT = 0.8
+TRAIN_SPLIT = 0.7
+VAL_SPLIT = 0.15
+TEST_SPLIT = 0.15
+RISK_THRESHOLD = 50.0  # Порог бинаризации риска для метрик классификации (>=50% = аварийная ситуация)
 
 # === Normalization Constants ===
 # [valve_V1, valve_V2, valve_V3, furnaceTempSp, furnaceTemp, columnPres, columnLevel]

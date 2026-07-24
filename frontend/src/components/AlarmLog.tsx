@@ -2,21 +2,32 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
 import type { LogEntry } from '../context/SimulatorContext';
 import { AlertTriangle, Info, AlertOctagon, HelpCircle } from 'lucide-react';
+import { apiService } from '../services/api';
 import * as S from './AlarmLog.styles';
 
 const AlarmLog: React.FC = () => {
   const { logs } = useSimulator();
   const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
+  const [feedbackStatus, setFeedbackStatus] = useState<Record<number, 'confirmed' | 'false_alarm'>>({});
   const consoleEndRef = useRef<HTMLDivElement>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
 
-  // Автоматический скролл вниз при добавлении новых логов (только внутри контейнера)
+  // Автоматический скролл вниз при добавлении новых логов
   useEffect(() => {
     const el = consoleRef.current;
     if (el) {
       el.scrollTop = el.scrollHeight;
     }
   }, [logs, filterSeverity]);
+
+  const handleFeedback = async (logId: number, fbType: 'confirmed' | 'false_alarm') => {
+    try {
+      await apiService.sendAlarmFeedback(String(logId), fbType);
+      setFeedbackStatus(prev => ({ ...prev, [logId]: fbType }));
+    } catch (e) {
+      console.error('Ошибка отправки фидбека аларма:', e);
+    }
+  };
 
   const getSeverity = (log: LogEntry): 'CRITICAL' | 'WARNING' | 'INFO' | 'NO_DATA' => {
     if (log.severity) return log.severity;
@@ -79,6 +90,9 @@ const AlarmLog: React.FC = () => {
       <S.LogConsole ref={consoleRef}>
         {filteredLogs.map(log => {
           const severity = getSeverity(log);
+          const isAlarm = severity === 'CRITICAL' || severity === 'WARNING';
+          const fb = feedbackStatus[log.id];
+
           return (
             <S.LogRow key={log.id} severity={severity}>
               <S.Timestamp>[{log.time}]</S.Timestamp>
@@ -88,6 +102,22 @@ const AlarmLog: React.FC = () => {
                 {log.repeat_count && log.repeat_count > 1 ? (
                   <S.RepeatBadge severity={severity}>×{log.repeat_count}</S.RepeatBadge>
                 ) : null}
+                {isAlarm && (
+                  fb ? (
+                    <S.FeedbackBadge fbType={fb}>
+                      {fb === 'confirmed' ? '✅ Подтвержден' : '❌ Ложная тревога'}
+                    </S.FeedbackBadge>
+                  ) : (
+                    <S.FeedbackWrapper>
+                      <S.FeedbackActionBtn fbType="confirm" title="Подтвердить реакцию ИИ" onClick={() => handleFeedback(log.id, 'confirmed')}>
+                        ✅
+                      </S.FeedbackActionBtn>
+                      <S.FeedbackActionBtn fbType="reject" title="Отметить как ложную тревогу" onClick={() => handleFeedback(log.id, 'false_alarm')}>
+                        ❌
+                      </S.FeedbackActionBtn>
+                    </S.FeedbackWrapper>
+                  )
+                )}
               </S.Message>
             </S.LogRow>
           );
@@ -97,6 +127,7 @@ const AlarmLog: React.FC = () => {
     </S.LogContent>
   );
 };
+
 
 export default AlarmLog;
 

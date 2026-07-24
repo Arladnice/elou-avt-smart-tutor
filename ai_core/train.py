@@ -14,8 +14,8 @@ if ROOT_DIR not in sys.path:
 from ai_core.config import (
     RANDOM_SEED, INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM, DROPOUT,
     LEARNING_RATE, EPOCHS, BATCH_SIZE, SEQUENCE_LENGTH, FORECAST_HORIZON,
-    TRAIN_VAL_SPLIT, DATASET_PATH, MODEL_PATH, SCALER_MIN, SCALER_MAX,
-    OUT_MIN, OUT_MAX
+    TRAIN_SPLIT, VAL_SPLIT, TEST_SPLIT, DATASET_PATH, MODEL_PATH,
+    SCALER_MIN, SCALER_MAX, OUT_MIN, OUT_MAX, BASE_DIR
 )
 from ai_core.predictive_engine import RiskLSTM
 
@@ -39,54 +39,76 @@ def denormalize_output(data_norm):
     """Денормализует выходные данные (3 параметра прогноза)."""
     return data_norm * (OUT_MAX - OUT_MIN) + OUT_MIN
 
+def build_windows_from_sessions(session_dict, session_ids):
+    """Строит окна X и y строго в пределах каждой сессии (без утечки данных)."""
+    X_list, y_list = [], []
+    TARGET_COLS = [4, 5, 6]  # [furnaceTemp, columnPres, columnLevel]
+    
+    for sid in session_ids:
+        raw_rows = np.array(session_dict[sid], dtype=np.float32)
+        if len(raw_rows) < SEQUENCE_LENGTH + FORECAST_HORIZON:
+            continue
+        norm_rows = normalize(raw_rows)
+        for i in range(len(norm_rows) - SEQUENCE_LENGTH - FORECAST_HORIZON + 1):
+            X_list.append(norm_rows[i : i + SEQUENCE_LENGTH])
+            y_list.append(norm_rows[i + SEQUENCE_LENGTH + FORECAST_HORIZON - 1, TARGET_COLS])
+            
+    if not X_list:
+        return np.empty((0, SEQUENCE_LENGTH, INPUT_DIM), dtype=np.float32), np.empty((0, OUTPUT_DIM), dtype=np.float32)
+    return np.array(X_list, dtype=np.float32), np.array(y_list, dtype=np.float32)
+
 def train_lstm_model():
-    """Выполняет обучение модели RiskLSTM."""
+    """Выполняет обучение модели RiskLSTM с разделением на Train/Val/Test по сессиям."""
     set_seeds()
 
     if not os.path.exists(DATASET_PATH):
         logger.error("Файл датасета %s не найден. Сначала сгенерируйте данные.", DATASET_PATH)
         return False
         
-    logger.info("Подготовка данных для обучения LSTM из %s...", DATASET_PATH)
+    logger.info("Подготовка сессионных данных для обучения из %s...", DATASET_PATH)
     
-    # Чтение 7 фичей из датасета
-    FEATURE_INDICES = [1, 2, 3, 4, 5, 6, 7]
+    # Чтение сессий из датасета (session_id=0, фичи 2..8)
+    FEATURE_INDICES = [2, 3, 4, 5, 6, 7, 8]
+    session_dict = {}
     
-    data = []
     with open(DATASET_PATH, "r", encoding="utf-8") as f:
         lines = f.readlines()
         for line in lines[1:]:  # пропускаем заголовок
             parts = line.strip().split(",")
+            sid = int(parts[0])
             row = [float(parts[idx]) for idx in FEATURE_INDICES]
-            data.append(row)
+            if sid not in session_dict:
+                session_dict[sid] = []
+            session_dict[sid].append(row)
             
-    data = np.array(data, dtype=np.float32)
-    logger.info("Прочитано строк: %d. Число фичей: %d", len(data), data.shape[1])
+    session_ids = list(session_dict.keys())
+    logger.info("Всего прочитано сессий: %d, строк: %d", len(session_ids), sum(len(v) for v in session_dict.values()))
     
-    # Нормализуем данные
-    data_norm = normalize(data)
+    # Разделение по session_id (70% Train / 15% Val / 15% Test)
+    n_sessions = len(session_ids)
+    train_end = int(n_sessions * TRAIN_SPLIT)
+    val_end = int(n_sessions * (TRAIN_SPLIT + VAL_SPLIT))
     
-    # Позиции furnaceTemp, columnPres, columnLevel в data_norm
-    TARGET_COLS = [4, 5, 6]
+    train_sids = session_ids[:train_end]
+    val_sids   = session_ids[train_end:val_end]
+    test_sids  = session_ids[val_end:]
     
-    X_list, y_list = [], []
-    for i in range(len(data_norm) - SEQUENCE_LENGTH - FORECAST_HORIZON):
-        X_list.append(data_norm[i : i + SEQUENCE_LENGTH])
-        y_list.append(data_norm[i + SEQUENCE_LENGTH + FORECAST_HORIZON - 1, TARGET_COLS])
-        
-    X_all = np.array(X_list, dtype=np.float32)
-    y_all = np.array(y_list, dtype=np.float32)
+    X_train_np, y_train_np = build_windows_from_sessions(session_dict, train_sids)
+    X_val_np, y_val_np     = build_windows_from_sessions(session_dict, val_sids)
+    X_test_np, y_test_np   = build_windows_from_sessions(session_dict, test_sids)
     
-    # Разделение выборки
-    split_idx = int(len(X_all) * TRAIN_VAL_SPLIT)
-    X_train = torch.tensor(X_all[:split_idx], dtype=torch.float32)
-    y_train = torch.tensor(y_all[:split_idx], dtype=torch.float32)
-    X_val   = torch.tensor(X_all[split_idx:], dtype=torch.float32)
-    y_val   = torch.tensor(y_all[split_idx:], dtype=torch.float32)
+    logger.info("Окна — Train: %d | Val: %d | Test: %d", X_train_np.shape[0], X_val_np.shape[0], X_test_np.shape[0])
     
-    logger.info("Обучающая выборка: %d окон | Валидационная: %d окон", X_train.shape[0], X_val.shape[0])
+    # Сохраняем непересекающийся Test Set для модуля evaluate.py (GAP-3)
+    test_path = os.path.join(BASE_DIR, "test_data.npz")
+    np.savez_compressed(test_path, X_test=X_test_np, y_test=y_test_np)
+    logger.info("Тестовая выборка сохранена в: %s", test_path)
     
-    # Создание модели
+    X_train = torch.tensor(X_train_np, dtype=torch.float32)
+    y_train = torch.tensor(y_train_np, dtype=torch.float32)
+    X_val   = torch.tensor(X_val_np, dtype=torch.float32)
+    y_val   = torch.tensor(y_val_np, dtype=torch.float32)
+    
     model = RiskLSTM(
         input_dim=INPUT_DIM,
         hidden_dim=HIDDEN_DIM,
@@ -121,12 +143,10 @@ def train_lstm_model():
         scheduler.step()
         train_mse = epoch_loss / train_size
         
-        # Валидация
         model.eval()
         with torch.no_grad():
             val_preds = model(X_val)
             val_mse = criterion(val_preds, y_val).item()
-            # MAE в реальных единицах
             val_pred_real = denormalize_output(val_preds.numpy())
             val_true_real = denormalize_output(y_val.numpy())
             mae_temp  = np.mean(np.abs(val_pred_real[:, 0] - val_true_real[:, 0]))

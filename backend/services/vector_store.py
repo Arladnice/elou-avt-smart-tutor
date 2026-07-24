@@ -44,13 +44,21 @@ class VectorStore:
                 filepath = os.path.join(KB_DIR, filename)
                 with open(filepath, "r", encoding="utf-8") as f:
                     content = f.read()
-                    chunks = [chunk.strip() for chunk in content.split("\n\n") if len(chunk.strip()) > 30]
-                    for chunk in chunks:
+                    # Структурированное разбиение по заголовкам markdown (##, ###) или двойному переносу
+                    sections = re.split(r'\n(?=#{1,4}\s)', content)
+                    for sec in sections:
+                        sec_clean = sec.strip()
+                        if len(sec_clean) < 20:
+                            continue
+                        # Извлекаем заголовок раздела
+                        first_line = sec_clean.split('\n')[0].strip()
+                        section_name = first_line.lstrip('#').strip() if first_line.startswith('#') else "Общее"
                         self.documents.append({
                             "source": filename,
-                            "content": chunk
+                            "section": section_name,
+                            "content": sec_clean
                         })
-        logger.info(f"Загружено {len(self.documents)} фрагментов базы знаний.")
+        logger.info(f"Загружено {len(self.documents)} структурированных фрагментов базы знаний.")
 
     def tokenize(self, text: str):
         return re.findall(r'\b[а-яёa-z0-9_]{3,}\b', text.lower())
@@ -78,7 +86,7 @@ class VectorStore:
             self.doc_vectors.append(vec_norm)
             
         self.is_ready = True
-        logger.info("Легковесный индекс TF-IDF построен (минимум потребления памяти).")
+        logger.info("Легковесный индекс TF-IDF построен.")
 
     def build_faiss_index(self):
         if not self.model or not self.documents:
@@ -91,14 +99,15 @@ class VectorStore:
         self.is_ready = True
         logger.info(f"FAISS индекс построен: {len(self.documents)} фрагментов.")
 
-    def search(self, query: str, top_k: int = 3):
+    def search_with_score(self, query: str, top_k: int = 3, min_score: float = 0.08):
+        """Возвращает список результатов с их релевантностью: [{'doc': ..., 'score': float}]."""
         if not self.is_ready or not self.documents:
             return []
             
         if self.use_lightweight:
             query_tokens = self.tokenize(query)
             if not query_tokens:
-                return self.documents[:top_k]
+                return []
             
             tf = Counter(query_tokens)
             total = len(query_tokens) or 1
@@ -114,8 +123,8 @@ class VectorStore:
             scores.sort(key=lambda x: x[0], reverse=True)
             results = []
             for sim, i in scores[:top_k]:
-                if sim > 0.01 or len(results) < 1:
-                    results.append(self.documents[i])
+                if sim >= min_score:
+                    results.append({"doc": self.documents[i], "score": float(sim)})
             return results
         else:
             query_vector = self.model.encode([query], convert_to_numpy=True)
@@ -123,20 +132,30 @@ class VectorStore:
             results = []
             for i, idx in enumerate(indices[0]):
                 if 0 <= idx < len(self.documents):
-                    results.append(self.documents[idx])
+                    # FAISS L2 distance -> чем меньше, тем ближе
+                    dist = float(distances[0][i])
+                    sim = max(0.0, 1.0 - dist / 100.0)
+                    if sim >= min_score:
+                        results.append({"doc": self.documents[idx], "score": sim})
             return results
+
+    def search(self, query: str, top_k: int = 3, min_score: float = 0.08):
+        results = self.search_with_score(query, top_k=top_k, min_score=min_score)
+        return [res["doc"] for res in results]
 
 # Глобальный инстанс
 vector_store = VectorStore()
 
-def get_relevant_context(query: str, top_k: int = 3) -> str:
-    """Возвращает строку с контекстом из базы знаний."""
-    results = vector_store.search(query, top_k)
-    if not results:
+def get_relevant_context(query: str, top_k: int = 3, min_score: float = 0.08) -> str:
+    """Возвращает строку с контекстом из базы знаний, если порог релевантности пройден."""
+    scored_results = vector_store.search_with_score(query, top_k=top_k, min_score=min_score)
+    if not scored_results:
         return ""
     
     context_parts = []
-    for res in results:
-        context_parts.append(f"[{res['source']}]:\n{res['content']}")
+    for res in scored_results:
+        doc = res["doc"]
+        context_parts.append(f"[{doc['source']} | {doc.get('section', 'Раздел')}]:\n{doc['content']}")
     
     return "\n\n".join(context_parts)
+

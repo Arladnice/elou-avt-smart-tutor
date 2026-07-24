@@ -147,4 +147,20 @@ export const apiService = {
     }
     return response.json();
   },
+
+  /**
+   * Sends instructor feedback for AI alarm (GAP-6: Closed Loop Feedback)
+   */
+  async sendAlarmFeedback(alarmId: string, feedback: 'confirmed' | 'false_alarm', instructorName: string = 'Инструктор', details: string = ''): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${BASE_URL}/alarm-feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alarm_id: alarmId, feedback, instructor_name: instructorName, details }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to send alarm feedback');
+    }
+    return response.json();
+  },
 };
+
