@@ -122,7 +122,7 @@ class ConnectionManager:
         )
         
         # Запускаем оценку действий по DTW
-        score, errors, recs = self.analyzer.evaluate_session(
+        score, errors, recs, recommended_scenario_id = self.analyzer.evaluate_session(
             self.actions_taken,
             self.active_scenario,
             self.defects_triggered,
@@ -148,7 +148,8 @@ class ConnectionManager:
                 "grade": safety_grade,
                 "duration": sim_state["timeElapsed"],
                 "errors": errors,
-                "recommendations": recs
+                "recommendations": recs,
+                "recommended_scenario_id": recommended_scenario_id
             }
             
         return {

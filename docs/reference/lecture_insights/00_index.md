@@ -16,6 +16,8 @@
 | 5 | ИТ-архитектура (14.07) | [05_it_architecture.md](05_it_architecture.md) | Дмитрий Карев | 4+1, Solution Arch, варианты |
 | 6 | Умный мониторинг (16.07) | [06_smart_monitoring.md](06_smart_monitoring.md) | Игорь Капитульский | Observability, алармы, MVP |
 | 7 | ML в цифровых двойниках (20.07) | [07_ml_digital_twins.md](07_ml_digital_twins.md) | Евгений Вылегжанин | 6 вопросов, Baseline, Recall/PR-AUC, 3 кейса |
+| 8 | Разъяснение ИИ в тренажёре (IT Camp) | [08_ai_consultation_it_camp.md](08_ai_consultation_it_camp.md) | Евгений Вылегжанин | 3 уровня тренажера, ИИ vs не-ИИ, 5-балльная шкала, ИБ/юридические риски |
+
 
 ---
 

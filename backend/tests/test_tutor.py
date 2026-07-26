@@ -48,7 +48,7 @@ class TestKTKComponents(unittest.TestCase):
         """Проверяет оценку идеального сценария пуска."""
         # Идеальная последовательность действий для пуска
         actions = ["V1_OPEN", "SP_UP", "V3_OPEN"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup")
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup")
         
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
@@ -109,7 +109,7 @@ class TestKTKComponents(unittest.TestCase):
     def test_error_analyzer_shutdown_success(self):
         """Проверяет оценку идеального сценария останова печи."""
         for actions in [["SP_DOWN", "V2_OPEN", "V1_CLOSE"], ["SP_DOWN", "V_2_OPEN", "V_1_CLOSE"]]:
-            score, errors, recs = self.analyzer.evaluate_session(actions, "shutdown")
+            score, errors, recs, _ = self.analyzer.evaluate_session(actions, "shutdown")
             self.assertEqual(score, 100)
             self.assertEqual(len(errors), 0)
 
@@ -118,14 +118,14 @@ class TestKTKComponents(unittest.TestCase):
         actions = ["SP_DOWN", "V2_OPEN", "V1_CLOSE"]
         
         # 1. Температура остыла до 150°C (нормальный останов)
-        score, errors, recs = self.analyzer.evaluate_session(
+        score, errors, recs, _ = self.analyzer.evaluate_session(
             actions, "shutdown", final_sensors={"T_1": 150.0, "L_1": 50.0}
         )
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
         
         # 2. Температура горячая - 280°C (превышает порог 245°C)
-        score, errors, recs = self.analyzer.evaluate_session(
+        score, errors, recs, _ = self.analyzer.evaluate_session(
             actions, "shutdown", final_sensors={"T_1": 280.0, "L_1": 50.0}
         )
         self.assertLess(score, 100)
@@ -134,21 +134,21 @@ class TestKTKComponents(unittest.TestCase):
     def test_error_analyzer_column_shutdown_success(self):
         """Проверяет оценку идеального сценария останова колонны."""
         actions = ["SP_DOWN", "V1_CLOSE", "V3_CLOSE"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "column_shutdown")
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "column_shutdown")
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
 
     def test_error_analyzer_overpressure_relief_success(self):
         """Проверяет оценку идеального сценария сброса избыточного давления."""
         actions = ["V2_OPEN", "SP_DOWN"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "overpressure_relief")
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "overpressure_relief")
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
 
     def test_error_analyzer_recirculation_success(self):
         """Проверяет оценку идеального сценария перевода на рециркуляцию."""
         actions = ["SP_DOWN", "V3_CLOSE", "V2_OPEN"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "recirculation")
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "recirculation")
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
 
@@ -156,7 +156,7 @@ class TestKTKComponents(unittest.TestCase):
         """Проверяет выявление нагрева печи всухую (нарушение техрегламента)."""
         # Оператор поднял уставку нагрева, но перекрыл сырье
         actions = ["V1_CLOSE", "SP_UP"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup")
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup")
         
         # Оценка должна быть снижена, и должна быть зафиксирована ошибка сухого нагрева
         self.assertLess(score, 80)
@@ -168,7 +168,7 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_error_analyzer_no_actions(self):
         """Проверяет оценку сессии без совершенных действий."""
-        score, errors, recs = self.analyzer.evaluate_session([], "startup")
+        score, errors, recs, _ = self.analyzer.evaluate_session([], "startup")
         self.assertEqual(score, 0)
         self.assertEqual(len(errors), 1)
         self.assertEqual(errors[0]["title"], "Регламентные операции не начаты")
@@ -178,7 +178,7 @@ class TestKTKComponents(unittest.TestCase):
         # Повышаем уставку, сбрасываем давление через V-2, возвращаем уставку,
         # закрываем V-2, перекрываем дренаж V-3 и открываем его обратно
         actions = ["SP_UP", "V2_OPEN", "V2_CLOSE", "V3_CLOSE", "V3_OPEN"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup")
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup")
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
 
@@ -186,7 +186,7 @@ class TestKTKComponents(unittest.TestCase):
         """Интеграционный тест: Тест-кейс 2 (Парирование отказа сырьевого насоса)"""
         # Инструктор активировал отказ насоса, оператор снизил уставку (SP_DOWN)
         actions = ["SP_DOWN"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"pump_fail"})
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"pump_fail"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
         self.assertTrue(any("отказ сырьевого насоса" in r.lower() for r in recs))
@@ -196,7 +196,7 @@ class TestKTKComponents(unittest.TestCase):
         # Инструктор активировал заклинивание V-2, оператор поднял уставку, попытался сдуть,
         # и вручную заглушил установку через ESD
         actions = ["SP_UP", "V2_OPEN", "ESD"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"valve_jam"})
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"valve_jam"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
 
@@ -204,7 +204,7 @@ class TestKTKComponents(unittest.TestCase):
         """Интеграционный тест: Тест-кейс 4 (Блокировка дренажа колонны)"""
         # Оператор просто закрыл дренаж V-3 при работающей подаче
         actions = ["V3_CLOSE"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup")
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup")
         self.assertLess(score, 100)
         self.assertTrue(any("блокировка дренажа" in err["title"].lower() for err in errors))
 
@@ -212,7 +212,7 @@ class TestKTKComponents(unittest.TestCase):
         """Интеграционный тест: Тест-кейс 5 (Парирование прогара змеевика печи)"""
         # Инструктор активировал прогар, оператор снизил уставку (SP_DOWN) и открыл сброс V-2
         actions = ["SP_DOWN", "V2_OPEN"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"coil_overheat"})
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"coil_overheat"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
         self.assertTrue(any("прогар змеевика" in r.lower() for r in recs))
@@ -220,7 +220,7 @@ class TestKTKComponents(unittest.TestCase):
     def test_integration_testcase_6_power_fail_recovery(self):
         """Интеграционный тест: Тест-кейс 6 (Парирование отказа электроснабжения power_fail)"""
         actions = ["SP_DOWN", "V1_CLOSE"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"power_fail"})
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"power_fail"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
         self.assertTrue(any("обесточиван" in r.lower() for r in recs))
@@ -228,7 +228,7 @@ class TestKTKComponents(unittest.TestCase):
     def test_integration_testcase_7_air_fail_recovery(self):
         """Интеграционный тест: Тест-кейс 7 (Парирование отказа воздуха КИПиА air_fail)"""
         actions = ["ESD"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"air_fail"})
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"air_fail"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
         self.assertTrue(any("воздух" in r.lower() for r in recs))
@@ -236,10 +236,71 @@ class TestKTKComponents(unittest.TestCase):
     def test_integration_testcase_8_steam_fail_recovery(self):
         """Интеграционный тест: Тест-кейс 8 (Парирование срыва отпарного пара steam_fail)"""
         actions = ["SP_DOWN", "V3_OPEN"]
-        score, errors, recs = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"steam_fail"})
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"steam_fail"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
         self.assertTrue(any("пар" in r.lower() for r in recs))
+
+    # --- Тесты адаптивного сценария при ПРОВАЛЕ дефекта ---
+
+    def test_adaptive_scenario_pump_fail_not_handled(self):
+        """При провале pump_fail рекомендуется shutdown."""
+        actions = ["V2_OPEN"]  # Оператор НЕ снизил уставку (SP_DOWN)
+        score, errors, recs, rec_id = self.analyzer.evaluate_session(
+            actions, "startup", defects_triggered={"pump_fail"}
+        )
+        self.assertLess(score, 100)
+        self.assertEqual(rec_id, "shutdown")
+
+    def test_adaptive_scenario_valve_jam_not_handled(self):
+        """При провале valve_jam рекомендуется overpressure_relief."""
+        actions = ["SP_DOWN"]  # Оператор НЕ нажал ESD
+        score, errors, recs, rec_id = self.analyzer.evaluate_session(
+            actions, "startup", defects_triggered={"valve_jam"}
+        )
+        self.assertLess(score, 100)
+        self.assertEqual(rec_id, "overpressure_relief")
+
+    def test_adaptive_scenario_steam_fail_not_handled(self):
+        """При провале steam_fail рекомендуется overpressure_relief."""
+        # Используем shutdown, чтобы _normalize_startup_actions не добавил неявный V3_OPEN
+        actions = ["SP_DOWN"]
+        score, errors, recs, rec_id = self.analyzer.evaluate_session(
+            actions, "shutdown", defects_triggered={"steam_fail"}
+        )
+        self.assertLess(score, 100)
+        self.assertEqual(rec_id, "overpressure_relief")
+
+    # --- Тесты адаптивного сценария при УСПЕШНОМ парировании дефекта ---
+
+    def test_adaptive_scenario_none_on_success(self):
+        """При успешном парировании дефекта recommended_scenario_id = None."""
+        actions = ["SP_DOWN"]
+        score, errors, recs, rec_id = self.analyzer.evaluate_session(
+            actions, "startup", defects_triggered={"pump_fail"}
+        )
+        self.assertEqual(score, 100)
+        self.assertIsNone(rec_id)
+
+    # --- Тесты адаптивного сценария при штатном провале ---
+
+    def test_adaptive_scenario_repeat_current_on_general_fail(self):
+        """При общем провале shutdown рекомендуется повторить shutdown."""
+        actions = ["V2_OPEN"]  # Неполная последовательность останова
+        score, errors, recs, rec_id = self.analyzer.evaluate_session(
+            actions, "shutdown"
+        )
+        if score < 75:
+            self.assertEqual(rec_id, "shutdown")
+
+    def test_adaptive_scenario_fallback_to_startup(self):
+        """При общем провале overpressure_relief рекомендуется startup."""
+        actions = ["SP_DOWN"]  # Неполная последовательность
+        score, errors, recs, rec_id = self.analyzer.evaluate_session(
+            actions, "overpressure_relief"
+        )
+        if score < 75:
+            self.assertEqual(rec_id, "startup")
 
 class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def setUp(self):

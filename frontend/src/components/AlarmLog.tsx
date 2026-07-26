@@ -8,7 +8,7 @@ import * as S from './AlarmLog.styles';
 const AlarmLog: React.FC = () => {
   const { logs } = useSimulator();
   const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
-  const [feedbackStatus, setFeedbackStatus] = useState<Record<number, 'confirmed' | 'false_alarm'>>({});
+  const [feedbackStatus, setFeedbackStatus] = useState<Record<string, 'confirmed' | 'false_alarm'>>({});
   const consoleEndRef = useRef<HTMLDivElement>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
 
@@ -20,9 +20,9 @@ const AlarmLog: React.FC = () => {
     }
   }, [logs, filterSeverity]);
 
-  const handleFeedback = async (logId: number, fbType: 'confirmed' | 'false_alarm') => {
+  const handleFeedback = async (logId: string, fbType: 'confirmed' | 'false_alarm') => {
     try {
-      await apiService.sendAlarmFeedback(String(logId), fbType);
+      await apiService.sendAlarmFeedback(logId, fbType);
       setFeedbackStatus(prev => ({ ...prev, [logId]: fbType }));
     } catch (e) {
       console.error('Ошибка отправки фидбека аларма:', e);

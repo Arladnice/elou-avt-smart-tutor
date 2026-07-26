@@ -5,7 +5,7 @@ import { Award, AlertOctagon, RefreshCw, LogOut, CheckCircle2 } from 'lucide-rea
 import * as S from './ScoreCard.styles';
 
 const ScoreCard: React.FC = () => {
-  const { scoreCard, status, resetSession, logoutUser } = useSimulator();
+  const { scoreCard, status, resetSession, logoutUser, selectScenario } = useSimulator();
 
   if (!scoreCard) return null;
 
@@ -24,6 +24,15 @@ const ScoreCard: React.FC = () => {
     return '#ff9900';
   };
 
+
+  const handleStartRecommended = () => {
+    if (scoreCard.recommended_scenario_id) {
+      selectScenario(scoreCard.recommended_scenario_id);
+    } else {
+      selectScenario('startup');
+    }
+  };
+
   const maskStyle = { backdropFilter: 'blur(4px)' };
 
   return (
@@ -40,7 +49,7 @@ const ScoreCard: React.FC = () => {
       closable={false}
       width={500}
       styles={{
-        mask: maskStyle
+        mask: maskStyle,
       }}
     >
       <S.CardContainer>
@@ -109,24 +118,42 @@ const ScoreCard: React.FC = () => {
               Адаптивные рекомендации ИИ-тьютора
             </S.SectionTitle>
             <S.FullWidthContainer>
-              {scoreCard.recommendations.map((rec, idx) => (
-                <S.RecItem key={idx}>{rec}</S.RecItem>
-              ))}
+              {scoreCard.recommendations.map((rec, idx) => {
+                const isAdaptiveScenario = rec.startsWith('Рекомендуемый адаптивный сценарий:');
+                if (isAdaptiveScenario) {
+                  return (
+                    <S.AdaptiveRetrainingBanner key={idx}>
+                      🎯 <strong>{rec}</strong>
+                    </S.AdaptiveRetrainingBanner>
+                  );
+                }
+                return <S.RecItem key={idx}>{rec}</S.RecItem>;
+              })}
             </S.FullWidthContainer>
           </>
         )}
 
         {/* Кнопки управления */}
         <S.FooterButtons>
-          <S.StyledRepeatButton 
-            type="primary" 
-            icon={<RefreshCw size={14} />} 
-            onClick={resetSession}
-          >
-            Повторить попытку
-          </S.StyledRepeatButton>
-          <S.StyledExitButton 
-            icon={<LogOut size={14} />} 
+          {scoreCard.recommended_scenario_id ? (
+            <S.StyledRepeatButton
+              type="primary"
+              icon={<RefreshCw size={14} />}
+              onClick={handleStartRecommended}
+            >
+              Пройти рекомендованный тренинг
+            </S.StyledRepeatButton>
+          ) : (
+            <S.StyledRepeatButton
+              type="primary"
+              icon={<RefreshCw size={14} />}
+              onClick={resetSession}
+            >
+              Повторить попытку
+            </S.StyledRepeatButton>
+          )}
+          <S.StyledExitButton
+            icon={<LogOut size={14} />}
             onClick={logoutUser}
           >
             Выйти

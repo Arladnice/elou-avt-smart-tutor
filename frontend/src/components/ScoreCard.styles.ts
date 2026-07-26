@@ -207,3 +207,18 @@ export const StyledExitButton = styled(Button)`
     color: #e1e7f0;
   }
 `;
+
+export const AdaptiveRetrainingBanner = styled.div`
+  width: 100%;
+  background: rgba(255, 153, 0, 0.1);
+  border: 1px dashed #ff9900;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #ffcc00;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+`;
+

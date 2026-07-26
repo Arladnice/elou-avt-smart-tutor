@@ -16,6 +16,7 @@ export interface ScoreCardData {
   duration: number;
   errors: Array<{ clause: string; title: string; text: string }>;
   recommendations: string[];
+  recommended_scenario_id?: string;
 }
 
 interface SimulatorContextType {
