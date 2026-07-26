@@ -216,8 +216,20 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       isMounted = false;
       clearTimeout(reconnectTimer);
       if (pingInterval) clearInterval(pingInterval);
-      if (ws) ws.close();
+      if (ws) {
+        const currentWs = ws;
+        currentWs.onclose = null;
+        currentWs.onerror = null;
+        if (currentWs.readyState === WebSocket.CONNECTING) {
+          currentWs.onopen = () => {
+            currentWs.close();
+          };
+        } else {
+          currentWs.close();
+        }
+      }
     };
+
   }, [username, role, scenarioId]);
 
   // -------------------------------------------------------------

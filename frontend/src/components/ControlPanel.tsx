@@ -41,7 +41,7 @@ const ControlPanel: React.FC = () => {
               max={340}
               value={localTemp}
               onChange={(v) => setLocalTemp(v)}
-              onAfterChange={(v) => changeSetpoint(v)}
+              onChangeComplete={(v) => changeSetpoint(v)}
               disabled={status !== 'running'}
               tooltip={{ formatter: (v) => `${v}°C` }}
             />

@@ -20,11 +20,11 @@ export const TabsHeader = styled.div`
   }
 `;
 
-export const TabButton = styled.button<{ active: boolean }>`
+export const TabButton = styled.button<{ $active: boolean }>`
   background: none;
   border: none;
-  border-bottom: 2px solid ${props => props.active ? '#00e5ff' : 'transparent'};
-  color: ${props => props.active ? '#00e5ff' : props.theme.colors.textMuted};
+  border-bottom: 2px solid ${props => props.$active ? '#00e5ff' : 'transparent'};
+  color: ${props => props.$active ? '#00e5ff' : props.theme.colors.textMuted};
   font-size: 12px;
   font-weight: 600;
   padding: 4px 8px;
@@ -55,10 +55,11 @@ export const ModeSelector = styled.div`
   border: 1px solid ${props => props.theme.colors.border};
 `;
 
-export const ModeOption = styled.button<{ active: boolean }>`
-  background: ${props => props.active ? '#00e5ff22' : 'transparent'};
-  border: 1px solid ${props => props.active ? '#00e5ff' : 'transparent'};
-  color: ${props => props.active ? '#00e5ff' : props.theme.colors.textMuted};
+export const ModeOption = styled.button<{ $active: boolean }>`
+  background: ${props => props.$active ? '#00e5ff22' : 'transparent'};
+  border: 1px solid ${props => props.$active ? '#00e5ff' : 'transparent'};
+  color: ${props => props.$active ? '#00e5ff' : props.theme.colors.textMuted};
+
   font-size: 10px;
   font-weight: 600;
   padding: 2px 6px;
@@ -105,12 +106,12 @@ export const RiskLabel = styled.span`
   }
 `;
 
-export const ChatBubble = styled.div<{ risk: number }>`
+export const ChatBubble = styled.div<{ $risk: number }>`
   flex: 1;
   background-color: ${props => props.theme.colors.background};
   border: 1px solid ${props => {
-    if (props.risk > 70) return props.theme.colors.danger;
-    if (props.risk > 30) return props.theme.colors.warning;
+    if (props.$risk > 70) return props.theme.colors.danger;
+    if (props.$risk > 30) return props.theme.colors.warning;
     return props.theme.colors.border;
   }};
   border-radius: 6px;
@@ -121,8 +122,8 @@ export const ChatBubble = styled.div<{ risk: number }>`
   justify-content: center;
   position: relative;
   box-shadow: ${props => {
-    if (props.risk > 70) return '0 0 8px rgba(255, 51, 51, 0.15)';
-    if (props.risk > 30) return '0 0 8px rgba(255, 204, 0, 0.15)';
+    if (props.$risk > 70) return '0 0 8px rgba(255, 51, 51, 0.15)';
+    if (props.$risk > 30) return '0 0 8px rgba(255, 204, 0, 0.15)';
     return 'none';
   }};
 

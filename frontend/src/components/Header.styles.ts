@@ -51,7 +51,7 @@ export const Title = styled.h1`
   }
 `;
 
-export const StatusIndicator = styled.div<{ status: 'running' | 'paused' | 'esd' | 'accident' | 'success' }>`
+export const StatusIndicator = styled.div<{ $status: 'running' | 'paused' | 'esd' | 'accident' | 'success' }>`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -77,18 +77,18 @@ export const StatusIndicator = styled.div<{ status: 'running' | 'paused' | 'esd'
     height: 8px;
     border-radius: 50%;
     background-color: ${props => {
-      if (props.status === 'running') return props.theme.colors.success;
-      if (props.status === 'esd') return props.theme.colors.danger;
-      if (props.status === 'accident') return props.theme.colors.danger;
+      if (props.$status === 'running') return props.theme.colors.success;
+      if (props.$status === 'esd') return props.theme.colors.danger;
+      if (props.$status === 'accident') return props.theme.colors.danger;
       return props.theme.colors.offline;
     }};
     box-shadow: 0 0 8px ${props => {
-      if (props.status === 'running') return props.theme.colors.success;
-      if (props.status === 'esd') return props.theme.colors.danger;
-      if (props.status === 'accident') return props.theme.colors.danger;
+      if (props.$status === 'running') return props.theme.colors.success;
+      if (props.$status === 'esd') return props.theme.colors.danger;
+      if (props.$status === 'accident') return props.theme.colors.danger;
       return 'transparent';
     }};
-    animation: ${props => (props.status === 'running' || props.status === 'esd' || props.status === 'accident' ? pulse : 'none')} 1.5s infinite;
+    animation: ${props => (props.$status === 'running' || props.$status === 'esd' || props.$status === 'accident' ? pulse : 'none')} 1.5s infinite;
   }
 `;
 
@@ -131,7 +131,7 @@ export const Actions = styled.div`
   }
 `;
 
-export const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' | 'success' }>`
+export const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' | 'success' }>`
   display: flex;
   align-items: center;
   gap: 6px;
@@ -152,7 +152,7 @@ export const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondar
   }
 
   ${props => {
-    if (props.variant === 'danger') {
+    if (props.$variant === 'danger') {
       return `
         background-color: rgba(255, 51, 51, 0.15);
         color: ${props.theme.colors.danger};
@@ -164,7 +164,7 @@ export const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondar
         }
       `;
     }
-    if (props.variant === 'primary') {
+    if (props.$variant === 'primary') {
       return `
         background-color: rgba(0, 112, 243, 0.15);
         color: ${props.theme.colors.primary};
@@ -175,7 +175,7 @@ export const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondar
         }
       `;
     }
-    if (props.variant === 'success') {
+    if (props.$variant === 'success') {
       return `
         background-color: rgba(0, 255, 102, 0.1);
         color: #00ff66;
@@ -197,6 +197,7 @@ export const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondar
       }
     `;
   }}
+
 
   &:disabled {
     opacity: 0.5;

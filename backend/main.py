@@ -8,11 +8,6 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
 
-# Добавляем пути в sys.path для импорта модулей всего проекта
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if ROOT_DIR not in sys.path:
-    sys.path.append(ROOT_DIR)
-
 from backend.db.database import init_db
 from backend.services.simulation_loop import simulation_loop
 from backend.utils.security import log_audit_event
@@ -67,7 +62,7 @@ app.include_router(alarm_feedback.router)
 
 
 
-# Раздача собранного фронтенда (SPA) — для деплоя в одном контейнере (HF Spaces)
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 STATIC_DIR = os.path.join(ROOT_DIR, "frontend", "dist")
 if os.path.isdir(STATIC_DIR):
     assets_dir = os.path.join(STATIC_DIR, "assets")

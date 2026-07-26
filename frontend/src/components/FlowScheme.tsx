@@ -53,7 +53,7 @@ const FlowScheme: React.FC = () => {
         <S.HeaderStatusContainer>
           <TrendingUp size={12} color="#00e5ff" />
           <span>Спарклайны трендов активны</span>
-          <S.OnlineBadge isOnline={isOnline}>
+          <S.OnlineBadge $isOnline={isOnline}>
             {isOnline ? `Online (ping ${wsLatency}ms)` : 'Offline (Mock)'}
           </S.OnlineBadge>
         </S.HeaderStatusContainer>
@@ -76,8 +76,8 @@ const FlowScheme: React.FC = () => {
 
         {/* ТРУБОПРОВОДЫ */}
         {/* Вход сырья */}
-        <S.PipeLine d="M 50,250 L 180,250" isActive={valves.V_1} />
-        <S.PipeFlow d="M 50,250 L 180,250" isActive={valves.V_1} />
+        <S.PipeLine d="M 50,250 L 180,250" $isActive={valves.V_1} />
+        <S.PipeFlow d="M 50,250 L 180,250" $isActive={valves.V_1} />
 
         {/* Сырьевой насос Н-1 */}
         <g transform="translate(45, 250)">
@@ -103,16 +103,16 @@ const FlowScheme: React.FC = () => {
         </g>
 
         {/* Из печи в колонну */}
-        <S.PipeLine d="M 280,250 L 400,250" isActive={valves.V_1} />
-        <S.PipeFlow d="M 280,250 L 400,250" isActive={valves.V_1} speed="1s" />
+        <S.PipeLine d="M 280,250 L 400,250" $isActive={valves.V_1} />
+        <S.PipeFlow d="M 280,250 L 400,250" $isActive={valves.V_1} $speed="1s" />
 
         {/* Сброс давления (вверху) */}
-        <S.PipeLine d="M 460,80 L 460,40 L 700,40" isActive={valves.V_2} />
-        <S.PipeFlow d="M 460,80 L 460,40 L 700,40" isActive={valves.V_2} speed="0.8s" />
+        <S.PipeLine d="M 460,80 L 460,40 L 700,40" $isActive={valves.V_2} />
+        <S.PipeFlow d="M 460,80 L 460,40 L 700,40" $isActive={valves.V_2} $speed="0.8s" />
 
         {/* Дренаж куба колонны (снизу) */}
-        <S.PipeLine d="M 460,370 L 460,410 L 700,410" isActive={valves.V_3} />
-        <S.PipeFlow d="M 460,370 L 460,410 L 700,410" isActive={valves.V_3} />
+        <S.PipeLine d="M 460,370 L 460,410 L 700,410" $isActive={valves.V_3} />
+        <S.PipeFlow d="M 460,370 L 460,410 L 700,410" $isActive={valves.V_3} />
 
         {/* ОБОРУДОВАНИЕ */}
         {/* 1. Нагревательная Печь П-1 */}
@@ -123,7 +123,7 @@ const FlowScheme: React.FC = () => {
           </text>
           
           {/* Пламя печи */}
-          <S.FlameWrapper isActive={valves.V_1 && !defects?.power_fail} transform="translate(35, 112)">
+          <S.FlameWrapper $isActive={valves.V_1 && !defects?.power_fail} transform="translate(35, 112)">
             <Flame size={30} color={(valves.V_1 && !defects?.power_fail) ? "#ff6600" : "#ff3333"} />
           </S.FlameWrapper>
         </g>
@@ -153,7 +153,7 @@ const FlowScheme: React.FC = () => {
 
         {/* ИНТЕРАКТИВНЫЕ КЛАПАНЫ */}
         {/* Клапан V-1 (Вход в печь) */}
-        <S.ValveGroup isOpen={valves.V_1} transform="translate(100, 250)" onClick={() => handleValveClick('V_1')}>
+        <S.ValveGroup $isOpen={valves.V_1} transform="translate(100, 250)" onClick={() => handleValveClick('V_1')}>
           <polygon points="-12,-10 12,10 12,-10 -12,10" />
           <circle cx="0" cy="0" r="4" fill={defects?.air_fail ? "#ffcc00" : undefined} />
           <text x="0" y="-16" fill={defects?.air_fail ? "#ffcc00" : "#e1e7f0"} fontSize="9" textAnchor="middle">
@@ -162,7 +162,7 @@ const FlowScheme: React.FC = () => {
         </S.ValveGroup>
 
         {/* Клапан V-2 (Сброс давления) */}
-        <S.ValveGroup isOpen={valves.V_2} transform="translate(560, 40)" onClick={() => handleValveClick('V_2')}>
+        <S.ValveGroup $isOpen={valves.V_2} transform="translate(560, 40)" onClick={() => handleValveClick('V_2')}>
           <polygon points="-12,-10 12,10 12,-10 -12,10" />
           <circle cx="0" cy="0" r="4" fill={defects?.air_fail ? "#ffcc00" : undefined} />
           <text x="0" y="-16" fill={defects?.air_fail ? "#ffcc00" : "#e1e7f0"} fontSize="9" textAnchor="middle">
@@ -171,7 +171,7 @@ const FlowScheme: React.FC = () => {
         </S.ValveGroup>
 
         {/* Клапан V-3 (Дренаж) */}
-        <S.ValveGroup isOpen={valves.V_3} transform="translate(560, 410)" onClick={() => handleValveClick('V_3')}>
+        <S.ValveGroup $isOpen={valves.V_3} transform="translate(560, 410)" onClick={() => handleValveClick('V_3')}>
           <polygon points="-12,-10 12,10 12,-10 -12,10" />
           <circle cx="0" cy="0" r="4" fill={defects?.air_fail ? "#ffcc00" : undefined} />
           <text x="0" y="-16" fill={defects?.air_fail ? "#ffcc00" : "#e1e7f0"} fontSize="9" textAnchor="middle">
@@ -183,9 +183,10 @@ const FlowScheme: React.FC = () => {
         {/* Датчик T-1 (Температура печи) */}
         <g transform="translate(230, 230)">
           <S.SensorBox 
-            isWarning={sensors.T_1 > 310} 
-            isDanger={sensors.T_1 > 325}
+            $isWarning={sensors.T_1 > 310} 
+            $isDanger={sensors.T_1 > 325}
           >
+
             <rect className="bg" x="-35" y="-10" width="70" height="28" rx="4" />
             <text className="value" x="0" y="8" textAnchor="middle">{sensors.T_1}°C</text>
             <text className="label" x="0" y="-15" textAnchor="middle">T-1 (ПЕЧЬ)</text>
@@ -195,15 +196,15 @@ const FlowScheme: React.FC = () => {
           <rect x="-35" y="22" width="70" height="15" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
           <S.SparklinePath 
             d={generateSparklineD(tempHistory, -35, 22, 70, 15, 240, 340)} 
-            strokeColor={sensors.T_1 > 310 ? "#ff3333" : "#00ff66"} 
+            $strokeColor={sensors.T_1 > 310 ? "#ff3333" : "#00ff66"} 
           />
         </g>
 
         {/* Датчик P-1 (Давление в колонне) */}
         <g transform="translate(630, 90)">
           <S.SensorBox 
-            isWarning={sensors.P_1 > 0.3} 
-            isDanger={sensors.P_1 > 0.4}
+            $isWarning={sensors.P_1 > 0.3} 
+            $isDanger={sensors.P_1 > 0.4}
           >
             <rect className="bg" x="-35" y="-10" width="70" height="28" rx="4" />
             <text className="value" x="0" y="8" textAnchor="middle">{sensors.P_1} МПа</text>
@@ -214,16 +215,17 @@ const FlowScheme: React.FC = () => {
           <rect x="-35" y="22" width="70" height="15" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
           <S.SparklinePath 
             d={generateSparklineD(presHistory, -35, 22, 70, 15, 0.05, 0.5)} 
-            strokeColor={sensors.P_1 > 0.3 ? "#ffcc00" : "#00ff66"} 
+            $strokeColor={sensors.P_1 > 0.3 ? "#ffcc00" : "#00ff66"} 
           />
         </g>
 
         {/* Датчик L-1 (Уровень в колонне) */}
         <g transform="translate(460, 310)">
           <S.SensorBox 
-            isWarning={sensors.L_1 > 85 || sensors.L_1 < 15} 
-            isDanger={sensors.L_1 > 95 || sensors.L_1 < 5}
+            $isWarning={sensors.L_1 > 85 || sensors.L_1 < 15} 
+            $isDanger={sensors.L_1 > 95 || sensors.L_1 < 5}
           >
+
             <rect className="bg" x="-35" y="-10" width="70" height="28" rx="4" />
             <text className="value" x="0" y="8" textAnchor="middle">{sensors.L_1}%</text>
             <text className="label" x="0" y="-15" textAnchor="middle">L-1 (УРОВЕНЬ)</text>
@@ -233,8 +235,9 @@ const FlowScheme: React.FC = () => {
           <rect x="-35" y="22" width="70" height="15" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
           <S.SparklinePath 
             d={generateSparklineD(levelHistory, -35, 22, 70, 15, 0, 100)} 
-            strokeColor={(sensors.L_1 > 85 || sensors.L_1 < 15) ? "#ffcc00" : "#00ff66"} 
+            $strokeColor={(sensors.L_1 > 85 || sensors.L_1 < 15) ? "#ffcc00" : "#00ff66"} 
           />
+
         </g>
       </S.SVGCanvas>
     </S.SchemeContainer>

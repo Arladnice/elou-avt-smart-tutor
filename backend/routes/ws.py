@@ -1,4 +1,5 @@
 import json
+import time
 import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -7,6 +8,11 @@ from backend.utils.security import log_audit_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["websocket"])
+
+INSTRUCTOR_ONLY_COMMANDS = {
+    "trigger_defect", "change_speed", "toggle_pause", "save_state",
+    "load_state", "configure_webhook", "toggle_mute"
+}
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -18,36 +24,54 @@ async def websocket_endpoint(websocket: WebSocket):
     role = query_params.get("role", "operator")
     username = query_params.get("username", "Оператор")
     scenario = query_params.get("scenario", "startup")
+    token = query_params.get("token", "")
+
+    # Минимальная валидация роли и токена (К8: RBAC)
+    if role not in ["operator", "instructor"]:
+        logger.warning("Отклонено WS-подключение с недействительной ролью: %s", role)
+        await websocket.close(code=4003, reason="Недопустимая роль пользователя")
+        return
+
+    # В базовой модели проверяем соответствие токена роли, если токен передан
+    if token and not token.startswith(f"jwt-mock-token-for-"):
+        logger.warning("Отклонено WS-подключение с некорректным токеном для %s", username)
+        await websocket.close(code=4003, reason="Недействительный токен авторизации")
+        return
     
     if role == "operator":
-        manager.active_operator_name = username
-        manager.active_scenario = scenario
-        manager.simulator.reset(scenario)
-        manager.actions_taken.clear()
-        manager.telemetry_history.clear()
-        manager.logs.clear()
-        # Сбрасываем переменные управления сессией при подключении нового оператора
-        manager.is_paused = False
-        manager.speed_multiplier = 1.0
-        manager.snapshot_data = None
-        manager.critical_alert_active = False
-        manager.operator_reacted_to_critical = False
-        manager.escalation_warning_sent = False
-        if scenario == "startup":
-            manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
-            manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
-        else:
-            manager.add_log("info", "Система перезапущена. Режим работы: Стабильный.")
-            manager.add_log("info", "Входной клапан V-1 открыт. Подача сырья в норме.")
+        manager.reset_session(username=username, scenario=scenario)
         
     await manager.connect(websocket, role)
     
+    # Контроль частоты сообщений (Rate Limiting: макс 30 сообщений в секунду)
+    msg_timestamps = []
+
     try:
         while True:
             # Ожидаем команды управления от клиента
             data = await websocket.receive_text()
+            
+            # Проверка Rate Limiting
+            now = time.time()
+            msg_timestamps.append(now)
+            msg_timestamps = [t for t in msg_timestamps if now - t <= 1.0]
+            if len(msg_timestamps) > 30:
+                logger.warning("Превышен лимит частоты сообщений (Rate Limit Exceeded) от %s", username)
+                manager.add_log("warning", f"ВНИМАНИЕ: Зафиксирована аномальная частота команд от {username} (Rate Limit).")
+                log_audit_event(username, "RATE_LIMIT_EXCEEDED", "Превышена частота отправителя WS команд (>30/сек)")
+                await websocket.send_json({"type": "error", "message": "Too many requests. Rate limit exceeded."})
+                continue
+
             cmd = json.loads(data)
             action_type = cmd.get("type")
+
+            # Проверка прав доступа к командам инструктора (RBAC)
+            if role == "operator" and action_type in INSTRUCTOR_ONLY_COMMANDS:
+                logger.warning("Оператор %s попытался выполнить команду инструктора: %s", username, action_type)
+                manager.add_log("warning", f"ИБ: Оператор '{username}' заблокирован при попытке выполнить команду '{action_type}'.")
+                log_audit_event(username, "UNAUTHORIZED_COMMAND", f"Попытка выполнения команды {action_type} без прав")
+                await websocket.send_json({"type": "error", "message": "Access denied: Instructor rights required."})
+                continue
             
             if role == "operator" and action_type in ["toggle_valve", "change_setpoint", "trigger_esd", "call_dispatcher"]:
                 manager.operator_reacted_to_critical = True
@@ -83,7 +107,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 log_audit_event(manager.active_operator_name, "DISPATCHER_CALL", "Регламентный звонок в Диспетчерскую ЦУП")
 
             elif action_type == "trigger_defect":
-                # Команда поступает от экрана Инструктора
                 defect_id = cmd.get("defect_id")
                 state = cmd.get("state")
                 manager.simulator.set_defect(defect_id, state)
@@ -158,46 +181,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 
             elif action_type == "change_scenario":
                 scen_id = cmd.get("scenario_id")
-                manager.active_scenario = scen_id
-                manager.simulator.reset(scen_id)
-                manager.actions_taken.clear()
-                manager.defects_triggered.clear()
-                manager.telemetry_history.clear()
-                manager.logs.clear()
-                # Сбрасываем переменные управления сессией
-                manager.is_paused = False
-                manager.speed_multiplier = 1.0
-                manager.snapshot_data = None
-                manager.critical_alert_active = False
-                manager.operator_reacted_to_critical = False
-                manager.escalation_warning_sent = False
-                if scen_id == "startup":
-                    manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
-                    manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
-                else:
-                    manager.add_log("info", "Система перезапущена. Режим работы: Стабильный.")
-                    manager.add_log("info", "Входной клапан V-1 открыт. Подача сырья в норме.")
+                manager.reset_session(scenario=scen_id)
                 log_audit_event("INSTRUCTOR" if role == "instructor" else manager.active_operator_name, "SCENARIO_CHANGE", f"Смена сценария на {scen_id}")
 
             elif action_type == "reset":
-                manager.simulator.reset(manager.active_scenario)
-                manager.actions_taken.clear()
-                manager.defects_triggered.clear()
-                manager.telemetry_history.clear()
-                manager.logs.clear()
-                # Сбрасываем переменные управления сессией
-                manager.is_paused = False
-                manager.speed_multiplier = 1.0
-                manager.snapshot_data = None
-                manager.critical_alert_active = False
-                manager.operator_reacted_to_critical = False
-                manager.escalation_warning_sent = False
-                if manager.active_scenario == "startup":
-                    manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
-                    manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
-                else:
-                    manager.add_log("info", "Система перезапущена. Режим работы: Стабильный.")
-                    manager.add_log("info", "Входной клапан V-1 открыт. Подача сырья в норме.")
+                manager.reset_session()
                 log_audit_event(manager.active_operator_name, "SESSION_RESET", "Перезапуск тренировочной сессии")
                 
             await manager.broadcast_state()

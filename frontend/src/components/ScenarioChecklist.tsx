@@ -259,17 +259,18 @@ const ScenarioChecklist: React.FC = () => {
         {tasks.map((task, index) => {
           const taskStatus = getTaskStatus(index, task.isDone);
           return (
-            <S.TaskItem key={task.id} status={taskStatus}>
-              <S.IconWrapper status={taskStatus}>
+            <S.TaskItem key={task.id} $status={taskStatus}>
+              <S.IconWrapper $status={taskStatus}>
                 {taskStatus === 'completed' && <CheckCircle2 size={16} className="completed" />}
                 {taskStatus === 'active' && <PlayCircle size={16} className="pulsing" />}
                 {taskStatus === 'pending' && <Circle size={16} />}
               </S.IconWrapper>
               <S.TaskDetails>
-                <S.TaskTitle status={taskStatus}>{task.title}</S.TaskTitle>
-                <S.TaskHint status={taskStatus}>{task.hint}</S.TaskHint>
+                <S.TaskTitle $status={taskStatus}>{task.title}</S.TaskTitle>
+                <S.TaskHint $status={taskStatus}>{task.hint}</S.TaskHint>
               </S.TaskDetails>
             </S.TaskItem>
+
           );
         })}
       </S.TasksList>

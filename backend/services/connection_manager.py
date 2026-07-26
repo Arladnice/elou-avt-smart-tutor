@@ -50,6 +50,13 @@ class ConnectionManager:
         self.operator_reacted_to_critical: bool = False
         self.escalation_warning_sent: bool = False
 
+    async def send_state_to(self, websocket: WebSocket):
+        """Отправляет текущее состояние конкретному клиенту."""
+        try:
+            await websocket.send_json(self.get_full_state())
+        except Exception as e:
+            logger.error("Ошибка отправки состояния клиенту: %s", e)
+
     async def connect(self, websocket: WebSocket, role: str):
         """Подключает клиента и регистрирует в соответствующем наборе сокетов."""
         await websocket.accept()
@@ -205,7 +212,7 @@ class ConnectionManager:
         if not self.webhook_url or not self.webhook_active:
             return
             
-        async def post_webhook():
+        def _make_request():
             try:
                 payload = {
                     "event": "alarm",
@@ -222,13 +229,40 @@ class ConnectionManager:
                     headers={"Content-Type": "application/json"},
                     method="POST"
                 )
-                # Малый таймаут, чтобы не вешать симуляцию
                 with urllib.request.urlopen(req, timeout=2.0) as resp:
                     pass
             except Exception as e:
                 logger.error("Ошибка отправки вебхука на %s: %s", self.webhook_url, e)
-                
-        asyncio.create_task(post_webhook())
+
+        asyncio.create_task(asyncio.to_thread(_make_request))
+
+    def reset_session(self, username: str = None, scenario: str = None):
+        """Централизованный сброс сессии оператора и состояния симуляции."""
+        if username:
+            self.active_operator_name = username
+        if scenario:
+            self.active_scenario = scenario
+        else:
+            scenario = self.active_scenario
+            
+        self.simulator.reset(scenario)
+        self.actions_taken.clear()
+        self.defects_triggered.clear()
+        self.telemetry_history.clear()
+        self.logs.clear()
+        self.is_paused = False
+        self.speed_multiplier = 1.0
+        self.snapshot_data = None
+        self.critical_alert_active = False
+        self.operator_reacted_to_critical = False
+        self.escalation_warning_sent = False
+
+        if scenario == "startup":
+            self.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
+            self.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
+        else:
+            self.add_log("info", "Система перезапущена. Режим работы: Стабильный.")
+            self.add_log("info", "Входной клапан V-1 открыт. Подача сырья в норме.")
 
     def add_log(self, log_type: str, message: str, severity: str = None, fingerprint: str = None):
         """Добавляет запись во временный журнал событий сессии с дедупликацией и классификацией."""

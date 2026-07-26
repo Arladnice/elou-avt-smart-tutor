@@ -288,13 +288,13 @@ export const HeaderRight = styled.div`
   gap: 16px;
 `;
 
-export const ConnectedBadgeStatus = styled.span<{ active: boolean }>`
+export const ConnectedBadgeStatus = styled.span<{ $active: boolean }>`
   font-size: 10px;
-  color: ${props => props.active ? '#00ff66' : '#5c6470'};
+  color: ${props => props.$active ? '#00ff66' : '#5c6470'};
 `;
 
-export const ConnectedOperatorName = styled.strong<{ connected: boolean }>`
-  color: ${props => props.connected ? '#00ff66' : '#7c8ba1'};
+export const ConnectedOperatorName = styled.strong<{ $connected: boolean }>`
+  color: ${props => props.$connected ? '#00ff66' : '#7c8ba1'};
 `;
 
 export const LogoutButton = styled(Button)`
@@ -336,10 +336,11 @@ export const ScenarioRadioGroup = styled(Radio.Group)`
   }
 `;
 
-export const ScenarioRadioButton = styled(Radio.Button)<{ fullWidth?: boolean }>`
+export const ScenarioRadioButton = styled(Radio.Button)<{ $fullWidth?: boolean }>`
   text-align: center;
   border-radius: 4px;
-  ${props => props.fullWidth && `grid-column: span 2;`}
+  ${props => props.$fullWidth && `grid-column: span 2;`}
+
 
   &&& {
     height: auto;
@@ -389,13 +390,13 @@ export const LogIconWrapper = styled.span`
   flex-shrink: 0;
 `;
 
-export const SensorValue = styled.span<{ isAlert: boolean; isWarning?: boolean }>`
+export const SensorValue = styled.span<{ $isAlert: boolean; $isWarning?: boolean }>`
   font-size: 18px;
   font-weight: 700;
   font-family: monospace;
   color: ${props => 
-    props.isAlert ? '#ff3333' : 
-    props.isWarning ? '#ffcc00' : 
+    props.$isAlert ? '#ff3333' : 
+    props.$isWarning ? '#ffcc00' : 
     '#00e5ff'
   };
 
@@ -403,6 +404,7 @@ export const SensorValue = styled.span<{ isAlert: boolean; isWarning?: boolean }
     font-size: 15px;
   }
 `;
+
 
 export const LiveTelemetryGrid = styled.div`
   display: grid;

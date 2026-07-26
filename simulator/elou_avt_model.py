@@ -132,7 +132,7 @@ class ELOUAVTSimulator:
         # В режиме пуска ("startup") до первоначального заполнения колонны (_startup_filled=False)
         # насос Н-1 (через V-1) должен беспрепятственно нагнетать сырьё для набора уровня L-1.
         # После первого достижения 15% (_startup_filled=True) блокировка снова активна.
-        is_startup_prefill = (getattr(self, "scenario_id", "") == "startup" and not getattr(self, "_startup_filled", False))
+        is_startup_prefill = (self.scenario_id == "startup" and not self._startup_filled)
         pump_interlock_active = (L < COLUMN_LEVEL_LOW) and not is_startup_prefill
         if V_1 and not self.defects["pump_fail"] and not self.defects["power_fail"] and not pump_interlock_active:
             F_in = 1.0  # Номинальный расход сырья
@@ -183,7 +183,7 @@ class ELOUAVTSimulator:
         # -------------------------------------------------------------
         # 4. Моделирование давления в колонне К-1 (Давление P)
         # -------------------------------------------------------------
-        if getattr(self, "scenario_id", "") == "startup" and not getattr(self, "_startup_filled", False):
+        if self.scenario_id == "startup" and not self._startup_filled:
             # В режиме технологического пуска давление P-1 плавно поднимается от атмосферного (0.05 МПа) до рабочего (0.25 МПа)
             # пропорционально прогреву печи и заполнению колонны парами/жидкостью
             temp_factor = min(1.0, max(0.0, (next_T - 100.0) / 180.0))
@@ -228,8 +228,8 @@ class ELOUAVTSimulator:
             # При startup авария не срабатывает до заполнения колонны ИЛИ до 180с,
             # чтобы дать оператору время набрать уровень.
             # При других сценариях — защита от ложных срабатываний первые 40с.
-            is_startup = getattr(self, "scenario_id", "") == "startup"
-            was_filled = getattr(self, "_startup_filled", False)
+            is_startup = self.scenario_id == "startup"
+            was_filled = self._startup_filled
             if is_startup:
                 low_level_accident_allowed = was_filled or self.time_elapsed > ACCIDENT_STARTUP_MAX_TIME_SEC
             else:

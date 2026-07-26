@@ -484,18 +484,73 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         self.assertGreater(risk_warn, 0.0, "При давлении 0.44 МПа (выше 0.40 МПа) риск должен превышать 0%")
 
     def test_escalation_flag_reset(self):
-        """Тест-06: Проверка сброса флага escalation_warning_sent при перезапуске менеджер-сессии."""
+        """Тест-06: Проверка сброса флагов и сессии через manager.reset_session()."""
         from backend.services.connection_manager import manager
         
         manager.escalation_warning_sent = True
         manager.critical_alert_active = True
+        manager.is_paused = True
         
-        # Имитируем сброс сессии
-        manager.is_paused = False
-        manager.critical_alert_active = False
-        manager.escalation_warning_sent = False
+        # Вызываем реальный метод сброса сессии
+        manager.reset_session(scenario="startup")
         
-        self.assertFalse(manager.escalation_warning_sent, "Флаг эскалации должен быть сброшен при перезапуске")
+        self.assertFalse(manager.escalation_warning_sent, "Флаг эскалации должен быть сброшен через reset_session()")
+        self.assertFalse(manager.critical_alert_active, "Алерт должен быть сброшен через reset_session()")
+        self.assertFalse(manager.is_paused, "Пауза должна быть сброшена через reset_session()")
+
+    def test_http_integration_endpoints(self):
+        """Тест-07: Настоящий HTTP-интеграционный тест эндпоинтов /api/health/metrics и /api/auth/login."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        
+        client = TestClient(app)
+        
+        # 1. Проверка авторизации
+        response = client.post("/api/auth/login", json={"username": "Иван_Тест", "role": "operator"})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["username"], "Иван_Тест")
+        self.assertTrue(data["token"].startswith("jwt-mock-token-for-"))
+        
+        # 2. Проверка метрик системы
+        health_resp = client.get("/api/health/metrics")
+        self.assertEqual(health_resp.status_code, 200)
+        metrics = health_resp.json()
+        self.assertIn("cpu_percent", metrics)
+        self.assertIn("is_ollama_available", metrics)
+
+    def test_websocket_integration_and_rbac(self):
+        """Тест-08: Интеграционный тест WebSocket-протокола с проверкой RBAC и управления клапанами."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        
+        client = TestClient(app)
+        
+        # 1. Проверка запрета роли оператора на команды инструктора (RBAC)
+        with client.websocket_connect("/ws?role=operator&username=Test_Operator") as websocket:
+            # При подключении сразу приходит первичная телеметрия
+            init_data = websocket.receive_json()
+            self.assertIn("sensors", init_data)
+
+            # Отправка команды переключения клапана (разрешено оператору)
+            websocket.send_json({"type": "toggle_valve", "valve_id": "V_1", "state": True})
+            data = websocket.receive_json()
+            self.assertIn("sensors", data)
+            
+            # Отправка команды инжекции дефекта (ЗАПРЕЩЕНО оператору)
+            websocket.send_json({"type": "trigger_defect", "defect_id": "pump_fail", "state": True})
+            err_data = websocket.receive_json()
+            self.assertEqual(err_data["type"], "error")
+            self.assertIn("Access denied", err_data["message"])
+
+        # 2. Разрешение команды инструктору
+        with client.websocket_connect("/ws?role=instructor&username=Test_Instructor") as websocket_inst:
+            init_inst_data = websocket_inst.receive_json()
+            self.assertIn("sensors", init_inst_data)
+            
+            websocket_inst.send_json({"type": "trigger_defect", "defect_id": "pump_fail", "state": True})
+            inst_data = websocket_inst.receive_json()
+            self.assertIn("sensors", inst_data)
 
     @classmethod
     def tearDownClass(cls):

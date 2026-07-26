@@ -1,8 +1,9 @@
+import os
 import time
 import hashlib
 from backend.db.database import get_db_connection
 
-SECRET_SALT = "GPNA_IT_CHAMPIONSHIP_2026_SECURITY_SALT"
+SECRET_SALT = os.environ.get("INTEGRITY_SALT", "GPNA_IT_CHAMPIONSHIP_2026_SECURITY_SALT")
 
 def calculate_integrity_hash(*args) -> str:
     """Вычисляет SHA-256 хэш переданных полей с добавлением секретной соли для защиты от подмены."""

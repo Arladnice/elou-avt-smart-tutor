@@ -53,35 +53,35 @@ const AlarmLog: React.FC = () => {
     <S.LogContent>
       <S.FilterWrapper>
         <S.FilterButton 
-          active={filterSeverity === null} 
+          $active={filterSeverity === null} 
           onClick={() => setFilterSeverity(null)}
         >
           Все
         </S.FilterButton>
         <S.FilterButton 
-          active={filterSeverity === 'CRITICAL'} 
-          sevColor="#ff3333" 
+          $active={filterSeverity === 'CRITICAL'} 
+          $sevColor="#ff3333" 
           onClick={() => setFilterSeverity('CRITICAL')}
         >
           🔴 Критич.
         </S.FilterButton>
         <S.FilterButton 
-          active={filterSeverity === 'WARNING'} 
-          sevColor="#ffcc00" 
+          $active={filterSeverity === 'WARNING'} 
+          $sevColor="#ffcc00" 
           onClick={() => setFilterSeverity('WARNING')}
         >
           🟡 Предупр.
         </S.FilterButton>
         <S.FilterButton 
-          active={filterSeverity === 'INFO'} 
-          sevColor="#00e5ff" 
+          $active={filterSeverity === 'INFO'} 
+          $sevColor="#00e5ff" 
           onClick={() => setFilterSeverity('INFO')}
         >
           🔵 Инфо
         </S.FilterButton>
         <S.FilterButton 
-          active={filterSeverity === 'NO_DATA'} 
-          sevColor="#7c8ba1" 
+          $active={filterSeverity === 'NO_DATA'} 
+          $sevColor="#7c8ba1" 
           onClick={() => setFilterSeverity('NO_DATA')}
         >
           ⚫ Off-line
@@ -95,25 +95,26 @@ const AlarmLog: React.FC = () => {
           const fb = feedbackStatus[String(log.id)];
 
           return (
-            <S.LogRow key={log.id} severity={severity}>
+            <S.LogRow key={log.id} $severity={severity}>
               <S.Timestamp>[{log.time}]</S.Timestamp>
               <S.IconWrapper>{getIcon(severity)}</S.IconWrapper>
               <S.Message>
                 {log.message}
                 {log.repeat_count && log.repeat_count > 1 ? (
-                  <S.RepeatBadge severity={severity}>×{log.repeat_count}</S.RepeatBadge>
+                  <S.RepeatBadge $severity={severity}>×{log.repeat_count}</S.RepeatBadge>
                 ) : null}
+
                 {isAlarm && (
                   fb ? (
-                    <S.FeedbackBadge fbType={fb}>
+                    <S.FeedbackBadge $fbType={fb}>
                       {fb === 'confirmed' ? '✅ Подтвержден' : '❌ Ложная тревога'}
                     </S.FeedbackBadge>
                   ) : (
                     <S.FeedbackWrapper>
-                      <S.FeedbackActionBtn fbType="confirm" title="Подтвердить реакцию ИИ" onClick={() => handleFeedback(log.id, 'confirmed')}>
+                      <S.FeedbackActionBtn $fbType="confirm" title="Подтвердить реакцию ИИ" onClick={() => handleFeedback(log.id, 'confirmed')}>
                         ✅
                       </S.FeedbackActionBtn>
-                      <S.FeedbackActionBtn fbType="reject" title="Отметить как ложную тревогу" onClick={() => handleFeedback(log.id, 'false_alarm')}>
+                      <S.FeedbackActionBtn $fbType="reject" title="Отметить как ложную тревогу" onClick={() => handleFeedback(log.id, 'false_alarm')}>
                         ❌
                       </S.FeedbackActionBtn>
                     </S.FeedbackWrapper>

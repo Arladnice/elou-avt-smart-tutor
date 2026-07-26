@@ -34,7 +34,7 @@ const Header: React.FC = () => {
     <S.HeaderContainer>
       <S.Title>КТК ЭЛОУ-АВТ // ИИ-Модуль</S.Title>
       
-      <S.StatusIndicator status={status}>
+      <S.StatusIndicator $status={status}>
         {getStatusText()}
       </S.StatusIndicator>
 
@@ -55,20 +55,20 @@ const Header: React.FC = () => {
 
       <S.Actions>
         {role === 'operator' && status === 'running' && (
-          <S.Button onClick={completeSession} variant="success">
+          <S.Button onClick={completeSession} $variant="success">
             <CheckCircle size={12} />
             Завершить
           </S.Button>
         )}
-        <S.Button onClick={resetSession} variant="primary">
+        <S.Button onClick={resetSession} $variant="primary">
           <RotateCcw size={12} />
           Сброс
         </S.Button>
-        <S.Button onClick={triggerEsd} variant="danger" disabled={status === 'esd'}>
+        <S.Button onClick={triggerEsd} $variant="danger" disabled={status === 'esd'}>
           <ShieldAlert size={12} />
           Авария (ESD)
         </S.Button>
-        <S.Button onClick={logoutUser} variant="secondary">
+        <S.Button onClick={logoutUser} $variant="secondary">
           Выход
         </S.Button>
       </S.Actions>

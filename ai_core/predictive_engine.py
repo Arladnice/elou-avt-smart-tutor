@@ -1,6 +1,9 @@
 import os
 import sys
+import logging
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 # Импортируем конфигурационные параметры
 from ai_core.config import (
@@ -93,9 +96,9 @@ class RiskPredictor:
                 self.ort_session = ort.InferenceSession(ONNX_PATH, providers=['CPUExecutionProvider'])
                 self.use_onnx = True
                 self.use_fallback = False
-                print("Модель LSTM успешно загружена через ONNX Runtime (7 фичей).")
+                logger.info("Модель LSTM успешно загружена через ONNX Runtime (7 фичей).")
             except Exception as e:
-                print(f"Ошибка загрузки ONNX модели: {e}. Пробуем PyTorch.")
+                logger.warning("Ошибка загрузки ONNX модели: %s. Пробуем PyTorch.", e)
                 
         # 2. Если ONNX не загружен, но есть PyTorch и веса
         if self.use_fallback and HAS_TORCH:
@@ -112,14 +115,14 @@ class RiskPredictor:
                     self.model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
                     self.model.eval()
                     self.use_fallback = False
-                    print("Модель RiskLSTM успешно загружена через PyTorch.")
+                    logger.info("Модель RiskLSTM успешно загружена через PyTorch.")
                 else:
-                    print("Файл lstm_model.pth не найден. Включается математический fallback.")
+                    logger.warning("Файл lstm_model.pth не найден. Включается математический fallback.")
             except Exception as e:
-                print(f"Ошибка загрузки PyTorch модели: {e}. Переход на fallback.")
+                logger.warning("Ошибка загрузки PyTorch модели: %s. Переход на fallback.", e)
                 
         if self.use_fallback:
-            print("Нейросети недоступны. Исполняется резервный математический экстраполятор (polyfit).")
+            logger.info("Нейросети недоступны. Исполняется резервный математический экстраполятор (polyfit).")
 
     def predict_risk(self, window_data, time_elapsed: int = 100, scenario_id: str = "shutdown"):
         """
@@ -181,7 +184,7 @@ class RiskPredictor:
                 pred_level = pred_level_nn if dev_nn > dev_math else pred_level_math
             except Exception as e:
                 # В случае сбоя при инференсе, задействуем резервный метод
-                print(f"Ошибка инференса нейросети: {e}. Переходим на fallback.")
+                logger.error("Ошибка инференса нейросети: %s. Переходим на fallback.", e)
                 pred_temp, pred_pres, pred_level = pred_temp_math, pred_pres_math, pred_level_math
         else:
             # -------------------------------------------------------------

@@ -33,10 +33,10 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   return (
-    <S.Container isEmergency={isEmergency}>
-      <S.Header collapsed={collapsed} onClick={() => setCollapsed(prev => !prev)}>
+    <S.Container $isEmergency={isEmergency}>
+      <S.Header $collapsed={collapsed} onClick={() => setCollapsed(prev => !prev)}>
         <S.TitleWrapper>
-          <S.CollapseIcon collapsed={collapsed}>
+          <S.CollapseIcon $collapsed={collapsed}>
             <ChevronRight size={14} />
           </S.CollapseIcon>
           {icon}
@@ -48,11 +48,12 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
           </S.ExtraWrapper>
         )}
       </S.Header>
-      <S.Body collapsed={collapsed}>
+      <S.Body $collapsed={collapsed}>
         {children}
       </S.Body>
     </S.Container>
   );
+
 };
 
 export default CollapsibleCard;

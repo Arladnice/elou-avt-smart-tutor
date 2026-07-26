@@ -67,17 +67,9 @@ const InstructorDashboard: React.FC = () => {
         const safetyMargin = 16;
         const availableRowHeight = wrapperHeight - headerHeight - paginationHeight - safetyMargin;
         const calculated = Math.max(1, Math.floor(availableRowHeight / rowHeight));
-        
-        console.log('Dynamic pagination calculation:', {
-          wrapperHeight,
-          headerHeight,
-          paginationHeight,
-          rowHeight,
-          availableRowHeight,
-          calculated
-        });
 
         setPageSize((prev) => (prev !== calculated ? calculated : prev));
+
       }
     };
 
@@ -165,13 +157,13 @@ const InstructorDashboard: React.FC = () => {
           <S.ConnectedBadge>
             <Users size={14} color="#ffcc00" />
             Инструктор: <strong>{username}</strong>
-            <S.ConnectedBadgeStatus active={isOnline}>
+            <S.ConnectedBadgeStatus $active={isOnline}>
               ({isOnline ? `Online, ping ${wsLatency}ms` : 'Offline'})
             </S.ConnectedBadgeStatus>
           </S.ConnectedBadge>
           <S.ConnectedBadge>
             <Users size={14} color="#00e5ff" />
-            Оператор: <S.ConnectedOperatorName connected={!!operatorName}>{operatorName || 'Не подключен'}</S.ConnectedOperatorName>
+            Оператор: <S.ConnectedOperatorName $connected={!!operatorName}>{operatorName || 'Не подключен'}</S.ConnectedOperatorName>
           </S.ConnectedBadge>
           <S.LogoutButton 
             onClick={logoutUser} 
@@ -203,9 +195,10 @@ const InstructorDashboard: React.FC = () => {
                     <S.ScenarioRadioButton value="shutdown">Аварийный останов печи П-1</S.ScenarioRadioButton>
                     <S.ScenarioRadioButton value="column_shutdown">Останов колонны К-1</S.ScenarioRadioButton>
                     <S.ScenarioRadioButton value="overpressure_relief">Ликвидация роста давления</S.ScenarioRadioButton>
-                    <S.ScenarioRadioButton value="recirculation" fullWidth>Перевод на рециркуляцию</S.ScenarioRadioButton>
+                    <S.ScenarioRadioButton value="recirculation" $fullWidth>Перевод на рециркуляцию</S.ScenarioRadioButton>
                   </S.ScenarioRadioGroup>
                 </div>
+
                 <S.ControlRow>
                   <S.FullWidthButton onClick={resetSession} type="primary" icon={<Play size={14} />}>
                     Перезапустить сессию
@@ -340,23 +333,24 @@ const InstructorDashboard: React.FC = () => {
             <S.MonitorRow>
               <S.MonitorItem>
                 <span className="lbl">Т-1 (Печь)</span>
-                <S.SensorValue isAlert={sensors.T_1 > 310}>
+                <S.SensorValue $isAlert={sensors.T_1 > 310}>
                   {sensors.T_1} °C
                 </S.SensorValue>
               </S.MonitorItem>
               <S.MonitorItem>
                 <span className="lbl">P-1 (Колонна)</span>
-                <S.SensorValue isAlert={sensors.P_1 > 0.4}>
+                <S.SensorValue $isAlert={sensors.P_1 > 0.4}>
                   {sensors.P_1} МПа
                 </S.SensorValue>
               </S.MonitorItem>
               <S.MonitorItem>
                 <span className="lbl">L-1 (Уровень)</span>
-                <S.SensorValue isAlert={false} isWarning={sensors.L_1 > 80 || sensors.L_1 < 20}>
+                <S.SensorValue $isAlert={false} $isWarning={sensors.L_1 > 80 || sensors.L_1 < 20}>
                   {sensors.L_1} %
                 </S.SensorValue>
               </S.MonitorItem>
             </S.MonitorRow>
+
 
             <S.LiveTelemetryGrid>
               <S.LiveTelemetrySpan span={1}>Статус: {getStatusBadge(status)}</S.LiveTelemetrySpan>

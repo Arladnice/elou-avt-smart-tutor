@@ -191,28 +191,29 @@ const AiAssistant: React.FC = () => {
   return (
     <S.AssistantContent>
       <S.TabsHeader>
-        <S.TabButton active={activeTab === 'risk'} onClick={() => setActiveTab('risk')}>
+        <S.TabButton $active={activeTab === 'risk'} onClick={() => setActiveTab('risk')}>
           <Zap size={12} />
           Оценка Рисков
         </S.TabButton>
-        <S.TabButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>
+        <S.TabButton $active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>
           <MessageSquare size={12} />
           Диалог с ИИ
         </S.TabButton>
         {activeTab === 'chat' && (
           <S.ModeSelector>
-            <S.ModeOption active={mode === 'rag'} onClick={() => setMode('rag')} title="Мгновенный ответ из регламента по текущей телеметрии (0 мс)">
+            <S.ModeOption $active={mode === 'rag'} onClick={() => setMode('rag')} title="Мгновенный ответ из регламента по текущей телеметрии (0 мс)">
               ⚡ RAG (0с)
             </S.ModeOption>
-            <S.ModeOption active={mode === 'auto'} onClick={() => setMode('auto')} title="Мгновенная справка RAG + попытка дополнения от LLM">
+            <S.ModeOption $active={mode === 'auto'} onClick={() => setMode('auto')} title="Мгновенная справка RAG + попытка дополнения от LLM">
               🔮 Auto
             </S.ModeOption>
-            <S.ModeOption active={mode === 'llm'} onClick={() => setMode('llm')} title="Запрос только к нейросети LM Studio">
+            <S.ModeOption $active={mode === 'llm'} onClick={() => setMode('llm')} title="Запрос только к нейросети LM Studio">
               🤖 LLM
             </S.ModeOption>
           </S.ModeSelector>
         )}
       </S.TabsHeader>
+
 
       {activeTab === 'risk' ? (
         <S.AssessmentLayout>
@@ -220,19 +221,20 @@ const AiAssistant: React.FC = () => {
             <Progress 
               type="dashboard" 
               percent={riskLevel} 
-              width={62}
+              size={62}
               strokeColor={getProgressColor()}
-              trailColor="#1b2332"
+              railColor="#1b2332"
               format={percent => (
                 <S.ProgressPercent color={getProgressColor()}>
                   {percent}%
                 </S.ProgressPercent>
               )}
             />
+
             <S.RiskLabel>Риск аварии</S.RiskLabel>
           </S.ProgressWrapper>
 
-          <S.ChatBubble risk={riskLevel}>
+          <S.ChatBubble $risk={riskLevel}>
             <S.AiMessage>{getAiMessage()}</S.AiMessage>
           </S.ChatBubble>
         </S.AssessmentLayout>

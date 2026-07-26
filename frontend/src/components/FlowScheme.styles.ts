@@ -38,22 +38,22 @@ export const SVGCanvas = styled.svg`
 `;
 
 // Стилизованные датчики
-export const SensorBox = styled.g<{ isWarning?: boolean; isDanger?: boolean }>`
+export const SensorBox = styled.g<{ $isWarning?: boolean; $isDanger?: boolean }>`
   rect.bg {
     fill: #131924;
     stroke: ${props => {
-      if (props.isDanger) return props.theme.colors.danger;
-      if (props.isWarning) return props.theme.colors.warning;
+      if (props.$isDanger) return props.theme.colors.danger;
+      if (props.$isWarning) return props.theme.colors.warning;
       return props.theme.colors.border;
     }};
     stroke-width: 1.5;
-    filter: ${props => (props.isDanger || props.isWarning ? `drop-shadow(0 0 4px ${props.isDanger ? props.theme.colors.danger : props.theme.colors.warning})` : 'none')};
+    filter: ${props => (props.$isDanger || props.$isWarning ? `drop-shadow(0 0 4px ${props.$isDanger ? props.theme.colors.danger : props.theme.colors.warning})` : 'none')};
   }
 
   text.value {
     fill: ${props => {
-      if (props.isDanger) return props.theme.colors.danger;
-      if (props.isWarning) return props.theme.colors.warning;
+      if (props.$isDanger) return props.theme.colors.danger;
+      if (props.$isWarning) return props.theme.colors.warning;
       return props.theme.colors.accent;
     }};
     font-family: ${props => props.theme.fonts.mono};
@@ -69,19 +69,19 @@ export const SensorBox = styled.g<{ isWarning?: boolean; isDanger?: boolean }>`
 `;
 
 // Стилизованные интерактивные клапаны
-export const ValveGroup = styled.g<{ isOpen: boolean }>`
+export const ValveGroup = styled.g<{ $isOpen: boolean }>`
   cursor: pointer;
 
   polygon {
-    fill: ${props => (props.isOpen ? 'rgba(0, 255, 102, 0.1)' : 'rgba(255, 51, 51, 0.1)')};
-    stroke: ${props => (props.isOpen ? props.theme.colors.success : props.theme.colors.danger)};
+    fill: ${props => (props.$isOpen ? 'rgba(0, 255, 102, 0.1)' : 'rgba(255, 51, 51, 0.1)')};
+    stroke: ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.danger)};
     stroke-width: 2;
     transition: ${props => props.theme.transitions.default};
   }
 
   circle {
-    fill: ${props => (props.isOpen ? props.theme.colors.success : props.theme.colors.danger)};
-    filter: drop-shadow(0 0 6px ${props => (props.isOpen ? props.theme.colors.success : props.theme.colors.danger)});
+    fill: ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.danger)};
+    filter: drop-shadow(0 0 6px ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.danger)});
     transition: ${props => props.theme.transitions.default};
   }
 
@@ -91,8 +91,8 @@ export const ValveGroup = styled.g<{ isOpen: boolean }>`
 `;
 
 // Потоки трубопроводов
-export const PipeLine = styled.path<{ isActive?: boolean }>`
-  stroke: ${props => (isActivePipe(props.isActive) ? '#1a365d' : '#222c3e')};
+export const PipeLine = styled.path<{ $isActive?: boolean }>`
+  stroke: ${props => (isActivePipe(props.$isActive) ? '#1a365d' : '#222c3e')};
   stroke-width: 4;
   fill: none;
 `;
@@ -101,19 +101,20 @@ function isActivePipe(isActive?: boolean): boolean {
   return !!isActive;
 }
 
-export const PipeFlow = styled.path<{ isActive?: boolean; speed?: string }>`
-  stroke: ${props => (isActivePipe(props.isActive) ? props.theme.colors.accent : 'transparent')};
+export const PipeFlow = styled.path<{ $isActive?: boolean; $speed?: string }>`
+  stroke: ${props => (isActivePipe(props.$isActive) ? props.theme.colors.accent : 'transparent')};
   stroke-width: 2;
   stroke-dasharray: 8, 16;
   fill: none;
-  animation: ${flowAnimation} ${props => props.speed || '1.5s'} linear infinite;
+  animation: ${flowAnimation} ${props => props.$speed || '1.5s'} linear infinite;
 `;
 
-export const SparklinePath = styled.path<{ strokeColor: string }>`
+export const SparklinePath = styled.path<{ $strokeColor: string }>`
   fill: none;
-  stroke: ${props => props.strokeColor};
+  stroke: ${props => props.$strokeColor};
   stroke-width: 1.2;
 `;
+
 
 // Новые чистые контейнеры для стилизации вместо inline-стилей
 
@@ -130,12 +131,13 @@ export const HeaderStatusContainer = styled.div`
   gap: 6px;
 `;
 
-export const OnlineBadge = styled.span<{ isOnline: boolean }>`
-  color: ${props => props.isOnline ? '#00ff66' : '#7c8ba1'};
+export const OnlineBadge = styled.span<{ $isOnline: boolean }>`
+  color: ${props => props.$isOnline ? '#00ff66' : '#7c8ba1'};
   margin-left: 10px;
 `;
 
-export const FlameWrapper = styled.g<{ isActive: boolean }>`
-  opacity: ${props => props.isActive ? 0.8 : 0.2};
+export const FlameWrapper = styled.g<{ $isActive: boolean }>`
+  opacity: ${props => props.$isActive ? 0.8 : 0.2};
   transition: opacity 0.5s ease;
 `;
+
