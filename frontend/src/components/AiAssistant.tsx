@@ -11,7 +11,7 @@ interface ChatMessage {
 }
 
 const AiAssistant: React.FC = () => {
-  const { riskLevel, sensors, valves, status, setpoints, defects, scenarioId } = useSimulator();
+  const { riskLevel, sensors, valves, status, setpoints, defects, scenarioId, timeElapsed, predictions } = useSimulator();
   const [activeTab, setActiveTab] = useState<'risk' | 'chat'>('risk');
   const [mode, setMode] = useState<'auto' | 'rag' | 'llm'>('rag');
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -40,11 +40,28 @@ const AiAssistant: React.FC = () => {
     return () => clearInterval(timer);
   }, [isTyping]);
 
+  // Пороги, согласованные с config.py бэкенда
+  const PRES_WARNING = 0.40;
+  const TEMP_WARNING = 310;
+  const LEVEL_HIGH = 85;
+
+  // Является ли текущее состояние фазой начального заполнения при пуске (первые 2 минуты)
+  const isStartupFilling = scenarioId === 'startup' && timeElapsed <= 120;
+  // Печь ещё прогревается при пуске (ниже рабочего диапазона)
+  const isStartupHeating = scenarioId === 'startup' && sensors.T_1 < 290;
+
+  // Определяем тренд уровня по прогнозу LSTM (predictions[2] = прогноз L_1 на t+15с)
+  const predictedLevel = predictions?.[2] ?? sensors.L_1;
+  const isLevelRising = predictedLevel > sensors.L_1 + 0.5;
+  const isLevelFalling = predictedLevel < sensors.L_1 - 0.5;
+
   const getAiMessage = () => {
+    // 1. Статусы завершения
     if (status === 'esd') {
       return 'Сработала защита блокировки. Сессия остановлена. Проанализируйте журнал тревог для выявления причин перегрузки.';
     }
 
+    // 2. Активные дефекты (приоритет: инъецированные неисправности)
     if (defects?.power_fail) {
       return 'АВАРИЯ: Полное обесточивание установки (power_fail)! Все насосы остановлены, подача топлива в печь П-1 прекращена. Убедитесь в закрытии V-1 и зафиксируйте останов системы.';
     }
@@ -64,24 +81,52 @@ const AiAssistant: React.FC = () => {
       return 'АВАРИЯ: Заклинивание регулирующего клапана сброса V-2! При росте давления немедленно активируйте аварийный останов (ПАЗ / ESD)!';
     }
 
-    if (riskLevel > 80) {
-      return 'КРИТИЧЕСКИЙ РИСК! Давление или температура превысили предельные уставки. Немедленно снизьте температуру печи или откройте клапан сброса V-2!';
+    // 3. Критический уровень риска (>75%)
+    if (riskLevel > 75) {
+      if (sensors.P_1 > PRES_WARNING) {
+        return `КРИТИЧЕСКИЙ РИСК! Высокое давление в колонне К-1 (${sensors.P_1.toFixed(2)} МПа, порог ${PRES_WARNING} МПа). Немедленно откройте клапан аварийного сброса V-2!`;
+      }
+      if (sensors.T_1 > TEMP_WARNING && !isStartupHeating) {
+        return `КРИТИЧЕСКИЙ РИСК! Высокая температура печи П-1 (${sensors.T_1.toFixed(0)}°C, порог ${TEMP_WARNING}°C). Снизьте уставку нагрева Т-1 во избежание прогара змеевика!`;
+      }
+      if (sensors.L_1 > LEVEL_HIGH) {
+        return `КРИТИЧЕСКИЙ РИСК! Переполнение колонны К-1 (${sensors.L_1.toFixed(0)}%). Срочно откройте дренаж V-3!`;
+      }
+      if (sensors.L_1 < 10 && !isStartupFilling) {
+        return `КРИТИЧЕСКИЙ РИСК! Опасно низкий уровень куба К-1 (${sensors.L_1.toFixed(0)}%). Откройте входную задвижку V-1 для подачи сырья!`;
+      }
+      return 'КРИТИЧЕСКИЙ РИСК! Физические параметры превысили предельные нормы безопасности. Проверьте показания КИПиА и арматуру.';
     }
     
-    if (!valves.V_1 && sensors.T_1 > 300) {
+    // 4. Предупреждения (с учётом сценария и тренда)
+    if (!valves.V_1 && sensors.T_1 > 300 && !isStartupHeating) {
       return 'Внимание: отсутствует подача холодного сырья (клапан V-1 закрыт), при этом печь нагрета. Зафиксирован быстрый нагрев печи и рост давления. Откройте V-1 или снизьте уставку температуры!';
     }
 
-    if (sensors.P_1 > 0.3) {
-      return 'ИИ прогнозирует рост давления в колонне K-1. Рекомендуется кратковременно открыть клапан сброса V-2 для нормализации параметров.';
+    if (sensors.P_1 > PRES_WARNING) {
+      return `ИИ прогнозирует рост давления в колонне К-1 (${sensors.P_1.toFixed(2)} МПа). Рекомендуется кратковременно открыть клапан сброса V-2 для нормализации параметров.`;
     }
 
-    if (sensors.L_1 > 80) {
-      return 'Уровень в колонне приближается к верхнему пределу. Откройте клапан дренажа V-3 или уменьшите подачу сырья V-1.';
+    if (sensors.L_1 > 80 && isLevelRising) {
+      return `Уровень в колонне приближается к верхнему пределу (${sensors.L_1.toFixed(0)}%, тренд ↑). Откройте клапан дренажа V-3 или уменьшите подачу сырья V-1.`;
     }
 
-    if (sensors.L_1 < 20) {
-      return 'Уровень в колонне слишком низкий. Увеличьте подачу сырья V-1 или прикройте клапан дренажа V-3.';
+    // При startup — низкий уровень нормален в первые 2 минуты
+    if (sensors.L_1 < 20 && !isStartupFilling && isLevelFalling) {
+      return `Уровень в колонне снижается (${sensors.L_1.toFixed(0)}%, тренд ↓). Увеличьте подачу сырья V-1 или прикройте клапан дренажа V-3.`;
+    }
+
+    // 5. Контекстные подсказки для startup
+    if (scenarioId === 'startup') {
+      if (timeElapsed < 5) {
+        return 'Сценарий ПУСК: Откройте входной клапан V-1 для подачи сырья, затем повысьте уставку температуры печи П-1.';
+      }
+      if (isStartupFilling && sensors.L_1 < 20 && valves.V_1) {
+        return `Идёт заполнение колонны К-1 сырьём (${sensors.L_1.toFixed(0)}%). Процесс штатный. Дождитесь набора уровня ≥20%.`;
+      }
+      if (isStartupHeating && valves.V_1) {
+        return `Печь П-1 прогревается (${sensors.T_1.toFixed(0)}°C → уставка ${setpoints.T_1_Sp.toFixed(0)}°C). Процесс штатный. Дождитесь выхода на рабочий режим.`;
+      }
     }
 
     return 'Параметры установки ЭЛОУ-АВТ стабильны. Режим работы: Оптимальный. Продолжайте наблюдение.';

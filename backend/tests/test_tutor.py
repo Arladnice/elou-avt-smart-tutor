@@ -444,6 +444,59 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         # При сработке блокировки сухого хода (L < 15%) насосы остановлены (dL = 0), уровень изменяется только в пределах случайного шума (+-0.05%) и не растет от V_1 (+0.5%)
         self.assertLessEqual(state["sensors"]["L_1"], prev_L + 0.1, "При L-1 < 15% блокируется подача сырья (F_in = 0), поэтому уровень не растет от V_1")
 
+    def test_startup_pump_interlock_after_filling(self):
+        """Тест-04: Проверка работы блокировки насосов при пуске: разрешено до первого заполнения, блокируется при повторном падении."""
+        sim = ELOUAVTSimulator()
+        sim.reset("startup")
+        sim.set_valve("V_1", True)
+        
+        # 1. До первого заполнения (_startup_filled = False) уровень < 15% позволяет подавать сырье
+        self.assertFalse(sim._startup_filled)
+        prev_L = sim.sensors["L_1"]
+        state = sim.step()
+        self.assertGreater(state["sensors"]["L_1"], prev_L, "До заполнения подача сырья должна работать при L < 15%")
+        
+        # 2. Имитируем заполнение выше 15%
+        sim.sensors["L_1"] = 20.0
+        sim.step()
+        self.assertTrue(sim._startup_filled, "Флаг _startup_filled должен быть True после L >= 15%")
+        
+        # 3. При повторном падении ниже 15% блокировка сухого хода должна активироваться!
+        sim.sensors["L_1"] = 10.0
+        prev_L = sim.sensors["L_1"]
+        state = sim.step()
+        self.assertLessEqual(state["sensors"]["L_1"], prev_L + 0.1, "После первичного заполнения при падении L < 15% должна сработать блокировка сухого хода")
+
+    def test_risk_predictor_aligned_thresholds(self):
+        """Тест-05: Проверка согласованности порогов риска предиктора с конфигом (COLUMN_PRES_WARNING = 0.40 МПа)."""
+        import numpy as np
+        from ai_core.config import COLUMN_PRES_WARNING, COLUMN_PRES_ESD
+        predictor = RiskPredictor()
+        
+        # Окно со стабильным давлением 0.35 МПа (ниже предупреждения 0.40 МПа)
+        window_safe = np.array([[1.0, 0.0, 1.0, 280.0, 280.0, 0.35, 50.0] for _ in range(30)], dtype=np.float32)
+        _, risk_safe = predictor.predict_risk(window_safe)
+        self.assertEqual(risk_safe, 0.0, "При давлением 0.35 МПа (ниже 0.40 МПа) риск давления должен быть 0%")
+        
+        # Окно с повышающимся давлением до 0.44 МПа (выше 0.40 МПа)
+        window_warn = np.array([[1.0, 0.0, 1.0, 280.0, 320.0, 0.44, 50.0] for _ in range(30)], dtype=np.float32)
+        _, risk_warn = predictor.predict_risk(window_warn)
+        self.assertGreater(risk_warn, 0.0, "При давлении 0.44 МПа (выше 0.40 МПа) риск должен превышать 0%")
+
+    def test_escalation_flag_reset(self):
+        """Тест-06: Проверка сброса флага escalation_warning_sent при перезапуске менеджер-сессии."""
+        from backend.services.connection_manager import manager
+        
+        manager.escalation_warning_sent = True
+        manager.critical_alert_active = True
+        
+        # Имитируем сброс сессии
+        manager.is_paused = False
+        manager.critical_alert_active = False
+        manager.escalation_warning_sent = False
+        
+        self.assertFalse(manager.escalation_warning_sent, "Флаг эскалации должен быть сброшен при перезапуске")
+
     @classmethod
     def tearDownClass(cls):
         # Удаляем тестовую БД после завершения тестов

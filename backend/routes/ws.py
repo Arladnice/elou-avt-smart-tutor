@@ -32,6 +32,7 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.snapshot_data = None
         manager.critical_alert_active = False
         manager.operator_reacted_to_critical = False
+        manager.escalation_warning_sent = False
         if scenario == "startup":
             manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
             manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
@@ -48,7 +49,7 @@ async def websocket_endpoint(websocket: WebSocket):
             cmd = json.loads(data)
             action_type = cmd.get("type")
             
-            if role == "operator" and action_type in ["toggle_valve", "change_setpoint", "trigger_esd"]:
+            if role == "operator" and action_type in ["toggle_valve", "change_setpoint", "trigger_esd", "call_dispatcher"]:
                 manager.operator_reacted_to_critical = True
                 
             if action_type == "toggle_valve":
@@ -76,6 +77,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 log_audit_event(manager.active_operator_name, "ESD_TRIGGER", "Ручной запуск ESD")
                 manager.save_completed_session()
                 
+            elif action_type == "call_dispatcher":
+                manager.actions_taken.append("CALL_DISPATCHER")
+                manager.add_log("warning", "Звонок 'Руководитель подразделения / Диспетчер ЦУП: тел. 24-45'")
+                log_audit_event(manager.active_operator_name, "DISPATCHER_CALL", "Регламентный звонок в Диспетчерскую ЦУП")
+
             elif action_type == "trigger_defect":
                 # Команда поступает от экрана Инструктора
                 defect_id = cmd.get("defect_id")
@@ -164,6 +170,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 manager.snapshot_data = None
                 manager.critical_alert_active = False
                 manager.operator_reacted_to_critical = False
+                manager.escalation_warning_sent = False
                 if scen_id == "startup":
                     manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
                     manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
@@ -184,6 +191,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 manager.snapshot_data = None
                 manager.critical_alert_active = False
                 manager.operator_reacted_to_critical = False
+                manager.escalation_warning_sent = False
                 if manager.active_scenario == "startup":
                     manager.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
                     manager.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")

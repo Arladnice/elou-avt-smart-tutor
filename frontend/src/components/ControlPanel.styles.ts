@@ -127,3 +127,44 @@ export const SwitchColumn = styled.div`
     gap: 4px;
   }
 `;
+
+export const FullWidthCallButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.25));
+  border: 1px solid #f59e0b;
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 4px;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35));
+    border-color: #fbbf24;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: #475569;
+    color: #64748b;
+  }
+
+  @media (max-height: 950px) {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+`;

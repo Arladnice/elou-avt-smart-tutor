@@ -59,10 +59,13 @@ async def simulation_loop():
             if pres > COLUMN_PRES_WARNING:
                 sev = "CRITICAL" if pres > COLUMN_PRES_CRITICAL_LEVEL else "WARNING"
                 manager.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Давление в колонне К-1 ({pres:.3f} МПа) приближается к предельному! Откройте клапан сброса V_2.", severity=sev, fingerprint="column_pres_high")
+            # Учитываем нормальный технологический интервал заполнения колонны при пуске (до 120с)
+            is_startup_filling = (manager.active_scenario == "startup" and manager.simulator.time_elapsed <= 120)
+
             if level > COLUMN_LEVEL_HIGH:
                 sev = "CRITICAL" if level > COLUMN_LEVEL_HIGH_CRITICAL_LEVEL else "WARNING"
                 manager.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) выше нормы! Откройте дренаж V_3.", severity=sev, fingerprint="column_level_high")
-            elif level < COLUMN_LEVEL_LOW:
+            elif level < COLUMN_LEVEL_LOW and not is_startup_filling:
                 sev = "CRITICAL" if level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL else "WARNING"
                 manager.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) опасно низок! Риск срыва печных насосов.", severity=sev, fingerprint="column_level_low")
                 
@@ -71,20 +74,22 @@ async def simulation_loop():
                 temp > FURNACE_TEMP_CRITICAL_LEVEL 
                 or pres > COLUMN_PRES_CRITICAL_LEVEL 
                 or level > COLUMN_LEVEL_HIGH_CRITICAL_LEVEL 
-                or level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL
+                or (level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL and not is_startup_filling)
             )
             if is_currently_critical:
                 if not manager.critical_alert_active:
                     manager.critical_alert_active = True
                     manager.critical_alert_start_time = time.time()
                     manager.operator_reacted_to_critical = False
+                    manager.escalation_warning_sent = False
                 elif not manager.operator_reacted_to_critical:
                     elapsed = time.time() - manager.critical_alert_start_time
                     if elapsed >= ESCALATION_CRITICAL_DELAY_SEC:
                         manager.add_log("error", f"ЭСКАЛАЦИЯ: Оператор не предпринял действий в течение {int(ESCALATION_CRITICAL_DELAY_SEC)} секунд после критического отклонения!", severity="CRITICAL", fingerprint="escalation_alert_60")
                         manager.operator_reacted_to_critical = True # Показать только один раз
-                    elif elapsed >= ESCALATION_WARNING_DELAY_SEC:
+                    elif elapsed >= ESCALATION_WARNING_DELAY_SEC and not manager.escalation_warning_sent:
                         manager.add_log("warning", "ЭСКАЛАЦИЯ: Дежурный оператор не отвечает! Требуется немедленная реакция на критическое отклонение!", severity="WARNING", fingerprint="escalation_alert_30")
+                        manager.escalation_warning_sent = True
             else:
                 manager.critical_alert_active = False
 

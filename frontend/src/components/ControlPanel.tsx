@@ -1,11 +1,11 @@
 import React from 'react';
 import { useSimulator } from '../context/SimulatorContext';
 import { Slider, Switch } from 'antd';
-import { Thermometer, Radio, Minus, Plus } from 'lucide-react';
+import { Thermometer, Radio, Minus, Plus, PhoneCall } from 'lucide-react';
 import * as S from './ControlPanel.styles';
 
 const ControlPanel: React.FC = () => {
-  const { setpoints, valves, toggleValve, changeSetpoint, status } = useSimulator();
+  const { setpoints, valves, toggleValve, changeSetpoint, status, callDispatcher } = useSimulator();
   const [localTemp, setLocalTemp] = React.useState(setpoints.T_1_Sp);
 
   React.useEffect(() => {
@@ -101,6 +101,17 @@ const ControlPanel: React.FC = () => {
             />
           </S.SwitchRow>
         </S.SwitchColumn>
+      </S.ControlGroup>
+
+      {/* Операции по месту / Связь с диспетчерской */}
+      <S.ControlGroup>
+        <S.FullWidthCallButton
+          disabled={status !== 'running'}
+          onClick={callDispatcher}
+          title="Регламентный звонок в Диспетчерскую ЦУП (Руководителю подразделения)"
+        >
+          <PhoneCall size={14} /> Звонок в Диспетчерскую ЦУП (тел. 24-45)
+        </S.FullWidthCallButton>
       </S.ControlGroup>
     </S.PanelContent>
   );

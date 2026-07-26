@@ -80,6 +80,7 @@ interface SimulatorContextType {
   loadState: () => void;
   configureWebhook: (url: string, active: boolean) => void;
   toggleMute: (fingerprint: string, state: boolean) => void;
+  callDispatcher: () => void;
 }
 
 const SimulatorContext = createContext<SimulatorContextType | undefined>(undefined);
@@ -363,6 +364,18 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const callDispatcher = () => {
+    if (isOnline) {
+      sendWsAction({ type: 'call_dispatcher' });
+    } else {
+      const timeStr = `${Math.floor(timeElapsed / 60).toString().padStart(2, '0')}:${(timeElapsed % 60).toString().padStart(2, '0')}`;
+      setLogs(l => [
+        ...l, 
+        { id: Date.now().toString(), time: timeStr, type: 'warning', message: "Звонок 'Руководитель подразделения / Диспетчер ЦУП: тел. 24-45'" }
+      ]);
+    }
+  };
+
   const triggerDefect = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam' | 'power_fail' | 'air_fail' | 'steam_fail', state: boolean) => {
     if (isOnline) {
       sendWsAction({ type: 'trigger_defect', defect_id: defectId, state });
@@ -515,7 +528,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       saveState,
       loadState,
       configureWebhook,
-      toggleMute
+      toggleMute,
+      callDispatcher
     }}>
       {children}
     </SimulatorContext.Provider>

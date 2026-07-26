@@ -203,25 +203,30 @@ class RiskPredictor:
         # риск по температуре.
         is_startup_heating = (scenario_id == "startup" and actual_temp < 290.0)
         
-        # 1. По температуре печи (уставка аварии: 380°C, предупреждение: 310°C)
+        # 1. По температуре печи (предупреждение: FURNACE_TEMP_WARNING=310°C, авария: FURNACE_TEMP_CRITICAL=380°C)
         if pred_temp > FURNACE_TEMP_WARNING and not is_startup_heating:
             risk += (pred_temp - FURNACE_TEMP_WARNING) / (FURNACE_TEMP_CRITICAL - FURNACE_TEMP_WARNING) * 45
             
-        # 2. По давлению в колонне (авария: 0.48 МПа, предупреждение: 0.3 МПа)
-        if pred_pres > 0.3:
-            risk += (pred_pres - 0.3) / (0.48 - 0.3) * 55
+        # 2. По давлению в колонне (предупреждение: COLUMN_PRES_WARNING=0.40 МПа, ПАЗ: COLUMN_PRES_ESD=0.48 МПа)
+        if pred_pres > COLUMN_PRES_WARNING:
+            risk += (pred_pres - COLUMN_PRES_WARNING) / (COLUMN_PRES_ESD - COLUMN_PRES_WARNING) * 55
             
-        # 3. По уровню в колонне (пределы: < 15% или > 85%)
+        # 3. По уровню в колонне (пределы: < COLUMN_LEVEL_LOW=15% или > COLUMN_LEVEL_HIGH=85%)
+        # При пуске (startup) на первых двух минутах колонна естественно пуста и заполняется сырьем
+        is_startup_filling = (scenario_id == "startup" and time_elapsed <= 120)
+        
         if pred_level > COLUMN_LEVEL_HIGH:
-            risk += (pred_level - COLUMN_LEVEL_HIGH) / 15.0 * 20
+            risk += (pred_level - COLUMN_LEVEL_HIGH) / (COLUMN_LEVEL_HIGH_CRITICAL - COLUMN_LEVEL_HIGH) * 20
         elif pred_level < COLUMN_LEVEL_LOW:
-            risk += (COLUMN_LEVEL_LOW - pred_level) / COLUMN_LEVEL_LOW * 20
+            if not is_startup_filling:
+                risk += (COLUMN_LEVEL_LOW - pred_level) / COLUMN_LEVEL_LOW * 20
+            elif time_elapsed > 15 and window[-1, 0] < 0.5:  # V-1 закрыт > 15с
+                risk += 12.5
             
         # Корректируем итоговый процент риска
         risk = np.clip(risk, 0.0, 100.0)
         
         # Если последнее фактическое состояние уже критическое, риск сразу 100%
-        # Учитываем защитный интервал времени (40 секунд) для уровня при пуске
         last_temp = float(window[-1, 4])
         last_pres = float(window[-1, 5])
         last_level = float(window[-1, 6])
@@ -229,7 +234,7 @@ class RiskPredictor:
         is_critical = (
             last_pres >= COLUMN_PRES_ESD or 
             last_temp >= FURNACE_TEMP_CRITICAL or 
-            (last_level <= COLUMN_LEVEL_LOW_CRITICAL and time_elapsed > 40) or 
+            (last_level <= COLUMN_LEVEL_LOW_CRITICAL and not is_startup_filling) or 
             last_level >= COLUMN_LEVEL_HIGH_CRITICAL
         )
         if is_critical:

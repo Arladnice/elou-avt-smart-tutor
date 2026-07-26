@@ -60,7 +60,6 @@ const DashboardLayout: React.FC = () => {
             <CollapsibleCard
               title="Журнал событий и тревог (SCADA)"
               icon={<Terminal size={14} />}
-              defaultCollapsed
             >
               <AlarmLog />
             </CollapsibleCard>

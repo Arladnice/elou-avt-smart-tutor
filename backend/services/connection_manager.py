@@ -48,6 +48,7 @@ class ConnectionManager:
         self.critical_alert_active: bool = False
         self.critical_alert_start_time: float = 0.0
         self.operator_reacted_to_critical: bool = False
+        self.escalation_warning_sent: bool = False
 
     async def connect(self, websocket: WebSocket, role: str):
         """Подключает клиента и регистрирует в соответствующем наборе сокетов."""
@@ -247,17 +248,17 @@ class ConnectionManager:
                 
         time_str = f"{self.simulator.time_elapsed // 60:02d}:{self.simulator.time_elapsed % 60:02d}"
         
-        # Если задан fingerprint, проверим последнее событие в логе для дедупликации
+        # Если задан fingerprint, проверим последние несколько событий в логе для дедупликации
         if fingerprint and self.logs:
-            last_log = self.logs[-1]
-            if last_log.get("fingerprint") == fingerprint:
-                count = last_log.get("repeat_count", 1) + 1
-                last_log["repeat_count"] = count
-                last_log["message"] = message
-                last_log["time"] = time_str
-                last_log["type"] = log_type
-                last_log["severity"] = severity
-                return
+            for recent_log in reversed(self.logs[-5:]):
+                if recent_log.get("fingerprint") == fingerprint:
+                    count = recent_log.get("repeat_count", 1) + 1
+                    recent_log["repeat_count"] = count
+                    recent_log["message"] = message
+                    recent_log["time"] = time_str
+                    recent_log["type"] = log_type
+                    recent_log["severity"] = severity
+                    return
                 
         new_entry = {
             "id": str(int(time.time() * 1000) + random_id()),

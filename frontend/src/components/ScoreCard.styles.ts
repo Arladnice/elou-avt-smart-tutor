@@ -132,7 +132,7 @@ export const RecItem = styled.div`
 
 export const FooterButtons = styled.div`
   display: flex;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   margin-top: 15px;
 `;
@@ -180,6 +180,8 @@ export const FullWidthContainer = styled.div`
 export const StyledRepeatButton = styled(Button)`
   flex: 1;
   height: 38px;
+  padding: 0 8px;
+  font-size: 11px;
   background-color: rgba(0, 229, 255, 0.1);
   border-color: #00e5ff;
   color: #00e5ff;
@@ -195,6 +197,8 @@ export const StyledRepeatButton = styled(Button)`
 
 export const StyledExitButton = styled(Button)`
   height: 38px;
+  padding: 0 12px;
+  font-size: 11px;
   background-color: #0a0e14;
   border-color: #222c3e;
   color: #7c8ba1;
@@ -220,5 +224,23 @@ export const AdaptiveRetrainingBanner = styled.div`
   align-items: center;
   gap: 8px;
   margin-top: 4px;
+`;
+
+export const StyledPdfButton = styled(Button)`
+  height: 38px;
+  padding: 0 10px;
+  font-size: 11px;
+  background-color: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+  color: #10b981;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  &&:hover, &&:focus {
+    background-color: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  }
 `;
 

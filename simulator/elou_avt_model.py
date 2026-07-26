@@ -120,8 +120,11 @@ class ELOUAVTSimulator:
         # -------------------------------------------------------------
         F_in = 0.0
         # Блокировка насосов при падении уровня в колонне К-1 ниже 15% (защита от сухого хода, п. 7.9.1)
-        # В режиме пуска ("startup") до первоначального заполнения колонны насос Н-1 (через V-1) должен беспрепятственно нагнетать сырьё для набора уровня L-1.
-        pump_interlock_active = (L < 15.0) if getattr(self, "scenario_id", "") != "startup" else False
+        # В режиме пуска ("startup") до первоначального заполнения колонны (_startup_filled=False)
+        # насос Н-1 (через V-1) должен беспрепятственно нагнетать сырьё для набора уровня L-1.
+        # После первого достижения 15% (_startup_filled=True) блокировка снова активна.
+        is_startup_prefill = (getattr(self, "scenario_id", "") == "startup" and not getattr(self, "_startup_filled", False))
+        pump_interlock_active = (L < 15.0) and not is_startup_prefill
         if V_1 and not self.defects["pump_fail"] and not self.defects["power_fail"] and not pump_interlock_active:
             F_in = 1.0  # Номинальный расход сырья
 
@@ -211,9 +214,20 @@ class ELOUAVTSimulator:
         elif next_T >= 380.0:
             self.status = "accident"
             self.accident_reason = "Критический перегрев печи П-1 (выше 380°C). Прогар змеевика, коксование и пожар в топочной камере!"
-        elif next_L <= 5.0 and (self.time_elapsed > 40 if getattr(self, "scenario_id", "") != "startup" else (self.time_elapsed > 180 or getattr(self, "_startup_filled", False))):
-            self.status = "accident"
-            self.accident_reason = "Аварийно низкий уровень в колонне К-1 (ниже 5%). Срыв сырьевых насосов, сухой ход и разрушение торцевых уплотнений (п. 7.9.1 техрегламента)!"
+        elif next_L <= 5.0:
+            # Авария по низкому уровню: срыв насосов куба (п. 7.9.1)
+            # При startup авария не срабатывает до заполнения колонны ИЛИ до 180с,
+            # чтобы дать оператору время набрать уровень.
+            # При других сценариях — защита от ложных срабатываний первые 40с.
+            is_startup = getattr(self, "scenario_id", "") == "startup"
+            was_filled = getattr(self, "_startup_filled", False)
+            if is_startup:
+                low_level_accident_allowed = was_filled or self.time_elapsed > 180
+            else:
+                low_level_accident_allowed = self.time_elapsed > 40
+            if low_level_accident_allowed:
+                self.status = "accident"
+                self.accident_reason = "Аварийно низкий уровень в колонне К-1 (ниже 5%). Срыв сырьевых насосов, сухой ход и разрушение торцевых уплотнений (п. 7.9.1 техрегламента)!"
         elif next_L >= 98.0:
             self.status = "accident"
             self.accident_reason = "Превышение уровня в колонне К-1 (выше 98%). Риск уноса жидкости с парами в шлемовую линию и гидроудара в конденсаторах (п. 7.10.4)!"
