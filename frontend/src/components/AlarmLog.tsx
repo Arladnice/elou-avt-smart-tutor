@@ -20,10 +20,11 @@ const AlarmLog: React.FC = () => {
     }
   }, [logs, filterSeverity]);
 
-  const handleFeedback = async (logId: string, fbType: 'confirmed' | 'false_alarm') => {
+  const handleFeedback = async (logId: string | number, fbType: 'confirmed' | 'false_alarm') => {
     try {
-      await apiService.sendAlarmFeedback(logId, fbType);
-      setFeedbackStatus(prev => ({ ...prev, [logId]: fbType }));
+      const key = String(logId);
+      await apiService.sendAlarmFeedback(key, fbType);
+      setFeedbackStatus(prev => ({ ...prev, [key]: fbType }));
     } catch (e) {
       console.error('Ошибка отправки фидбека аларма:', e);
     }
@@ -91,7 +92,7 @@ const AlarmLog: React.FC = () => {
         {filteredLogs.map(log => {
           const severity = getSeverity(log);
           const isAlarm = severity === 'CRITICAL' || severity === 'WARNING';
-          const fb = feedbackStatus[log.id];
+          const fb = feedbackStatus[String(log.id)];
 
           return (
             <S.LogRow key={log.id} severity={severity}>

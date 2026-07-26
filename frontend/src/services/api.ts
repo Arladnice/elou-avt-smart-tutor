@@ -151,7 +151,7 @@ export const apiService = {
   /**
    * Sends instructor feedback for AI alarm (GAP-6: Closed Loop Feedback)
    */
-  async sendAlarmFeedback(alarmId: string, feedback: 'confirmed' | 'false_alarm', instructorName: string = 'Инструктор', details: string = ''): Promise<{ status: string; message: string }> {
+  async sendAlarmFeedback(alarmId: string | number, feedback: 'confirmed' | 'false_alarm', instructorName: string = 'Инструктор', details: string = ''): Promise<{ status: string; message: string }> {
     const response = await fetch(`${BASE_URL}/alarm-feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
