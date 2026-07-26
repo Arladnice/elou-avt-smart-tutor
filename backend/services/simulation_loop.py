@@ -3,7 +3,7 @@ import time
 from backend.services.connection_manager import manager
 from ai_core.config import (
     FURNACE_TEMP_WARNING, COLUMN_PRES_WARNING, COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW,
-    SESSION_MAX_TIME_SEC,
+    SESSION_MAX_TIME_SEC, STARTUP_FILLING_TIME_LIMIT_SEC,
     FURNACE_TEMP_CRITICAL_LEVEL, COLUMN_PRES_CRITICAL_LEVEL,
     COLUMN_LEVEL_HIGH_CRITICAL_LEVEL, COLUMN_LEVEL_LOW_CRITICAL_LEVEL,
     ESCALATION_WARNING_DELAY_SEC, ESCALATION_CRITICAL_DELAY_SEC
@@ -59,8 +59,8 @@ async def simulation_loop():
             if pres > COLUMN_PRES_WARNING:
                 sev = "CRITICAL" if pres > COLUMN_PRES_CRITICAL_LEVEL else "WARNING"
                 manager.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Давление в колонне К-1 ({pres:.3f} МПа) приближается к предельному! Откройте клапан сброса V_2.", severity=sev, fingerprint="column_pres_high")
-            # Учитываем нормальный технологический интервал заполнения колонны при пуске (до 120с)
-            is_startup_filling = (manager.active_scenario == "startup" and manager.simulator.time_elapsed <= 120)
+            # Учитываем нормальный технологический интервал заполнения колонны при пуске (до STARTUP_FILLING_TIME_LIMIT_SEC)
+            is_startup_filling = (manager.active_scenario == "startup" and manager.simulator.time_elapsed <= STARTUP_FILLING_TIME_LIMIT_SEC)
 
             if level > COLUMN_LEVEL_HIGH:
                 sev = "CRITICAL" if level > COLUMN_LEVEL_HIGH_CRITICAL_LEVEL else "WARNING"

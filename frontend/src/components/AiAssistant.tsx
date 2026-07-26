@@ -40,15 +40,17 @@ const AiAssistant: React.FC = () => {
     return () => clearInterval(timer);
   }, [isTyping]);
 
-  // Пороги, согласованные с config.py бэкенда
+  // Пороги и интервалы, согласованные с config.py бэкенда
   const PRES_WARNING = 0.40;
   const TEMP_WARNING = 310;
   const LEVEL_HIGH = 85;
+  const STARTUP_FILLING_TIME_LIMIT_SEC = 120;
+  const STARTUP_HEATING_THRESHOLD_TEMP = 290;
 
-  // Является ли текущее состояние фазой начального заполнения при пуске (первые 2 минуты)
-  const isStartupFilling = scenarioId === 'startup' && timeElapsed <= 120;
+  // Является ли текущее состояние фазой начального заполнения при пуске
+  const isStartupFilling = scenarioId === 'startup' && timeElapsed <= STARTUP_FILLING_TIME_LIMIT_SEC;
   // Печь ещё прогревается при пуске (ниже рабочего диапазона)
-  const isStartupHeating = scenarioId === 'startup' && sensors.T_1 < 290;
+  const isStartupHeating = scenarioId === 'startup' && sensors.T_1 < STARTUP_HEATING_THRESHOLD_TEMP;
 
   // Определяем тренд уровня по прогнозу LSTM (predictions[2] = прогноз L_1 на t+15с)
   const predictedLevel = predictions?.[2] ?? sensors.L_1;

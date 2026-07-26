@@ -2,6 +2,15 @@ import random
 import math
 import copy
 
+from ai_core.config import (
+    COLUMN_PRES_ESD, FURNACE_TEMP_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL, COLUMN_LEVEL_HIGH_CRITICAL,
+    COLUMN_LEVEL_LOW, FURNACE_TEMP_MIN_LIMIT, FURNACE_TEMP_MAX_LIMIT,
+    COLUMN_PRES_MIN_LIMIT, COLUMN_PRES_MAX_LIMIT, COLUMN_LEVEL_MIN_LIMIT, COLUMN_LEVEL_MAX_LIMIT,
+    STARTUP_INITIAL_TEMP, STARTUP_INITIAL_PRES, STARTUP_INITIAL_LEVEL, STARTUP_SETPOINT_TEMP,
+    NORMAL_INITIAL_TEMP, NORMAL_INITIAL_PRES, NORMAL_INITIAL_LEVEL, NORMAL_SETPOINT_TEMP,
+    ACCIDENT_NON_STARTUP_MIN_TIME_SEC, ACCIDENT_STARTUP_MAX_TIME_SEC
+)
+
 class ELOUAVTSimulator:
     """
     Математическая модель физико-химических процессов установки ЭЛОУ-АВТ-1.
@@ -39,12 +48,12 @@ class ELOUAVTSimulator:
                 "V_3": False   # Дренаж куба колонны закрыт
             }
             self.setpoints = {
-                "T_1_Sp": 240.0  # Минимальная температура печи
+                "T_1_Sp": STARTUP_SETPOINT_TEMP  # Минимальная температура печи
             }
             self.sensors = {
-                "T_1": 20.0,    # Холодная печь
-                "P_1": 0.05,     # Атмосферное давление
-                "L_1": 0.0      # Пустая колонна
+                "T_1": STARTUP_INITIAL_TEMP,    # Холодная печь
+                "P_1": STARTUP_INITIAL_PRES,    # Атмосферное давление
+                "L_1": STARTUP_INITIAL_LEVEL    # Пустая колонна
             }
         else:
             # Нормальное рабочее состояние для останова и прочих тестов
@@ -54,12 +63,12 @@ class ELOUAVTSimulator:
                 "V_3": True    # Дренаж куба колонны
             }
             self.setpoints = {
-                "T_1_Sp": 280.0  # Уставка температуры печи, °C
+                "T_1_Sp": NORMAL_SETPOINT_TEMP  # Уставка температуры печи, °C
             }
             self.sensors = {
-                "T_1": 280.0,   # T-1 (Температура печи), °C
-                "P_1": 0.25,     # P-1 (Давление в колонне), МПа
-                "L_1": 50.0     # L-1 (Уровень в колонне), %
+                "T_1": NORMAL_INITIAL_TEMP,   # T-1 (Температура печи), °C
+                "P_1": NORMAL_INITIAL_PRES,   # P-1 (Давление в колонне), МПа
+                "L_1": NORMAL_INITIAL_LEVEL   # L-1 (Уровень в колонне), %
             }
 
     def set_valve(self, valve_id: str, state: bool):
@@ -124,7 +133,7 @@ class ELOUAVTSimulator:
         # насос Н-1 (через V-1) должен беспрепятственно нагнетать сырьё для набора уровня L-1.
         # После первого достижения 15% (_startup_filled=True) блокировка снова активна.
         is_startup_prefill = (getattr(self, "scenario_id", "") == "startup" and not getattr(self, "_startup_filled", False))
-        pump_interlock_active = (L < 15.0) and not is_startup_prefill
+        pump_interlock_active = (L < COLUMN_LEVEL_LOW) and not is_startup_prefill
         if V_1 and not self.defects["pump_fail"] and not self.defects["power_fail"] and not pump_interlock_active:
             F_in = 1.0  # Номинальный расход сырья
 
@@ -138,8 +147,8 @@ class ELOUAVTSimulator:
             # При отсутствии протока сырья (отказ насоса/питания, закрытый V_1 или сработка блокировки <15%)
             # Если горелки активны (T_sp > 240), змеевик быстро нагревается всухую.
             # Если оператор снизил уставку T_sp до минимума или сработал power_fail (T_sp=20), идет остывание.
-            Q_heat = max(0.0, (T_sp - 240.0) * 0.18) if not self.defects["power_fail"] else 0.0
-            Q_cool = (T - 60.0) * 0.01 + ( (T - 20.0) * 0.02 if self.defects["power_fail"] else 0.0 )
+            Q_heat = max(0.0, (T_sp - STARTUP_SETPOINT_TEMP) * 0.18) if not self.defects["power_fail"] else 0.0
+            Q_cool = (T - 60.0) * 0.01 + ( (T - STARTUP_INITIAL_TEMP) * 0.02 if self.defects["power_fail"] else 0.0 )
 
         # Дополнительный нагрев при неисправности "coil_overheat" (неуправляемое горение / прогар змеевика)
         if self.defects["coil_overheat"]:
@@ -150,7 +159,7 @@ class ELOUAVTSimulator:
         next_T = T + dT
         
         # Физические ограничения температуры
-        next_T = max(20.0, min(600.0, next_T))
+        next_T = max(FURNACE_TEMP_MIN_LIMIT, min(FURNACE_TEMP_MAX_LIMIT, next_T))
 
         # -------------------------------------------------------------
         # 3. Моделирование материального баланса колонны К-1 (Уровень L)
@@ -159,7 +168,7 @@ class ELOUAVTSimulator:
         if F_in > 0.0:
             dL += 0.5
         # Кубовый насос отбора (через V-3) останавливается при сработке блокировки сухого хода (L < 15%) или отказе питания
-        if V_3 and not self.defects["power_fail"] and not (L < 15.0):
+        if V_3 and not self.defects["power_fail"] and not (L < COLUMN_LEVEL_LOW):
             dL -= 0.6
             
         # При срыве подачи пара в стриппинге (steam_fail) ухудшается отпарка легких фракций, накопление жидкости растет
@@ -167,8 +176,8 @@ class ELOUAVTSimulator:
             dL += 0.25
             
         next_L = L + dL + (random.random() - 0.5) * 0.1
-        next_L = max(0.0, min(100.0, next_L))
-        if next_L >= 15.0:
+        next_L = max(COLUMN_LEVEL_MIN_LIMIT, min(COLUMN_LEVEL_MAX_LIMIT, next_L))
+        if next_L >= COLUMN_LEVEL_LOW:
             self._startup_filled = True
 
         # -------------------------------------------------------------
@@ -179,10 +188,10 @@ class ELOUAVTSimulator:
             # пропорционально прогреву печи и заполнению колонны парами/жидкостью
             temp_factor = min(1.0, max(0.0, (next_T - 100.0) / 180.0))
             level_factor = min(1.0, max(0.0, next_L / 30.0))
-            P_target = 0.05 + 0.20 * temp_factor * level_factor
+            P_target = STARTUP_INITIAL_PRES + (NORMAL_INITIAL_PRES - STARTUP_INITIAL_PRES) * temp_factor * level_factor
             dP = (P_target - P) * 0.1
         else:
-            dP = (next_T - 280.0) * 0.0002 + (next_L - 50.0) * 0.0001 - (P - 0.25) * 0.05
+            dP = (next_T - NORMAL_INITIAL_TEMP) * 0.0002 + (next_L - NORMAL_INITIAL_LEVEL) * 0.0001 - (P - NORMAL_INITIAL_PRES) * 0.05
         
         # Сброс давления через предохранительный/регулирующий клапан V_2
         if V_2 and not self.defects["valve_jam"]:
@@ -193,7 +202,7 @@ class ELOUAVTSimulator:
             dP += 0.006
             
         next_P = P + dP + (random.random() - 0.5) * 0.002
-        next_P = max(0.05, min(2.0, next_P))
+        next_P = max(COLUMN_PRES_MIN_LIMIT, min(COLUMN_PRES_MAX_LIMIT, next_P))
 
         # Обновляем датчики
         self.sensors["T_1"] = round(next_T, 2)
@@ -208,13 +217,13 @@ class ELOUAVTSimulator:
         # Срабатывание сигнализации по высокому давлению: 4.5 кгс/см² (0.45 МПа)
         # Срабатывание ПАЗ (блокировка горелок, отсечка сырья и бутана): 4.8 кгс/см² (0.48 МПа)
         
-        if next_P >= 0.48:
+        if next_P >= COLUMN_PRES_ESD:
             self.status = "accident"
-            self.accident_reason = "Критическое превышение давления в колонне К-1 (более 0.48 МПа). Взрыв колонны и выброс нефтепродуктов!"
-        elif next_T >= 380.0:
+            self.accident_reason = f"Критическое превышение давления в колонне К-1 (более {COLUMN_PRES_ESD} МПа). Взрыв колонны и выброс нефтепродуктов!"
+        elif next_T >= FURNACE_TEMP_CRITICAL:
             self.status = "accident"
-            self.accident_reason = "Критический перегрев печи П-1 (выше 380°C). Прогар змеевика, коксование и пожар в топочной камере!"
-        elif next_L <= 5.0:
+            self.accident_reason = f"Критический перегрев печи П-1 (выше {FURNACE_TEMP_CRITICAL}°C). Прогар змеевика, коксование и пожар в топочной камере!"
+        elif next_L <= COLUMN_LEVEL_LOW_CRITICAL:
             # Авария по низкому уровню: срыв насосов куба (п. 7.9.1)
             # При startup авария не срабатывает до заполнения колонны ИЛИ до 180с,
             # чтобы дать оператору время набрать уровень.
@@ -222,15 +231,15 @@ class ELOUAVTSimulator:
             is_startup = getattr(self, "scenario_id", "") == "startup"
             was_filled = getattr(self, "_startup_filled", False)
             if is_startup:
-                low_level_accident_allowed = was_filled or self.time_elapsed > 180
+                low_level_accident_allowed = was_filled or self.time_elapsed > ACCIDENT_STARTUP_MAX_TIME_SEC
             else:
-                low_level_accident_allowed = self.time_elapsed > 40
+                low_level_accident_allowed = self.time_elapsed > ACCIDENT_NON_STARTUP_MIN_TIME_SEC
             if low_level_accident_allowed:
                 self.status = "accident"
-                self.accident_reason = "Аварийно низкий уровень в колонне К-1 (ниже 5%). Срыв сырьевых насосов, сухой ход и разрушение торцевых уплотнений (п. 7.9.1 техрегламента)!"
-        elif next_L >= 98.0:
+                self.accident_reason = f"Аварийно низкий уровень в колонне К-1 (ниже {COLUMN_LEVEL_LOW_CRITICAL}%). Срыв сырьевых насосов, сухой ход и разрушение торцевых уплотнений (п. 7.9.1 техрегламента)!"
+        elif next_L >= COLUMN_LEVEL_HIGH_CRITICAL:
             self.status = "accident"
-            self.accident_reason = "Превышение уровня в колонне К-1 (выше 98%). Риск уноса жидкости с парами в шлемовую линию и гидроудара в конденсаторах (п. 7.10.4)!"
+            self.accident_reason = f"Превышение уровня в колонне К-1 (выше {COLUMN_LEVEL_HIGH_CRITICAL}%). Риск уноса жидкости с парами в шлемовую линию и гидроудара в конденсаторах (п. 7.10.4)!"
 
         return self.get_state()
 

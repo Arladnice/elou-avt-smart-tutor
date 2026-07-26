@@ -60,11 +60,36 @@ COLUMN_LEVEL_BALANCE_MAX = 80.0   # %
 STARTUP_MIN_TIME_SEC = 45         # Минимальное время сессии для стабилизации пуска
 SESSION_MAX_TIME_SEC = 300        # Максимальное время сессии (5 минут)
 
-# === Alert Escalation Thresholds ===
-FURNACE_TEMP_CRITICAL_LEVEL = 350.0        # °C (Критический порог температуры печи для эскалации)
-COLUMN_PRES_CRITICAL_LEVEL = 0.43          # МПа (Критический порог давления колонны для эскалации)
-COLUMN_LEVEL_HIGH_CRITICAL_LEVEL = 90.0    # % (Критический верхний порог уровня куба для эскалации)
-COLUMN_LEVEL_LOW_CRITICAL_LEVEL = 10.0     # % (Критический нижний порог уровня куба для эскалации)
-ESCALATION_WARNING_DELAY_SEC = 30.0        # секунд (Время до предупреждения о бездействии оператора)
-ESCALATION_CRITICAL_DELAY_SEC = 60.0       # секунд (Время до критической ошибки при бездействии оператора)
+# === Physical Limits (Clamping & Bounds) ===
+FURNACE_TEMP_MIN_LIMIT = 20.0       # °C (Холодная печь, абсолютный минимум)
+FURNACE_TEMP_MAX_LIMIT = 600.0      # °C (Максимальная температура по шкале КИПиА)
+COLUMN_PRES_MIN_LIMIT = 0.05        # МПа (Атмосферное давление)
+COLUMN_PRES_MAX_LIMIT = 2.0         # МПа (Предельное давление по шкале датчиков)
+COLUMN_LEVEL_MIN_LIMIT = 0.0        # % (Пустой куб)
+COLUMN_LEVEL_MAX_LIMIT = 100.0      # % (Полный куб)
+
+# === Initial State Physics Defaults ===
+STARTUP_INITIAL_TEMP = 20.0         # °C
+STARTUP_INITIAL_PRES = 0.05         # МПа
+STARTUP_INITIAL_LEVEL = 0.0         # %
+STARTUP_SETPOINT_TEMP = 240.0       # °C
+
+NORMAL_INITIAL_TEMP = 280.0          # °C
+NORMAL_INITIAL_PRES = 0.25          # МПа
+NORMAL_INITIAL_LEVEL = 50.0         # %
+NORMAL_SETPOINT_TEMP = 280.0        # °C
+
+# === Process Timing & Dynamic Thresholds ===
+STARTUP_HEATING_THRESHOLD_TEMP = 290.0   # °C (Выход печи на рабочий режим при пуске)
+STARTUP_FILLING_TIME_LIMIT_SEC = 120     # с (Первичное заполнение колонны при пуске)
+VALVE_ACTION_TIMEOUT_SEC = 15            # с (Время выдержки после открытия клапана)
+ACCIDENT_NON_STARTUP_MIN_TIME_SEC = 40   # с (Защита от ложной аварии при запуске обычных сценариев)
+ACCIDENT_STARTUP_MAX_TIME_SEC = 180      # с (Предельное время для заполнения куба при пуске)
+
+# === Risk Engine Weights ===
+RISK_WEIGHT_TEMP = 45.0             # % вклад температуры в риск
+RISK_WEIGHT_PRES = 55.0             # % вклад давления в риск
+RISK_WEIGHT_LEVEL = 20.0            # % вклад уровня в риск
+RISK_PENALTY_NO_FEED = 12.5         # % штраф при закрытом V-1
+
 
