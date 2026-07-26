@@ -242,15 +242,15 @@ const AiAssistant: React.FC = () => {
         <S.ChatContainer>
           <S.MessagesBox ref={messagesBoxRef}>
             {messages.map((m, idx) => (
-              <S.MessageRow key={idx} isUser={m.role === 'user'}>
-                <S.MessageBubble isUser={m.role === 'user'}>
+              <S.MessageRow key={idx} $isUser={m.role === 'user'}>
+                <S.MessageBubble $isUser={m.role === 'user'}>
                   {m.content}
                 </S.MessageBubble>
               </S.MessageRow>
             ))}
             {isTyping && (
-              <S.MessageRow isUser={false}>
-                <S.MessageBubble isUser={false}>
+              <S.MessageRow $isUser={false}>
+                <S.MessageBubble $isUser={false}>
                   <S.TypingIndicator>
                     {typingSeconds < 10
                       ? 'ИИ генерирует ответ...'
@@ -260,6 +260,7 @@ const AiAssistant: React.FC = () => {
                 </S.MessageBubble>
               </S.MessageRow>
             )}
+
           </S.MessagesBox>
 
           <S.SuggestionsBox>

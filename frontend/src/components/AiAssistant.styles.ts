@@ -141,13 +141,13 @@ export const ChatBubble = styled.div<{ $risk: number }>`
     height: 10px;
     background-color: ${props => props.theme.colors.background};
     border-left: 1px solid ${props => {
-      if (props.risk > 70) return props.theme.colors.danger;
-      if (props.risk > 30) return props.theme.colors.warning;
+      if (props.$risk > 70) return props.theme.colors.danger;
+      if (props.$risk > 30) return props.theme.colors.warning;
       return props.theme.colors.border;
     }};
     border-bottom: 1px solid ${props => {
-      if (props.risk > 70) return props.theme.colors.danger;
-      if (props.risk > 30) return props.theme.colors.warning;
+      if (props.$risk > 70) return props.theme.colors.danger;
+      if (props.$risk > 30) return props.theme.colors.warning;
       return props.theme.colors.border;
     }};
   }
@@ -220,15 +220,15 @@ export const MessagesBox = styled.div`
   }
 `;
 
-export const MessageRow = styled.div<{ isUser: boolean }>`
+export const MessageRow = styled.div<{ $isUser: boolean }>`
   display: flex;
-  justify-content: ${props => props.isUser ? 'flex-end' : 'flex-start'};
+  justify-content: ${props => props.$isUser ? 'flex-end' : 'flex-start'};
 `;
 
-export const MessageBubble = styled.div<{ isUser: boolean }>`
+export const MessageBubble = styled.div<{ $isUser: boolean }>`
   max-width: 85%;
-  background-color: ${props => props.isUser ? 'rgba(0, 229, 255, 0.1)' : '#161c28'};
-  border: 1px solid ${props => props.isUser ? '#00e5ff' : props.theme.colors.border};
+  background-color: ${props => props.$isUser ? 'rgba(0, 229, 255, 0.1)' : '#161c28'};
+  border: 1px solid ${props => props.$isUser ? '#00e5ff' : props.theme.colors.border};
   color: ${props => props.theme.colors.text};
   border-radius: 8px;
   padding: 6px 10px;
@@ -241,6 +241,7 @@ export const MessageBubble = styled.div<{ isUser: boolean }>`
     margin: 0;
   }
 `;
+
 
 export const SuggestionsBox = styled.div`
   display: flex;

@@ -1,6 +1,7 @@
 import React from 'react';
-import { useSimulator, type ScoreCardData } from '../context/SimulatorContext';
-import { Modal, List } from 'antd';
+import { useSimulator } from '../context/SimulatorContext';
+import { Modal } from 'antd';
+
 import { Award, AlertOctagon, RefreshCw, LogOut, CheckCircle2, FileText } from 'lucide-react';
 import * as S from './ScoreCard.styles';
 
@@ -287,9 +288,10 @@ const ScoreCard: React.FC = () => {
     >
       <S.CardContainer>
         {/* Крупная буква оценки */}
-        <S.GradeBadge grade={scoreCard.grade}>
+        <S.GradeBadge $grade={scoreCard.grade}>
           {scoreCard.grade}
         </S.GradeBadge>
+
 
         <S.CenterTextContainer>
           <S.HeaderTitle color={getHeaderColor()}>
@@ -323,23 +325,19 @@ const ScoreCard: React.FC = () => {
               <AlertOctagon size={14} color="#ff3333" />
               Обнаруженные нарушения регламента
             </S.SectionTitle>
-            <S.StyledList
-              dataSource={scoreCard.errors}
-              renderItem={(err: unknown) => {
-                const errorItem = err as ScoreCardData['errors'][number];
-                return (
-                  <List.Item>
-                    <S.ErrorItemContainer>
-                      <S.ErrorItemHeader>
-                        <S.ErrorTitle>{errorItem.title}</S.ErrorTitle>
-                        <S.ErrorClause>{errorItem.clause}</S.ErrorClause>
-                      </S.ErrorItemHeader>
-                      <S.ErrorText>{errorItem.text}</S.ErrorText>
-                    </S.ErrorItemContainer>
-                  </List.Item>
-                );
-              }}
-            />
+            <S.ErrorsContainer>
+              {scoreCard.errors.map((errorItem, idx) => (
+                <S.ErrorItemCard key={idx}>
+                  <S.ErrorItemContainer>
+                    <S.ErrorItemHeader>
+                      <S.ErrorTitle>{errorItem.title}</S.ErrorTitle>
+                      <S.ErrorClause>{errorItem.clause}</S.ErrorClause>
+                    </S.ErrorItemHeader>
+                    <S.ErrorText>{errorItem.text}</S.ErrorText>
+                  </S.ErrorItemContainer>
+                </S.ErrorItemCard>
+              ))}
+            </S.ErrorsContainer>
           </>
         )}
 

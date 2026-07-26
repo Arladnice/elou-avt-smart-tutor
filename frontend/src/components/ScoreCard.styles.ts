@@ -1,5 +1,6 @@
 import styled from 'styled-components';
-import { List, Button } from 'antd';
+import { Button } from 'antd';
+
 
 export const CardContainer = styled.div`
   display: flex;
@@ -9,7 +10,7 @@ export const CardContainer = styled.div`
   padding: 10px 0;
 `;
 
-export const GradeBadge = styled.div<{ grade: string }>`
+export const GradeBadge = styled.div<{ $grade: string }>`
   width: 90px;
   height: 90px;
   border-radius: 50%;
@@ -20,19 +21,20 @@ export const GradeBadge = styled.div<{ grade: string }>`
   font-weight: 900;
   color: white;
   background-color: ${props => {
-    if (props.grade === 'A') return props.theme.colors.success;
-    if (props.grade === 'B') return '#0070f3';
-    if (props.grade === 'C') return props.theme.colors.warning;
+    if (props.$grade === 'A') return props.theme.colors.success;
+    if (props.$grade === 'B') return '#0070f3';
+    if (props.$grade === 'C') return props.theme.colors.warning;
     return props.theme.colors.danger;
   }};
   box-shadow: 0 0 20px ${props => {
-    if (props.grade === 'A') return 'rgba(0, 255, 102, 0.4)';
-    if (props.grade === 'B') return 'rgba(0, 112, 243, 0.4)';
-    if (props.grade === 'C') return 'rgba(255, 204, 0, 0.4)';
+    if (props.$grade === 'A') return 'rgba(0, 255, 102, 0.4)';
+    if (props.$grade === 'B') return 'rgba(0, 112, 243, 0.4)';
+    if (props.$grade === 'C') return 'rgba(255, 204, 0, 0.4)';
     return 'rgba(255, 51, 51, 0.4)';
   }};
   border: 4px solid #111620;
 `;
+
 
 export const StatRow = styled.div`
   display: flex;
@@ -80,19 +82,22 @@ export const SectionTitle = styled.h3`
   padding-bottom: 4px;
 `;
 
-export const StyledList = styled(List)`
+export const ErrorsContainer = styled.div`
   width: 100%;
   max-height: 180px;
   overflow-y: auto;
-  
-  .ant-list-item {
-    padding: 8px 12px;
-    border-color: ${props => props.theme.colors.border};
-    background-color: #0b0f17;
-    margin-bottom: 6px;
-    border-radius: 4px;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 `;
+
+export const ErrorItemCard = styled.div`
+  padding: 8px 12px;
+  border: 1px solid ${props => props.theme.colors.border};
+  background-color: #0b0f17;
+  border-radius: 4px;
+`;
+
 
 export const ErrorTitle = styled.div`
   font-size: 12px;

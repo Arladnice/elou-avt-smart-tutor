@@ -130,10 +130,15 @@ export const StyledSelect = styled(Select)`
   height: 38px;
 `;
 
-export const dropdownStyles = {
-  backgroundColor: '#111620',
-  color: '#e1e7f0'
+export const selectStyles = {
+  popup: {
+    root: {
+      backgroundColor: '#111620',
+      color: '#e1e7f0'
+    }
+  }
 };
+
 
 export const UserIcon = styled(User)`
   color: #7c8ba1;

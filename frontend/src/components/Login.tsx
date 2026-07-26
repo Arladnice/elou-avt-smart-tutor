@@ -40,7 +40,7 @@ const Login: React.FC = () => {
             <S.HeaderSubtitle>Интеллектуальная система обучения персонала</S.HeaderSubtitle>
           </>
         }
-        bordered={false}
+        variant="borderless"
       >
         <S.Form onSubmit={handleSubmit}>
           <S.FormGroup>
@@ -62,7 +62,7 @@ const Login: React.FC = () => {
                 { value: 'operator', label: 'Оператор (SCADA-управление)' },
                 { value: 'instructor', label: 'Инструктор (Контроль и сбои)' }
               ]}
-              dropdownStyle={S.dropdownStyles}
+              styles={S.selectStyles}
             />
           </S.FormGroup>
 
