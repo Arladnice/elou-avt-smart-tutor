@@ -37,6 +37,7 @@ class SimulationSession:
         self.speed_multiplier = 1.0
         self.is_paused = False
         self.snapshot_data = None
+        self.mode = "training"
 
         self.webhook_url: str = ""
         self.webhook_active: bool = False
@@ -137,6 +138,7 @@ class SimulationSession:
             "speedMultiplier": self.speed_multiplier,
             "isPaused": self.is_paused,
             "hasSnapshot": self.snapshot_data is not None,
+            "mode": self.mode,
             "webhookUrl": self.webhook_url,
             "webhookActive": self.webhook_active,
             "mutes": list(self.mutes)

@@ -14,6 +14,7 @@ class SessionSaveRequest(BaseModel):
     score: int
     status: str
     violations: List[Dict[str, Any]]
+    mode: str = "training"
 
 class HealthResponse(BaseModel):
     status: str

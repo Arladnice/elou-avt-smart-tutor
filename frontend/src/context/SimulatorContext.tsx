@@ -61,6 +61,7 @@ interface SimulatorContextType {
   speedMultiplier: number;
   isPaused: boolean;
   hasSnapshot: boolean;
+  mode: 'training' | 'exam';
   
   webhookUrl: string;
   webhookActive: boolean;
@@ -83,6 +84,7 @@ interface SimulatorContextType {
   toggleMute: (fingerprint: string, state: boolean) => void;
   callDispatcher: () => void;
   switchSession: (sessionId: string) => void;
+  selectMode: (mode: 'training' | 'exam') => void;
 }
 
 const SimulatorContext = createContext<SimulatorContextType | undefined>(undefined);
@@ -122,6 +124,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [speedMultiplier, setSpeedMultiplier] = useState(1.0);
   const [isPaused, setIsPaused] = useState(false);
   const [hasSnapshot, setHasSnapshot] = useState(false);
+  const [mode, setMode] = useState<'training' | 'exam'>('training');
   
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookActive, setWebhookActive] = useState(false);
@@ -192,6 +195,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (data.webhookUrl !== undefined) setWebhookUrl(data.webhookUrl);
         if (data.webhookActive !== undefined) setWebhookActive(data.webhookActive);
         if (data.mutes !== undefined) setMutes(data.mutes);
+        if (data.mode) setMode(data.mode);
         if (data.operatorName) {
           setOperatorName(data.operatorName);
         }
@@ -371,6 +375,13 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       sendWsAction({ type: 'change_scenario', scenario_id: scenId });
     } else {
       resetSession();
+    }
+  };
+
+  const selectMode = (newMode: 'training' | 'exam') => {
+    setMode(newMode);
+    if (isOnline) {
+      sendWsAction({ type: 'change_mode', mode: newMode });
     }
   };
 
@@ -558,6 +569,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       speedMultiplier,
       isPaused,
       hasSnapshot,
+      mode,
       webhookUrl,
       webhookActive,
       mutes,
@@ -565,6 +577,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       logoutUser,
       selectScenario,
       switchSession,
+      selectMode,
       toggleValve,
       changeSetpoint,
       triggerEsd,

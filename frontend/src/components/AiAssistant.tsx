@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
-import { Progress, Input, Button } from 'antd';
+import { Progress, Input, Button, Alert } from 'antd';
 import { MessageSquare, Send, Zap } from 'lucide-react';
 import { apiService } from '../services/api';
 import * as S from './AiAssistant.styles';
@@ -11,7 +11,7 @@ interface ChatMessage {
 }
 
 const AiAssistant: React.FC = () => {
-  const { riskLevel, sensors, valves, status, setpoints, defects, scenarioId, timeElapsed, predictions } = useSimulator();
+  const { riskLevel, sensors, valves, status, setpoints, defects, scenarioId, timeElapsed, predictions, mode: simMode } = useSimulator();
   const [activeTab, setActiveTab] = useState<'risk' | 'chat'>('risk');
   const [mode, setMode] = useState<'auto' | 'rag' | 'llm'>('rag');
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -213,6 +213,16 @@ const AiAssistant: React.FC = () => {
           </S.ModeSelector>
         )}
       </S.TabsHeader>
+
+      {simMode === 'exam' && (
+        <Alert
+          type="warning"
+          showIcon
+          title="Режим Аттестации (Экзамен)"
+          description="Автоматические подсказки отключены. Использование ИИ-чата списывает -15% балла."
+          style={{ marginBottom: 8, fontSize: '11px', padding: '6px 12px' }}
+        />
+      )}
 
 
       {activeTab === 'risk' ? (

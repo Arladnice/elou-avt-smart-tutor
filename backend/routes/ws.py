@@ -11,7 +11,7 @@ router = APIRouter(tags=["websocket"])
 
 INSTRUCTOR_ONLY_COMMANDS = {
     "trigger_defect", "change_speed", "toggle_pause", "save_state",
-    "load_state", "configure_webhook", "toggle_mute"
+    "load_state", "configure_webhook", "toggle_mute", "change_mode"
 }
 
 @router.websocket("/ws")
@@ -189,6 +189,12 @@ async def websocket_endpoint(websocket: WebSocket):
             elif action_type == "ping":
                 await websocket.send_json({"type": "pong", "timestamp": cmd.get("timestamp")})
                 continue
+                
+            elif action_type == "change_mode":
+                new_mode = cmd.get("mode", "training")
+                session.mode = new_mode
+                session.add_log("info", f"Инструктор переключил режим тренажера на: {'ЭКЗАМЕН / АТТЕСТАЦИЯ' if new_mode == 'exam' else 'ОБУЧЕНИЕ'}")
+                log_audit_event("INSTRUCTOR", "CHANGE_MODE", f"Переключен режим сессии {session_id} на {new_mode}")
                 
             elif action_type == "change_scenario":
                 scen_id = cmd.get("scenario_id")

@@ -19,10 +19,11 @@ const InstructorDashboard: React.FC = () => {
     isOnline, 
     wsLatency, 
     username, 
-    operatorName, 
     scenarioId, 
     activeSessionId,
     switchSession,
+    mode,
+    selectMode,
     selectScenario, 
     sensors, 
     valves, 
@@ -111,11 +112,21 @@ const InstructorDashboard: React.FC = () => {
     }
   };
 
-  // Загружаем активные сессии
+  // Загружаем активные сессии и автоподключаем инструктора к первому доступному оператору
   const fetchActiveSessions = async () => {
     try {
       const data = await apiService.fetchActiveSessions();
       setActiveSessions(data);
+      if (data.length > 0) {
+        const isCurrentValid = data.some(s => s.session_id === activeSessionId);
+        if (!isCurrentValid || activeSessionId === 'default_session') {
+          switchSession(data[0].session_id);
+        }
+      } else {
+        if (activeSessionId !== 'default_session') {
+          switchSession('default_session');
+        }
+      }
     } catch {
       // Игнорируем в автономном режиме
     }
@@ -194,7 +205,7 @@ const InstructorDashboard: React.FC = () => {
                       value: s.session_id,
                       label: `${s.operator_name} [${SCENARIO_SHORT_NAMES[s.scenario_id] || s.scenario_id}]`
                     }))
-                  : [{ value: activeSessionId, label: operatorName ? `${operatorName}` : 'Нет подключенных' }]
+                  : [{ value: 'default_session', label: 'Ожидание оператора...' }]
               }
             />
           </S.ConnectedBadge>
@@ -216,6 +227,20 @@ const InstructorDashboard: React.FC = () => {
             {/* Контроль сессии */}
             <S.StyledCard title="Управление Учебным Процессом">
               <S.ProcessControlLayout>
+                <div>
+                  <S.ScenarioLabel>
+                    Режим работы тренажёра:
+                  </S.ScenarioLabel>
+                  <S.ScenarioRadioGroup 
+                    value={mode} 
+                    onChange={e => selectMode(e.target.value as 'training' | 'exam')}
+                    style={{ marginBottom: 12 }}
+                  >
+                    <S.ScenarioRadioButton value="training">🎓 Обучение (Подсказки)</S.ScenarioRadioButton>
+                    <S.ScenarioRadioButton value="exam">🎯 Экзамен (Контроль ГОСТ)</S.ScenarioRadioButton>
+                  </S.ScenarioRadioGroup>
+                </div>
+
                 <div>
                   <S.ScenarioLabel>
                     Выбор учебного сценария:
