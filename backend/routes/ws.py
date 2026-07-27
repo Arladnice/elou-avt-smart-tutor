@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from backend.services.connection_manager import manager
-from backend.utils.security import log_audit_event
+from backend.utils.security import log_audit_event, verify_jwt_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["websocket"])
@@ -25,6 +25,7 @@ async def websocket_endpoint(websocket: WebSocket):
     username = query_params.get("username", "Оператор")
     scenario = query_params.get("scenario", "startup")
     token = query_params.get("token", "")
+    session_id = query_params.get("session_id", "default_session")
 
     # Минимальная валидация роли и токена (К8: RBAC)
     if role not in ["operator", "instructor"]:
@@ -33,15 +34,25 @@ async def websocket_endpoint(websocket: WebSocket):
         return
 
     # В базовой модели проверяем соответствие токена роли, если токен передан
-    if token and not token.startswith(f"jwt-mock-token-for-"):
+    if not token:
+        logger.warning("Отклонено WS-подключение без токена для %s", username)
+        await websocket.close(code=4003, reason="Токен авторизации отсутствует")
+        return
+        
+    payload = verify_jwt_token(token)
+    if not payload or payload.get("role") != role:
         logger.warning("Отклонено WS-подключение с некорректным токеном для %s", username)
         await websocket.close(code=4003, reason="Недействительный токен авторизации")
         return
     
+    # Из токена берём настоящее имя пользователя, чтобы исключить спуфинг
+    username = payload.get("sub", username)
+
+    session = manager.get_session(session_id)
     if role == "operator":
-        manager.reset_session(username=username, scenario=scenario)
+        session.reset_session(username=username, scenario=scenario)
         
-    await manager.connect(websocket, role)
+    await manager.connect(websocket, session_id, role, username)
     
     # Контроль частоты сообщений (Rate Limiting: макс 30 сообщений в секунду)
     msg_timestamps = []
@@ -57,7 +68,7 @@ async def websocket_endpoint(websocket: WebSocket):
             msg_timestamps = [t for t in msg_timestamps if now - t <= 1.0]
             if len(msg_timestamps) > 30:
                 logger.warning("Превышен лимит частоты сообщений (Rate Limit Exceeded) от %s", username)
-                manager.add_log("warning", f"ВНИМАНИЕ: Зафиксирована аномальная частота команд от {username} (Rate Limit).")
+                session.add_log("warning", f"ВНИМАНИЕ: Зафиксирована аномальная частота команд от {username} (Rate Limit).")
                 log_audit_event(username, "RATE_LIMIT_EXCEEDED", "Превышена частота отправителя WS команд (>30/сек)")
                 await websocket.send_json({"type": "error", "message": "Too many requests. Rate limit exceeded."})
                 continue
@@ -68,50 +79,50 @@ async def websocket_endpoint(websocket: WebSocket):
             # Проверка прав доступа к командам инструктора (RBAC)
             if role == "operator" and action_type in INSTRUCTOR_ONLY_COMMANDS:
                 logger.warning("Оператор %s попытался выполнить команду инструктора: %s", username, action_type)
-                manager.add_log("warning", f"ИБ: Оператор '{username}' заблокирован при попытке выполнить команду '{action_type}'.")
+                session.add_log("warning", f"ИБ: Оператор '{username}' заблокирован при попытке выполнить команду '{action_type}'.")
                 log_audit_event(username, "UNAUTHORIZED_COMMAND", f"Попытка выполнения команды {action_type} без прав")
                 await websocket.send_json({"type": "error", "message": "Access denied: Instructor rights required."})
                 continue
             
             if role == "operator" and action_type in ["toggle_valve", "change_setpoint", "trigger_esd", "call_dispatcher"]:
-                manager.operator_reacted_to_critical = True
+                session.operator_reacted_to_critical = True
                 
             if action_type == "toggle_valve":
                 valve_id = cmd.get("valve_id")
                 state = cmd.get("state")
-                manager.simulator.set_valve(valve_id, state)
+                session.simulator.set_valve(valve_id, state)
                 action_name = f"{valve_id}_{'OPEN' if state else 'CLOSE'}"
-                manager.actions_taken.append(action_name)
-                manager.add_log("info", f"Оператор переключил клапан {valve_id} в состояние: {'ОТКРЫТ' if state else 'ЗАКРЫТ'}")
-                log_audit_event(manager.active_operator_name, "VALVE_TOGGLE", f"Клапан {valve_id} -> {state}")
+                session.actions_taken.append(action_name)
+                session.add_log("info", f"Оператор переключил клапан {valve_id} в состояние: {'ОТКРЫТ' if state else 'ЗАКРЫТ'}")
+                log_audit_event(session.active_operator_name, "VALVE_TOGGLE", f"Клапан {valve_id} -> {state}")
                 
             elif action_type == "change_setpoint":
                 temp = float(cmd.get("value"))
-                old_temp = manager.simulator.setpoints["T_1_Sp"]
-                manager.simulator.set_setpoint("T_1_Sp", temp)
+                old_temp = session.simulator.setpoints["T_1_Sp"]
+                session.simulator.set_setpoint("T_1_Sp", temp)
                 action_name = "SP_UP" if temp > old_temp else "SP_DOWN"
-                manager.actions_taken.append(action_name)
-                manager.add_log("info", f"Оператор изменил уставку температуры П-1 на: {temp}°C")
-                log_audit_event(manager.active_operator_name, "SETPOINT_CHANGE", f"Уставка T-1 -> {temp}")
+                session.actions_taken.append(action_name)
+                session.add_log("info", f"Оператор изменил уставку температуры П-1 на: {temp}°C")
+                log_audit_event(session.active_operator_name, "SETPOINT_CHANGE", f"Уставка T-1 -> {temp}")
                 
             elif action_type == "trigger_esd":
-                manager.simulator.status = "esd"
-                manager.actions_taken.append("ESD")
-                manager.add_log("error", "АВАРИЙНЫЙ ОСТАНОВ (ESD) запущен вручную оператором!")
-                log_audit_event(manager.active_operator_name, "ESD_TRIGGER", "Ручной запуск ESD")
-                manager.save_completed_session()
+                session.simulator.status = "esd"
+                session.actions_taken.append("ESD")
+                session.add_log("error", "АВАРИЙНЫЙ ОСТАНОВ (ESD) запущен вручную оператором!")
+                log_audit_event(session.active_operator_name, "ESD_TRIGGER", "Ручной запуск ESD")
+                session.save_completed_session()
                 
             elif action_type == "call_dispatcher":
-                manager.actions_taken.append("CALL_DISPATCHER")
-                manager.add_log("warning", "Звонок 'Руководитель подразделения / Диспетчер ЦУП: тел. 24-45'")
-                log_audit_event(manager.active_operator_name, "DISPATCHER_CALL", "Регламентный звонок в Диспетчерскую ЦУП")
+                session.actions_taken.append("CALL_DISPATCHER")
+                session.add_log("warning", "Звонок 'Руководитель подразделения / Диспетчер ЦУП: тел. 24-45'")
+                log_audit_event(session.active_operator_name, "DISPATCHER_CALL", "Регламентный звонок в Диспетчерскую ЦУП")
 
             elif action_type == "trigger_defect":
                 defect_id = cmd.get("defect_id")
                 state = cmd.get("state")
-                manager.simulator.set_defect(defect_id, state)
+                session.simulator.set_defect(defect_id, state)
                 if state:
-                    manager.defects_triggered.add(defect_id)
+                    session.defects_triggered.add(defect_id)
                 defect_names_ru = {
                     "pump_fail": "Отказ сырьевого насоса",
                     "coil_overheat": "Прогар змеевика печи П-1",
@@ -121,59 +132,59 @@ async def websocket_endpoint(websocket: WebSocket):
                     "steam_fail": "Срыв подачи отпарного пара"
                 }
                 status_ru = "АКТИВИРОВАНА" if state else "ДЕАКТИВИРОВАНА"
-                manager.add_log("error" if state else "info", f"ИНСТРУКТОР: Неисправность '{defect_names_ru.get(defect_id, defect_id)}' {status_ru}!")
+                session.add_log("error" if state else "info", f"ИНСТРУКТОР: Неисправность '{defect_names_ru.get(defect_id, defect_id)}' {status_ru}!")
                 log_audit_event("INSTRUCTOR", "DEFECT_TRIGGER", f"Неисправность {defect_id} -> {state}")
                 
             elif action_type == "change_speed":
                 multiplier = float(cmd.get("multiplier", 1.0))
-                manager.speed_multiplier = multiplier
-                manager.add_log("info", f"ИНСТРУКТОР: Скорость симуляции изменена на {multiplier}x.")
+                session.speed_multiplier = multiplier
+                session.add_log("info", f"ИНСТРУКТОР: Скорость симуляции изменена на {multiplier}x.")
                 log_audit_event("INSTRUCTOR", "CHANGE_SPEED", f"Скорость -> {multiplier}x")
 
             elif action_type == "toggle_pause":
                 paused = bool(cmd.get("paused", False))
-                manager.is_paused = paused
-                manager.add_log("warning" if paused else "info", f"ИНСТРУКТОР: Симуляция {'ПРИОСТАНОВЛЕНА' if paused else 'ВОЗОБНОВЛЕНА'}.")
+                session.is_paused = paused
+                session.add_log("warning" if paused else "info", f"ИНСТРУКТОР: Симуляция {'ПРИОСТАНОВЛЕНА' if paused else 'ВОЗОБНОВЛЕНА'}.")
                 log_audit_event("INSTRUCTOR", "TOGGLE_PAUSE", f"Пауза -> {paused}")
 
             elif action_type == "save_state":
-                manager.snapshot_data = manager.simulator.get_snapshot()
-                manager.add_log("info", "ИНСТРУКТОР: Сделан снимок состояния процесса (снапшот).")
+                session.snapshot_data = session.simulator.get_snapshot()
+                session.add_log("info", "ИНСТРУКТОР: Сделан снимок состояния процесса (снапшот).")
                 log_audit_event("INSTRUCTOR", "SAVE_STATE", "Создан снапшот")
 
             elif action_type == "load_state":
-                if manager.snapshot_data:
-                    manager.simulator.load_snapshot(manager.snapshot_data)
-                    manager.add_log("warning", "ИНСТРУКТОР: Произведен откат состояния процесса к снапшоту.")
+                if session.snapshot_data:
+                    session.simulator.load_snapshot(session.snapshot_data)
+                    session.add_log("warning", "ИНСТРУКТОР: Произведен откат состояния процесса к снапшоту.")
                     log_audit_event("INSTRUCTOR", "LOAD_STATE", "Откат к снапшоту")
                 else:
-                    manager.add_log("warning", "ИНСТРУКТОР: Невозможно выполнить откат (снапшот не найден).")
+                    session.add_log("warning", "ИНСТРУКТОР: Невозможно выполнить откат (снапшот не найден).")
 
             elif action_type == "configure_webhook":
                 url = cmd.get("url", "")
                 active = bool(cmd.get("active", False))
-                manager.webhook_url = url
-                manager.webhook_active = active
-                manager.add_log("info", f"ИНСТРУКТОР: Настроен внешний вебхук: {url} ({'АКТИВЕН' if active else 'НЕАКТИВЕН'})")
+                session.webhook_url = url
+                session.webhook_active = active
+                session.add_log("info", f"ИНСТРУКТОР: Настроен внешний вебхук: {url} ({'АКТИВЕН' if active else 'НЕАКТИВЕН'})")
                 log_audit_event("INSTRUCTOR", "WEBHOOK_CONFIG", f"URL: {url}, Active: {active}")
 
             elif action_type == "toggle_mute":
                 fingerprint = cmd.get("fingerprint", "")
                 state = bool(cmd.get("state", False))
                 if state:
-                    manager.mutes.add(fingerprint)
-                    manager.add_log("warning", f"ИНСТРУКТОР: Сигнал '{fingerprint}' заглушен (Downtime).")
+                    session.mutes.add(fingerprint)
+                    session.add_log("warning", f"ИНСТРУКТОР: Сигнал '{fingerprint}' заглушен (Downtime).")
                 else:
-                    manager.mutes.discard(fingerprint)
-                    manager.add_log("info", f"ИНСТРУКТОР: Сигнал '{fingerprint}' разблокирован.")
+                    session.mutes.discard(fingerprint)
+                    session.add_log("info", f"ИНСТРУКТОР: Сигнал '{fingerprint}' разблокирован.")
                 log_audit_event("INSTRUCTOR", "TOGGLE_MUTE", f"Fingerprint: {fingerprint}, State: {state}")
 
             elif action_type == "complete":
-                if manager.simulator.status == "running":
-                    manager.simulator.status = "success"
-                    manager.add_log("info", "ТРЕНИРОВКА ЗАВЕРШЕНА: Оператор успешно сдал отчет о сессии.")
-                    manager.save_completed_session()
-                    log_audit_event(manager.active_operator_name, "SESSION_COMPLETE", "Оператор успешно завершил тренировку вручную")
+                if session.simulator.status == "running":
+                    session.simulator.status = "success"
+                    session.add_log("info", "ТРЕНИРОВКА ЗАВЕРШЕНА: Оператор успешно сдал отчет о сессии.")
+                    session.save_completed_session()
+                    log_audit_event(session.active_operator_name, "SESSION_COMPLETE", "Оператор успешно завершил тренировку вручную")
                 
             elif action_type == "ping":
                 await websocket.send_json({"type": "pong", "timestamp": cmd.get("timestamp")})
@@ -181,15 +192,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 
             elif action_type == "change_scenario":
                 scen_id = cmd.get("scenario_id")
-                manager.reset_session(scenario=scen_id)
-                log_audit_event("INSTRUCTOR" if role == "instructor" else manager.active_operator_name, "SCENARIO_CHANGE", f"Смена сценария на {scen_id}")
+                session.reset_session(scenario=scen_id)
+                log_audit_event("INSTRUCTOR" if role == "instructor" else session.active_operator_name, "SCENARIO_CHANGE", f"Смена сценария на {scen_id}")
 
             elif action_type == "reset":
-                manager.reset_session()
-                log_audit_event(manager.active_operator_name, "SESSION_RESET", "Перезапуск тренировочной сессии")
+                session.reset_session()
+                log_audit_event(session.active_operator_name, "SESSION_RESET", "Перезапуск тренировочной сессии")
                 
-            await manager.broadcast_state()
+            await session.broadcast_state()
             
     except WebSocketDisconnect:
-        manager.disconnect(websocket, role)
+        manager.disconnect(websocket, session_id, role)
         log_audit_event(username, "WS_DISCONNECT", f"WebSocket соединение закрыто для роли {role}")

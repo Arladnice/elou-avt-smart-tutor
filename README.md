@@ -19,7 +19,10 @@
 
 - 🔮 **Предсказывает** риски аварии на 15 секунд вперёд (LSTM-нейросеть, ONNX Runtime)
 - 🧠 **Анализирует ошибки** оператора через алгоритм DTW (Dynamic Time Warping)
-- 🔒 **Защищает** результаты обучения от фальсификации (SHA-256 + соль)
+- 🔒 **Защищает** результаты обучения от фальсификации (JWT + SHA-256 + соль)
+- 🌐 **Изолирует сессии** (Multi-Session Simulation Architecture)
+
+> 💡 **Границы MVP-версии:** Данный прототип моделирует ключевой **Атмосферный блок перегонки (Печь П-1 — Колонна К-1)** установки ЭЛОУ-АВТ. Производственная целевая архитектура предусматривает масштабирование на ЭЛОУ (обессоливание) и Вакуумный блок (К-2).
 
 ---
 
@@ -27,12 +30,14 @@
 
 | Слой | Технологии |
 |---|---|
-| **Frontend** | React 19, TypeScript, Ant Design, styled-components, Recharts, Vite |
-| **Backend** | Python, FastAPI, Pydantic, WebSocket, SQLite |
+| **Frontend** | React 18/19, TypeScript, Ant Design, styled-components, Recharts, Vite |
+| **Backend** | Python, FastAPI, Pydantic, WebSocket, SQLite (MVP) / PostgreSQL (Target) |
 | **AI / ML** | PyTorch (LSTM, 2 слоя, 64 нейрона), ONNX Runtime, NumPy (DTW, polyfit) |
-| **Simulator** | Физическая модель тепломассообмена на NumPy |
-| **DevOps** | Docker, docker-compose, oxlint, CI |
-| **Security** | SHA-256 + SECRET_SALT (целостность базы сессий) |
+| **Simulator** | Изолированный симулятор физики тепломассообмена (`SimulationSession`) |
+| **DevOps** | Docker, docker-compose, pytest |
+| **Security** | JWT-авторизация (HS256), RBAC, SHA-256 + SECRET_SALT (целостность) |
+
+> 📌 **Учет доступа (Demo Auth):** Для входа в интерфейс оператора или инструктора используется пароль `12345`. Токен JWT автоматически подписывается сервером и контролирует права команд.
 
 ---
 

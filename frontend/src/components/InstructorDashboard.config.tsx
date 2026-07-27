@@ -27,6 +27,14 @@ export const SCENARIO_NAMES: Record<string, string> = {
   recirculation: 'Перевод на рециркуляцию',
 };
 
+export const SCENARIO_SHORT_NAMES: Record<string, string> = {
+  startup: 'Пуск ЭЛОУ-АВТ',
+  shutdown: 'Останов П-1',
+  column_shutdown: 'Останов К-1',
+  overpressure_relief: 'Рост давления',
+  recirculation: 'Рециркуляция',
+};
+
 export const getTableColumns = (): ColumnsType<Session> => [
   {
     title: 'Оператор',

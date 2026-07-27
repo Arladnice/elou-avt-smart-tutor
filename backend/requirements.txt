@@ -7,3 +7,5 @@ onnxruntime>=1.15.0
 # Опционально для тяжелого нейросетевого RAG (требует >512 MB RAM, не рекомендуется на бесплатном тарифе Render):
 # sentence-transformers>=2.2.2
 # faiss-cpu>=1.7.4
+PyJWT>=2.8.0
+python-dotenv>=1.0.1

@@ -10,98 +10,99 @@ from ai_core.config import (
 )
 
 async def simulation_loop():
-    """Фоновый цикл симуляции физического процесса (шаг с учетом скорости и паузы)."""
+    """Фоновый цикл симуляции физического процесса для всех активных сессий."""
     while True:
-        if (
-            manager.simulator.status == "running" 
-            and len(manager.operator_sockets) > 0 
-            and not manager.is_paused
-        ):
-            # Шаг физики симулятора
-            old_status = manager.simulator.status
-            manager.simulator.step()
-            
-            # Записываем 7-фичевую телеметрию в историю
-            sensors = manager.simulator.sensors
-            valves  = manager.simulator.valves
-            setpts  = manager.simulator.setpoints
-            
-            manager.telemetry_history.append([
-                1.0 if valves["V_1"] else 0.0,
-                1.0 if valves["V_2"] else 0.0,
-                1.0 if valves["V_3"] else 0.0,
-                setpts["T_1_Sp"],
-                sensors["T_1"],
-                sensors["P_1"],
-                sensors["L_1"]
-            ])
-            if len(manager.telemetry_history) > 30:
-                manager.telemetry_history.pop(0)
+        # Проходим по всем зарегистрированным сессиям
+        # Используем list(manager.sessions.values()) чтобы избежать RuntimeError: dictionary changed size during iteration
+        for session in list(manager.sessions.values()):
+            if (
+                session.simulator.status == "running" 
+                and (len(session.operator_sockets) > 0 or len(session.instructor_sockets) > 0)
+                and not session.is_paused
+            ):
+                # Шаг физики симулятора
+                old_status = session.simulator.status
+                session.simulator.step()
                 
-            new_status = manager.simulator.status
-            
-            # Проверяем тайм-аут сессии (лимит 5 минут / 300 секунд)
-            if manager.simulator.time_elapsed >= SESSION_MAX_TIME_SEC:
-                manager.simulator.status = "success"
-                new_status = "success"
-                manager.add_log("info", f"ТРЕНИРОВКА ЗАВЕРШЕНА: Достигнут лимит времени сессии ({SESSION_MAX_TIME_SEC // 60} минут).", severity="INFO", fingerprint="session_timeout")
-                manager.save_completed_session()
-            
-            # Проверяем нештатные ситуации
-            temp = manager.simulator.sensors["T_1"]
-            pres = manager.simulator.sensors["P_1"]
-            level = manager.simulator.sensors["L_1"]
-            
-            # Формируем автоматические предупреждения по техрегламенту
-            if temp > FURNACE_TEMP_WARNING:
-                sev = "CRITICAL" if temp > FURNACE_TEMP_CRITICAL_LEVEL else "WARNING"
-                manager.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Температура печи П-1 ({temp:.1f}°C) выше нормы ({FURNACE_TEMP_WARNING}°C). Опасность коксования труб!", severity=sev, fingerprint="furnace_temp_high")
-            if pres > COLUMN_PRES_WARNING:
-                sev = "CRITICAL" if pres > COLUMN_PRES_CRITICAL_LEVEL else "WARNING"
-                manager.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Давление в колонне К-1 ({pres:.3f} МПа) приближается к предельному! Откройте клапан сброса V_2.", severity=sev, fingerprint="column_pres_high")
-            # Учитываем нормальный технологический интервал заполнения колонны при пуске (до STARTUP_FILLING_TIME_LIMIT_SEC)
-            is_startup_filling = (manager.active_scenario == "startup" and manager.simulator.time_elapsed <= STARTUP_FILLING_TIME_LIMIT_SEC)
+                # Записываем 7-фичевую телеметрию в историю
+                sensors = session.simulator.sensors
+                valves  = session.simulator.valves
+                setpts  = session.simulator.setpoints
+                
+                session.telemetry_history.append([
+                    1.0 if valves["V_1"] else 0.0,
+                    1.0 if valves["V_2"] else 0.0,
+                    1.0 if valves["V_3"] else 0.0,
+                    setpts["T_1_Sp"],
+                    sensors["T_1"],
+                    sensors["P_1"],
+                    sensors["L_1"]
+                ])
+                if len(session.telemetry_history) > 30:
+                    session.telemetry_history.pop(0)
+                    
+                new_status = session.simulator.status
+                
+                # Проверяем тайм-аут сессии (лимит 5 минут / 300 секунд)
+                if session.simulator.time_elapsed >= SESSION_MAX_TIME_SEC:
+                    session.simulator.status = "success"
+                    new_status = "success"
+                    session.add_log("info", f"ТРЕНИРОВКА ЗАВЕРШЕНА: Достигнут лимит времени сессии ({SESSION_MAX_TIME_SEC // 60} минут).", severity="INFO", fingerprint="session_timeout")
+                    session.save_completed_session()
+                
+                # Проверяем нештатные ситуации
+                temp = session.simulator.sensors["T_1"]
+                pres = session.simulator.sensors["P_1"]
+                level = session.simulator.sensors["L_1"]
+                
+                # Формируем автоматические предупреждения по техрегламенту
+                if temp > FURNACE_TEMP_WARNING:
+                    sev = "CRITICAL" if temp > FURNACE_TEMP_CRITICAL_LEVEL else "WARNING"
+                    session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Температура печи П-1 ({temp:.1f}°C) выше нормы ({FURNACE_TEMP_WARNING}°C). Опасность коксования труб!", severity=sev, fingerprint="furnace_temp_high")
+                if pres > COLUMN_PRES_WARNING:
+                    sev = "CRITICAL" if pres > COLUMN_PRES_CRITICAL_LEVEL else "WARNING"
+                    session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Давление в колонне К-1 ({pres:.3f} МПа) приближается к предельному! Откройте клапан сброса V_2.", severity=sev, fingerprint="column_pres_high")
+                
+                is_startup_filling = (session.active_scenario == "startup" and session.simulator.time_elapsed <= STARTUP_FILLING_TIME_LIMIT_SEC)
 
-            if level > COLUMN_LEVEL_HIGH:
-                sev = "CRITICAL" if level > COLUMN_LEVEL_HIGH_CRITICAL_LEVEL else "WARNING"
-                manager.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) выше нормы! Откройте дренаж V_3.", severity=sev, fingerprint="column_level_high")
-            elif level < COLUMN_LEVEL_LOW and not is_startup_filling:
-                sev = "CRITICAL" if level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL else "WARNING"
-                manager.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) опасно низок! Риск срыва печных насосов.", severity=sev, fingerprint="column_level_low")
-                
-            # Логика эскалации алертов (К8: Цепочки эскалации)
-            is_currently_critical = (
-                temp > FURNACE_TEMP_CRITICAL_LEVEL 
-                or pres > COLUMN_PRES_CRITICAL_LEVEL 
-                or level > COLUMN_LEVEL_HIGH_CRITICAL_LEVEL 
-                or (level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL and not is_startup_filling)
-            )
-            if is_currently_critical:
-                if not manager.critical_alert_active:
-                    manager.critical_alert_active = True
-                    manager.critical_alert_start_time = time.time()
-                    manager.operator_reacted_to_critical = False
-                    manager.escalation_warning_sent = False
-                elif not manager.operator_reacted_to_critical:
-                    elapsed = time.time() - manager.critical_alert_start_time
-                    if elapsed >= ESCALATION_CRITICAL_DELAY_SEC:
-                        manager.add_log("error", f"ЭСКАЛАЦИЯ: Оператор не предпринял действий в течение {int(ESCALATION_CRITICAL_DELAY_SEC)} секунд после критического отклонения!", severity="CRITICAL", fingerprint="escalation_alert_60")
-                        manager.operator_reacted_to_critical = True # Показать только один раз
-                    elif elapsed >= ESCALATION_WARNING_DELAY_SEC and not manager.escalation_warning_sent:
-                        manager.add_log("warning", "ЭСКАЛАЦИЯ: Дежурный оператор не отвечает! Требуется немедленная реакция на критическое отклонение!", severity="WARNING", fingerprint="escalation_alert_30")
-                        manager.escalation_warning_sent = True
-            else:
-                manager.critical_alert_active = False
+                if level > COLUMN_LEVEL_HIGH:
+                    sev = "CRITICAL" if level > COLUMN_LEVEL_HIGH_CRITICAL_LEVEL else "WARNING"
+                    session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) выше нормы! Откройте дренаж V_3.", severity=sev, fingerprint="column_level_high")
+                elif level < COLUMN_LEVEL_LOW and not is_startup_filling:
+                    sev = "CRITICAL" if level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL else "WARNING"
+                    session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) опасно низок! Риск срыва печных насосов.", severity=sev, fingerprint="column_level_low")
+                    
+                # Логика эскалации алертов
+                is_currently_critical = (
+                    temp > FURNACE_TEMP_CRITICAL_LEVEL 
+                    or pres > COLUMN_PRES_CRITICAL_LEVEL 
+                    or level > COLUMN_LEVEL_HIGH_CRITICAL_LEVEL 
+                    or (level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL and not is_startup_filling)
+                )
+                if is_currently_critical:
+                    if not session.critical_alert_active:
+                        session.critical_alert_active = True
+                        session.critical_alert_start_time = time.time()
+                        session.operator_reacted_to_critical = False
+                        session.escalation_warning_sent = False
+                    elif not session.operator_reacted_to_critical:
+                        elapsed = time.time() - session.critical_alert_start_time
+                        if elapsed >= ESCALATION_CRITICAL_DELAY_SEC:
+                            session.add_log("error", f"ЭСКАЛАЦИЯ: Оператор не предпринял действий в течение {int(ESCALATION_CRITICAL_DELAY_SEC)} секунд после критического отклонения!", severity="CRITICAL", fingerprint="escalation_alert_60")
+                            session.operator_reacted_to_critical = True
+                        elif elapsed >= ESCALATION_WARNING_DELAY_SEC and not session.escalation_warning_sent:
+                            session.add_log("warning", "ЭСКАЛАЦИЯ: Дежурный оператор не отвечает! Требуется немедленная реакция на критическое отклонение!", severity="WARNING", fingerprint="escalation_alert_30")
+                            session.escalation_warning_sent = True
+                else:
+                    session.critical_alert_active = False
 
-            # Если произошел аварийный останов (ПАЗ) или авария
-            if new_status == "accident":
-                manager.add_log("error", f"АВАРИЯ: {manager.simulator.accident_reason}", severity="CRITICAL", fingerprint="accident")
-                manager.save_completed_session()
-            elif old_status == "running" and new_status == "esd":
-                manager.add_log("error", "БЛОКИРОВКА ПАЗ: Система переведена в безопасный режим.", severity="CRITICAL", fingerprint="esd")
-                manager.save_completed_session()
-                
-            await manager.broadcast_state()
+                if new_status == "accident":
+                    session.add_log("error", f"АВАРИЯ: {session.simulator.accident_reason}", severity="CRITICAL", fingerprint="accident")
+                    session.save_completed_session()
+                elif old_status == "running" and new_status == "esd":
+                    session.add_log("error", "БЛОКИРОВКА ПАЗ: Система переведена в безопасный режим.", severity="CRITICAL", fingerprint="esd")
+                    session.save_completed_session()
+                    
+                await session.broadcast_state()
             
-        sleep_time = max(0.01, 1.0 / manager.speed_multiplier)
-        await asyncio.sleep(sleep_time)
+        await asyncio.sleep(1.0)

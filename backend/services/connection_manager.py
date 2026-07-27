@@ -3,7 +3,7 @@ import json
 import logging
 import asyncio
 import urllib.request
-from typing import List, Set
+from typing import List, Set, Dict
 from fastapi import WebSocket
 
 from simulator.elou_avt_model import ELOUAVTSimulator
@@ -15,80 +15,45 @@ from backend.utils.helpers import random_id
 
 logger = logging.getLogger(__name__)
 
-class ConnectionManager:
-    """Управляет WebSocket-подключениями операторов и инструкторов, а также хранит состояние симуляции."""
-    def __init__(self):
-        # Храним активные подключения по ролям
+class SimulationSession:
+    """Изолированная сессия для одного учебного сценария."""
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        
         self.operator_sockets: Set[WebSocket] = set()
         self.instructor_sockets: Set[WebSocket] = set()
         
-        # Инстансы симулятора, предиктора и анализатора
         self.simulator = ELOUAVTSimulator()
         self.predictor = RiskPredictor()
         self.analyzer = ErrorAnalyzer()
         
-        # Переменные сессии
-        self.active_operator_name = "Денис Арлаков"
+        self.active_operator_name = "Оператор"
         self.active_scenario = "startup"
         self.actions_taken: List[str] = []
         self.defects_triggered: Set[str] = set()
-        self.telemetry_history: List[List[float]] = [] # Последние 30 секунд для LSTM
+        self.telemetry_history: List[List[float]] = [] 
         self.logs: List[dict] = []
         
-        # Переменные управления симуляцией (Инструктор)
         self.speed_multiplier = 1.0
         self.is_paused = False
         self.snapshot_data = None
 
-        # Зонтичные функции (К8: Лекция Игоря Капитульского)
         self.webhook_url: str = ""
         self.webhook_active: bool = False
         self.processed_events_total: int = 0
-        self.mutes: Set[str] = set() # Заглушенные параметры (например, "column_pres_high")
+        self.mutes: Set[str] = set()
         self.critical_alert_active: bool = False
         self.critical_alert_start_time: float = 0.0
         self.operator_reacted_to_critical: bool = False
         self.escalation_warning_sent: bool = False
 
-    async def send_state_to(self, websocket: WebSocket):
-        """Отправляет текущее состояние конкретному клиенту."""
-        try:
-            await websocket.send_json(self.get_full_state())
-        except Exception as e:
-            logger.error("Ошибка отправки состояния клиенту: %s", e)
-
-    async def connect(self, websocket: WebSocket, role: str):
-        """Подключает клиента и регистрирует в соответствующем наборе сокетов."""
-        await websocket.accept()
-        if role == "instructor":
-            self.instructor_sockets.add(websocket)
-            log_audit_event("INSTRUCTOR", "WS_CONNECT", "Инструктор подключился к трансляции")
-        else:
-            self.operator_sockets.add(websocket)
-            log_audit_event(self.active_operator_name, "WS_CONNECT", "Оператор подключился к сессии")
-            
-        # Отправляем текущее состояние сразу при подключении
-        await self.send_state_to(websocket)
-
-    def disconnect(self, websocket: WebSocket, role: str):
-        """Отключает клиента."""
-        if role == "instructor":
-            self.instructor_sockets.discard(websocket)
-        else:
-            self.operator_sockets.discard(websocket)
-
     async def broadcast_state(self):
-        """Отправляет обновленное состояние симулятора всем операторам и инструкторам."""
         state = self.get_full_state()
-        
-        # Рассылка операторам
         for ws in list(self.operator_sockets):
             try:
                 await ws.send_json(state)
             except Exception:
                 self.operator_sockets.discard(ws)
-                
-        # Рассылка инструкторам
         for ws in list(self.instructor_sockets):
             try:
                 await ws.send_json(state)
@@ -96,7 +61,6 @@ class ConnectionManager:
                 self.instructor_sockets.discard(ws)
 
     async def send_state_to(self, websocket: WebSocket):
-        """Отправляет текущее состояние конкретному клиенту."""
         state = self.get_full_state()
         try:
             await websocket.send_json(state)
@@ -104,10 +68,8 @@ class ConnectionManager:
             pass
 
     def get_full_state(self) -> dict:
-        """Собирает полное состояние симулятора, прогноз рисков и DTW оценку сессии."""
         sim_state = self.simulator.get_state()
         
-        # Получаем предсказание рисков от LSTM
         sensors = sim_state["sensors"]
         valves = sim_state["valves"]
         setpoints = sim_state["setpoints"]
@@ -129,7 +91,6 @@ class ConnectionManager:
             scenario_id=self.active_scenario
         )
         
-        # Запускаем оценку действий по DTW
         score, errors, recs, recommended_scenario_id = self.analyzer.evaluate_session(
             self.actions_taken,
             self.active_scenario,
@@ -138,13 +99,11 @@ class ConnectionManager:
             time_elapsed=sim_state["timeElapsed"]
         )
         
-        # Определяем буквенную оценку безопасности
         safety_grade = "A"
         if score < 50: safety_grade = "F"
         elif score < 70: safety_grade = "C"
         elif score < 85: safety_grade = "B"
         
-        # Если статус аварийный, оценка падает до F
         if sim_state["status"] == "accident":
             safety_grade = "F"
             score = 0
@@ -184,7 +143,6 @@ class ConnectionManager:
         }
 
     def save_completed_session(self):
-        """Автоматически сохраняет результаты завершенной сессии в защищенную БД (К8: ИБ)."""
         state = self.get_full_state()
         card = state["scoreCard"]
         if not card:
@@ -200,18 +158,13 @@ class ConnectionManager:
         violations = json.dumps(card["errors"], ensure_ascii=False)
         session_logs = json.dumps(self.logs, ensure_ascii=False)
         
-        # Защита целостности данных: включаем логи в расчет хэша SHA-256
         h = calculate_integrity_hash(op_name, role, scen_id, start_time, duration, score, status, violations, session_logs)
-        
         save_session_db(op_name, role, scen_id, start_time, duration, score, status, violations, h, session_logs)
-        
         log_audit_event("SYSTEM", "SESSION_SAVE", f"Сохранена учебная сессия оператора {op_name} (Оценка: {card['grade']})")
 
     def send_webhook_notification(self, log_entry: dict):
-        """Отправляет уведомление о событии на внешний вебхук (К8: Зонтичные функции)."""
         if not self.webhook_url or not self.webhook_active:
             return
-            
         def _make_request():
             try:
                 payload = {
@@ -233,11 +186,9 @@ class ConnectionManager:
                     pass
             except Exception as e:
                 logger.error("Ошибка отправки вебхука на %s: %s", self.webhook_url, e)
-
         asyncio.create_task(asyncio.to_thread(_make_request))
 
     def reset_session(self, username: str = None, scenario: str = None):
-        """Централизованный сброс сессии оператора и состояния симуляции."""
         if username:
             self.active_operator_name = username
         if scenario:
@@ -265,11 +216,8 @@ class ConnectionManager:
             self.add_log("info", "Входной клапан V-1 открыт. Подача сырья в норме.")
 
     def add_log(self, log_type: str, message: str, severity: str = None, fingerprint: str = None):
-        """Добавляет запись во временный журнал событий сессии с дедупликацией и классификацией."""
-        # Проверяем, не заглушено ли данное событие (К8: Downtime/Mute)
         if fingerprint in self.mutes:
             return
-
         self.processed_events_total += 1
         
         if not severity:
@@ -282,7 +230,6 @@ class ConnectionManager:
                 
         time_str = f"{self.simulator.time_elapsed // 60:02d}:{self.simulator.time_elapsed % 60:02d}"
         
-        # Если задан fingerprint, проверим последние несколько событий в логе для дедупликации
         if fingerprint and self.logs:
             for recent_log in reversed(self.logs[-5:]):
                 if recent_log.get("fingerprint") == fingerprint:
@@ -305,9 +252,44 @@ class ConnectionManager:
         }
         self.logs.append(new_entry)
         
-        # Если критический алерт, шлем вебхук наружу
         if severity == "CRITICAL":
             self.send_webhook_notification(new_entry)
 
-# Глобальный экземпляр ConnectionManager для использования во всех модулях
+
+class ConnectionManager:
+    """Управляет пулом сессий."""
+    def __init__(self):
+        self.sessions: Dict[str, SimulationSession] = {}
+
+    def get_session(self, session_id: str) -> SimulationSession:
+        if session_id not in self.sessions:
+            self.sessions[session_id] = SimulationSession(session_id)
+        return self.sessions[session_id]
+
+    async def connect(self, websocket: WebSocket, session_id: str, role: str, username: str):
+        await websocket.accept()
+        session = self.get_session(session_id)
+        
+        if role == "instructor":
+            session.instructor_sockets.add(websocket)
+            log_audit_event("INSTRUCTOR", "WS_CONNECT", f"Инструктор подключился к трансляции сессии {session_id}")
+        else:
+            session.operator_sockets.add(websocket)
+            session.active_operator_name = username
+            log_audit_event(username, "WS_CONNECT", f"Оператор подключился к сессии {session_id}")
+            
+        await session.send_state_to(websocket)
+
+    def disconnect(self, websocket: WebSocket, session_id: str, role: str):
+        if session_id in self.sessions:
+            session = self.sessions[session_id]
+            if role == "instructor":
+                session.instructor_sockets.discard(websocket)
+            else:
+                session.operator_sockets.discard(websocket)
+            
+            # Удаляем брошенные сессии без участников
+            if len(session.operator_sockets) == 0 and len(session.instructor_sockets) == 0:
+                del self.sessions[session_id]
+
 manager = ConnectionManager()

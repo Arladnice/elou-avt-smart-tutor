@@ -67,19 +67,38 @@ export interface SystemMetrics {
   is_ollama_available: boolean;
 }
 
+export interface ActiveSession {
+  session_id: string;
+  operator_name: string;
+  scenario_id: string;
+  connected_operators: number;
+  connected_instructors: number;
+  status: string;
+  time_elapsed: number;
+}
+
 export const apiService = {
   /**
    * Performs authentication for an operator or instructor
    */
-  async login(username: string, role: 'operator' | 'instructor'): Promise<LoginResponse> {
-    const response = await fetch(`${BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, role }),
-    });
+  async login(username: string, password: string, role: 'operator' | 'instructor'): Promise<LoginResponse> {
+    let response: Response;
+    try {
+      response = await fetch(`${BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role }),
+      });
+    } catch {
+      throw new Error('NETWORK_ERROR');
+    }
 
     if (!response.ok) {
-      throw new Error('Server auth error');
+      if (response.status === 401) {
+        throw new Error('AUTH_INVALID_PASSWORD');
+      }
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.detail || 'AUTH_ERROR');
     }
 
     return response.json();
@@ -92,6 +111,17 @@ export const apiService = {
     const response = await fetch(`${BASE_URL}/sessions`);
     if (!response.ok) {
       throw new Error('Failed to fetch training sessions');
+    }
+    return response.json();
+  },
+
+  /**
+   * Fetches real-time active operator sessions for instructor view
+   */
+  async fetchActiveSessions(): Promise<ActiveSession[]> {
+    const response = await fetch(`${BASE_URL}/sessions/active`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch active sessions');
     }
     return response.json();
   },

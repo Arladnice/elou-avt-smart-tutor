@@ -7,6 +7,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 from backend.db.database import init_db
 from backend.services.simulation_loop import simulation_loop

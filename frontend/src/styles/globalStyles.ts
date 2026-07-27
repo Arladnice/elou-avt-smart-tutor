@@ -49,11 +49,13 @@ export const GlobalStyle = createGlobalStyle<{ theme: ScadaThemeType }>`
   }
 
   /* Глобальное переопределение стилей модальных окон Ant Design (без !important) */
-  div.ant-modal-content {
+  div.ant-modal-content,
+  div.ant-modal-confirm-body-wrapper {
     background-color: #111620;
     border: 1px solid #222c3e;
     color: #e1e7f0;
     padding: 24px;
+    border-radius: 8px;
   }
   div.ant-modal-header {
     background-color: #111620;
@@ -61,8 +63,12 @@ export const GlobalStyle = createGlobalStyle<{ theme: ScadaThemeType }>`
     padding-bottom: 8px;
     margin-bottom: 12px;
   }
-  .ant-modal-title {
+  .ant-modal-title,
+  div.ant-modal-confirm-title {
     color: #e1e7f0;
-    background-color: #111620;
+    background-color: transparent;
+  }
+  div.ant-modal-confirm-content {
+    color: #a0aec0;
   }
 `;

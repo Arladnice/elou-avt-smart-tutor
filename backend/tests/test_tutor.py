@@ -320,7 +320,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         from backend.models.schemas import LoginRequest
         
         # Успешный вход под оператором
-        req = LoginRequest(username="Test_Operator", role="operator")
+        req = LoginRequest(username="Test_Operator", password="12345", role="operator")
         res = login(req)
         self.assertEqual(res["username"], "Test_Operator")
         self.assertEqual(res["role"], "operator")
@@ -328,31 +328,38 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
 
         # Ошибка при пустом имени
         with self.assertRaises(HTTPException) as ctx:
-            login(LoginRequest(username="", role="operator"))
+            login(LoginRequest(username="", password="12345", role="operator"))
         self.assertEqual(ctx.exception.status_code, 400)
 
         # Ошибка при некорректной роли
         with self.assertRaises(HTTPException) as ctx:
-            login(LoginRequest(username="User", role="admin"))
+            login(LoginRequest(username="User", password="12345", role="admin"))
         self.assertEqual(ctx.exception.status_code, 400)
+        
+        # Ошибка при неверном пароле
+        with self.assertRaises(HTTPException) as ctx:
+            login(LoginRequest(username="User", password="wrong", role="operator"))
+        self.assertEqual(ctx.exception.status_code, 401)
 
     def test_simulation_time_and_speed_control(self):
-        """Проверяет логику паузы и изменения скорости в ConnectionManager."""
+        """Проверяет логику паузы и изменения скорости в SimulationSession."""
         from backend.services.connection_manager import manager
         
+        session = manager.get_session("test_session")
+        
         # По умолчанию симуляция идет с нормальной скоростью и не на паузе
-        self.assertEqual(manager.speed_multiplier, 1.0)
-        self.assertFalse(manager.is_paused)
+        self.assertEqual(session.speed_multiplier, 1.0)
+        self.assertFalse(session.is_paused)
         
         # Меняем параметры
-        manager.is_paused = True
-        manager.speed_multiplier = 2.0
-        self.assertEqual(manager.speed_multiplier, 2.0)
-        self.assertTrue(manager.is_paused)
+        session.is_paused = True
+        session.speed_multiplier = 2.0
+        self.assertEqual(session.speed_multiplier, 2.0)
+        self.assertTrue(session.is_paused)
         
         # Сбрасываем назад
-        manager.is_paused = False
-        manager.speed_multiplier = 1.0
+        session.is_paused = False
+        session.speed_multiplier = 1.0
 
     def test_scenario_6_security_integrity_sha256(self):
         """Тест сценария 6: Проверка ИБ-контроля целостности логов по SHA-256"""
@@ -484,19 +491,20 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         self.assertGreater(risk_warn, 0.0, "При давлении 0.44 МПа (выше 0.40 МПа) риск должен превышать 0%")
 
     def test_escalation_flag_reset(self):
-        """Тест-06: Проверка сброса флагов и сессии через manager.reset_session()."""
+        """Тест-06: Проверка сброса флагов и сессии через session.reset_session()."""
         from backend.services.connection_manager import manager
         
-        manager.escalation_warning_sent = True
-        manager.critical_alert_active = True
-        manager.is_paused = True
+        session = manager.get_session("test_session")
+        session.escalation_warning_sent = True
+        session.critical_alert_active = True
+        session.is_paused = True
         
         # Вызываем реальный метод сброса сессии
-        manager.reset_session(scenario="startup")
+        session.reset_session(scenario="startup")
         
-        self.assertFalse(manager.escalation_warning_sent, "Флаг эскалации должен быть сброшен через reset_session()")
-        self.assertFalse(manager.critical_alert_active, "Алерт должен быть сброшен через reset_session()")
-        self.assertFalse(manager.is_paused, "Пауза должна быть сброшена через reset_session()")
+        self.assertFalse(session.escalation_warning_sent, "Флаг эскалации должен быть сброшен через reset_session()")
+        self.assertFalse(session.critical_alert_active, "Алерт должен быть сброшен через reset_session()")
+        self.assertFalse(session.is_paused, "Пауза должна быть сброшена через reset_session()")
 
     def test_http_integration_endpoints(self):
         """Тест-07: Настоящий HTTP-интеграционный тест эндпоинтов /api/health/metrics и /api/auth/login."""
@@ -506,11 +514,11 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         client = TestClient(app)
         
         # 1. Проверка авторизации
-        response = client.post("/api/auth/login", json={"username": "Иван_Тест", "role": "operator"})
+        response = client.post("/api/auth/login", json={"username": "Иван_Тест", "password": "12345", "role": "operator"})
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["username"], "Иван_Тест")
-        self.assertTrue(data["token"].startswith("jwt-mock-token-for-"))
+        self.assertTrue(len(data["token"]) > 20) # Real JWT
         
         # 2. Проверка метрик системы
         health_resp = client.get("/api/health/metrics")
@@ -526,8 +534,12 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         
         client = TestClient(app)
         
+        # Получаем JWT для оператора
+        op_resp = client.post("/api/auth/login", json={"username": "Test_Operator", "password": "12345", "role": "operator"})
+        op_token = op_resp.json()["token"]
+        
         # 1. Проверка запрета роли оператора на команды инструктора (RBAC)
-        with client.websocket_connect("/ws?role=operator&username=Test_Operator") as websocket:
+        with client.websocket_connect(f"/ws?role=operator&username=Test_Operator&token={op_token}&session_id=test_session") as websocket:
             # При подключении сразу приходит первичная телеметрия
             init_data = websocket.receive_json()
             self.assertIn("sensors", init_data)
@@ -543,14 +555,45 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
             self.assertEqual(err_data["type"], "error")
             self.assertIn("Access denied", err_data["message"])
 
+        # Получаем JWT для инструктора
+        inst_resp = client.post("/api/auth/login", json={"username": "Test_Instructor", "password": "12345", "role": "instructor"})
+        inst_token = inst_resp.json()["token"]
+
         # 2. Разрешение команды инструктору
-        with client.websocket_connect("/ws?role=instructor&username=Test_Instructor") as websocket_inst:
+        with client.websocket_connect(f"/ws?role=instructor&username=Test_Instructor&token={inst_token}&session_id=test_session") as websocket_inst:
             init_inst_data = websocket_inst.receive_json()
             self.assertIn("sensors", init_inst_data)
             
             websocket_inst.send_json({"type": "trigger_defect", "defect_id": "pump_fail", "state": True})
             inst_data = websocket_inst.receive_json()
             self.assertIn("sensors", inst_data)
+
+    def test_parallel_isolated_sessions(self):
+        """Тест-09: Проверка полной изоляции двух параллельных сессий операторов."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        
+        client = TestClient(app)
+        
+        op1_resp = client.post("/api/auth/login", json={"username": "Operator1", "password": "12345", "role": "operator"})
+        op1_token = op1_resp.json()["token"]
+
+        op2_resp = client.post("/api/auth/login", json={"username": "Operator2", "password": "12345", "role": "operator"})
+        op2_token = op2_resp.json()["token"]
+
+        with client.websocket_connect(f"/ws?role=operator&username=Operator1&token={op1_token}&session_id=session_A") as ws1:
+            with client.websocket_connect(f"/ws?role=operator&username=Operator2&token={op2_token}&session_id=session_B") as ws2:
+                # Читаем стартовые данные
+                state1 = ws1.receive_json()
+                state2 = ws2.receive_json()
+
+                # Изменяем уставку в сессии A
+                ws1.send_json({"type": "change_setpoint", "value": 350.0})
+                updated1 = ws1.receive_json()
+                self.assertEqual(updated1["setpoints"]["T_1_Sp"], 350.0)
+
+                # Проверяем, что в сессии B уставка осталась прежней 240.0°C (изоляция состояний)
+                self.assertEqual(state2["setpoints"]["T_1_Sp"], 240.0)
 
     @classmethod
     def tearDownClass(cls):

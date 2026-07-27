@@ -64,7 +64,8 @@ def health_metrics():
         except Exception as e:
             logger.error("Ошибка определения размера БД: %s", e)
             
-    ws_connections = len(manager.operator_sockets) + len(manager.instructor_sockets)
+    ws_connections = sum(len(s.operator_sockets) + len(s.instructor_sockets) for s in manager.sessions.values())
+    total_events = sum(s.processed_events_total for s in manager.sessions.values())
     ollama_ok = check_ollama_status()
     
     return SystemMetrics(
@@ -73,7 +74,7 @@ def health_metrics():
         memory_percent=round(mem_percent, 1),
         db_size_kb=round(db_size, 1),
         active_ws_connections=ws_connections,
-        processed_events_total=manager.processed_events_total,
+        processed_events_total=total_events,
         avg_ping_latency_ms=15.0,
         is_ollama_available=ollama_ok
     )

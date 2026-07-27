@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
-import { Switch, Alert, Modal, message, Button } from 'antd';
+import { Switch, Alert, Modal, Button, Select, App } from 'antd';
 import { ShieldCheck, Users, Play, AlertTriangle, LogOut, Trash2, Info, AlertOctagon } from 'lucide-react';
-import { apiService, type Session } from '../services/api';
-import { getTableColumns, SCENARIO_NAMES } from './InstructorDashboard.config';
+import { apiService, type Session, type ActiveSession } from '../services/api';
+import { getTableColumns, SCENARIO_NAMES, SCENARIO_SHORT_NAMES } from './InstructorDashboard.config';
 import * as S from './InstructorDashboard.styles';
 
 const getStatusBadge = (s: string) => {
@@ -14,12 +14,15 @@ const getStatusBadge = (s: string) => {
 };
 
 const InstructorDashboard: React.FC = () => {
+  const { message, modal } = App.useApp();
   const { 
     isOnline, 
     wsLatency, 
     username, 
     operatorName, 
     scenarioId, 
+    activeSessionId,
+    switchSession,
     selectScenario, 
     sensors, 
     valves, 
@@ -41,6 +44,7 @@ const InstructorDashboard: React.FC = () => {
   } = useSimulator();
 
   const [history, setHistory] = useState<Session[]>([]);
+  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [pageSize, setPageSize] = useState(8);
@@ -107,9 +111,23 @@ const InstructorDashboard: React.FC = () => {
     }
   };
 
+  // Загружаем активные сессии
+  const fetchActiveSessions = async () => {
+    try {
+      const data = await apiService.fetchActiveSessions();
+      setActiveSessions(data);
+    } catch {
+      // Игнорируем в автономном режиме
+    }
+  };
+
   useEffect(() => {
     fetchHistory();
-    const interval = setInterval(fetchHistory, 30000); // Раз в 30 секунд
+    fetchActiveSessions();
+    const interval = setInterval(() => {
+      fetchHistory();
+      fetchActiveSessions();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -126,7 +144,7 @@ const InstructorDashboard: React.FC = () => {
   };
 
   const handleClearHistory = () => {
-    Modal.confirm({
+    modal.confirm({
       title: 'Вы уверены, что хотите очистить всю историю обучения?',
       content: 'Это действие необратимо и приведет к удалению всех записей из базы данных.',
       okText: 'Да, очистить',
@@ -163,7 +181,22 @@ const InstructorDashboard: React.FC = () => {
           </S.ConnectedBadge>
           <S.ConnectedBadge>
             <Users size={14} color="#00e5ff" />
-            Оператор: <S.ConnectedOperatorName $connected={!!operatorName}>{operatorName || 'Не подключен'}</S.ConnectedOperatorName>
+            Сессия оператора:
+            <Select
+              size="small"
+              value={activeSessionId}
+              onChange={switchSession}
+              popupMatchSelectWidth={false}
+              style={{ minWidth: 220, maxWidth: 320, marginLeft: 8 }}
+              options={
+                activeSessions.length > 0
+                  ? activeSessions.map(s => ({
+                      value: s.session_id,
+                      label: `${s.operator_name} [${SCENARIO_SHORT_NAMES[s.scenario_id] || s.scenario_id}]`
+                    }))
+                  : [{ value: activeSessionId, label: operatorName ? `${operatorName}` : 'Нет подключенных' }]
+              }
+            />
           </S.ConnectedBadge>
           <S.LogoutButton 
             onClick={logoutUser} 

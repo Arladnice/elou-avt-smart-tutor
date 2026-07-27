@@ -12,6 +12,34 @@ def get_sessions():
     """
     return get_all_sessions()
 
+@router.get("/active")
+def get_active_sessions():
+    """
+    Возвращает список текущих активных сессий операторов в реальном времени.
+    Используется инструктором для выбора отслеживаемой сессии.
+    """
+    from backend.services.connection_manager import manager
+    
+    # Удаляем пустые сессии
+    dead_sids = [sid for sid, s in manager.sessions.items() if len(s.operator_sockets) == 0 and len(s.instructor_sockets) == 0]
+    for sid in dead_sids:
+        del manager.sessions[sid]
+
+    result = []
+    for sid, s in manager.sessions.items():
+        if len(s.operator_sockets) > 0:
+            sim_state = s.simulator.get_state()
+            result.append({
+                "session_id": sid,
+                "operator_name": s.active_operator_name,
+                "scenario_id": s.active_scenario,
+                "connected_operators": len(s.operator_sockets),
+                "connected_instructors": len(s.instructor_sockets),
+                "status": sim_state.get("status", "running"),
+                "time_elapsed": sim_state.get("timeElapsed", 0)
+            })
+    return result
+
 @router.post("/clear")
 def clear_sessions():
     """

@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Literal
 
 class LoginRequest(BaseModel):
     username: str
+    password: str
     role: str # "operator" | "instructor"
 
 class SessionSaveRequest(BaseModel):

@@ -8,6 +8,7 @@ const Login: React.FC = () => {
   const { message } = App.useApp();
   const { loginUser } = useSimulator();
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<'operator' | 'instructor'>('operator');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -16,18 +17,31 @@ const Login: React.FC = () => {
       message.error('Пожалуйста, введите ваше имя');
       return;
     }
+    if (!password) {
+      message.error('Пожалуйста, введите пароль');
+      return;
+    }
 
     try {
       // Отправляем REST-запрос на бэкенд для авторизации через централизованный сервис
-      const data = await apiService.login(name.trim(), role);
+      const data = await apiService.login(name.trim(), password, role);
       sessionStorage.setItem('ktk_token', data.token);
+      // Генерируем уникальный session_id для изоляции сессии данного пользователя
+      const sessionId = `${data.username}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      sessionStorage.setItem('ktk_session_id', sessionId);
       loginUser(data.username, data.role);
       message.success(`Вход выполнен успешно! Добро пожаловать, ${data.username}.`);
-    } catch {
-      // Fallback при отсутствии связи с сервером
-      console.warn('Сервер недоступен, выполняем локальный вход.');
-      loginUser(name.trim(), role);
-      message.warning('Бэкенд недоступен. Выполнен вход в автономном режиме.');
+    } catch (err: unknown) {
+      const error = err as Error;
+      if (error.message === 'AUTH_INVALID_PASSWORD') {
+        message.error('Неверный пароль! Пароль по умолчанию для демо: 12345');
+      } else if (error.message === 'NETWORK_ERROR') {
+        console.warn('Сервер недоступен, выполняем локальный вход.');
+        loginUser(name.trim(), role);
+        message.warning('Бэкенд недоступен. Выполнен вход в автономном режиме.');
+      } else {
+        message.error(error.message || 'Ошибка авторизации');
+      }
     }
   };
 
@@ -50,6 +64,16 @@ const Login: React.FC = () => {
               value={name} 
               onChange={e => setName(e.target.value)}
               prefix={<S.UserIcon size={14} />}
+            />
+          </S.FormGroup>
+
+          <S.FormGroup>
+            <S.Label>Пароль (демо: 12345):</S.Label>
+            <S.StyledInput 
+              type="password"
+              placeholder="Введите пароль (12345)" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)}
             />
           </S.FormGroup>
 

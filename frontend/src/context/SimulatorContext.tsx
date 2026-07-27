@@ -54,6 +54,7 @@ interface SimulatorContextType {
   role: 'operator' | 'instructor';
   operatorName: string;
   scenarioId: string;
+  activeSessionId: string;
   isOnline: boolean;
   wsLatency: number; // Задержка в мс для Критерия 1 (производительность)
   
@@ -81,15 +82,25 @@ interface SimulatorContextType {
   configureWebhook: (url: string, active: boolean) => void;
   toggleMute: (fingerprint: string, state: boolean) => void;
   callDispatcher: () => void;
+  switchSession: (sessionId: string) => void;
 }
 
 const SimulatorContext = createContext<SimulatorContextType | undefined>(undefined);
 
 export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [username, setUsername] = useState(() => sessionStorage.getItem('ktk_username') || '');
+  const [username, setUsername] = useState(() => {
+    const savedName = sessionStorage.getItem('ktk_username');
+    const savedToken = sessionStorage.getItem('ktk_token');
+    if (savedName && !savedToken) {
+      sessionStorage.removeItem('ktk_username');
+      return '';
+    }
+    return savedName || '';
+  });
   const [role, setRole] = useState<'operator' | 'instructor'>(() => (sessionStorage.getItem('ktk_role') as 'operator' | 'instructor' | null) || 'operator');
   const [operatorName, setOperatorName] = useState('Оператор');
   const [scenarioId, setScenarioId] = useState('startup');
+  const [activeSessionId, setActiveSessionId] = useState(() => sessionStorage.getItem('ktk_session_id') || 'default_session');
   
   const [status, setStatus] = useState<SimulatorContextType['status']>('running');
   const [timeElapsed, setTimeElapsed] = useState(0);
@@ -133,7 +144,13 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const connectWebSocket = () => {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsBase = import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
-      const wsUrl = `${wsBase}/ws?role=${role}&username=${encodeURIComponent(username)}&scenario=${scenarioId}`;
+      const token = sessionStorage.getItem('ktk_token') || '';
+      if (!token) {
+        setIsOnline(false);
+        return;
+      }
+      const sessionId = activeSessionId;
+      const wsUrl = `${wsBase}/ws?role=${role}&username=${encodeURIComponent(username)}&scenario=${scenarioId}&token=${token}&session_id=${sessionId}`;
       
       ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -187,10 +204,19 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Ошибка обрабатывается в onclose
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setIsOnline(false);
         if (pingInterval) clearInterval(pingInterval);
         
+        if (event.code === 4003) {
+          sessionStorage.removeItem('ktk_token');
+          sessionStorage.removeItem('ktk_username');
+          sessionStorage.removeItem('ktk_role');
+          sessionStorage.removeItem('ktk_session_id');
+          setUsername('');
+          return;
+        }
+
         setLogs(prev => {
           const lastLog = prev[prev.length - 1];
           // Дедупликация сообщения о потере связи
@@ -229,8 +255,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
       }
     };
-
-  }, [username, role, scenarioId]);
+  }, [username, role, scenarioId, activeSessionId]);
 
   // -------------------------------------------------------------
   // ЛОКАЛЬНЫЙ РЕЗЕРВНЫЙ СИМУЛЯТОР (MOCK-FALLBACK)
@@ -321,6 +346,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setRole(userRole);
     sessionStorage.setItem('ktk_username', name);
     sessionStorage.setItem('ktk_role', userRole);
+    const sid = sessionStorage.getItem('ktk_session_id') || 'default_session';
+    setActiveSessionId(sid);
   };
 
   const logoutUser = () => {
@@ -329,6 +356,13 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     sessionStorage.removeItem('ktk_username');
     sessionStorage.removeItem('ktk_role');
     sessionStorage.removeItem('ktk_token');
+    sessionStorage.removeItem('ktk_session_id');
+    setActiveSessionId('default_session');
+  };
+
+  const switchSession = (newSessionId: string) => {
+    sessionStorage.setItem('ktk_session_id', newSessionId);
+    setActiveSessionId(newSessionId);
   };
 
   const selectScenario = (scenId: string) => {
@@ -518,6 +552,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       role,
       operatorName,
       scenarioId,
+      activeSessionId,
       isOnline,
       wsLatency,
       speedMultiplier,
@@ -529,6 +564,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       loginUser,
       logoutUser,
       selectScenario,
+      switchSession,
       toggleValve,
       changeSetpoint,
       triggerEsd,
