@@ -320,25 +320,25 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         from backend.models.schemas import LoginRequest
         
         # Успешный вход под оператором
-        req = LoginRequest(username="Test_Operator", password="12345", role="operator")
+        req = LoginRequest(username="operator_1", password="Ktk_2026!", role="operator")
         res = login(req)
-        self.assertEqual(res["username"], "Test_Operator")
+        self.assertEqual(res["username"], "operator_1")
         self.assertEqual(res["role"], "operator")
         self.assertIn("token", res)
 
         # Ошибка при пустом имени
         with self.assertRaises(HTTPException) as ctx:
-            login(LoginRequest(username="", password="12345", role="operator"))
+            login(LoginRequest(username="", password="Ktk_2026!", role="operator"))
         self.assertEqual(ctx.exception.status_code, 400)
 
         # Ошибка при некорректной роли
         with self.assertRaises(HTTPException) as ctx:
-            login(LoginRequest(username="User", password="12345", role="admin"))
-        self.assertEqual(ctx.exception.status_code, 400)
+            login(LoginRequest(username="operator_1", password="Ktk_2026!", role="admin"))
+        self.assertEqual(ctx.exception.status_code, 403)
         
         # Ошибка при неверном пароле
         with self.assertRaises(HTTPException) as ctx:
-            login(LoginRequest(username="User", password="wrong", role="operator"))
+            login(LoginRequest(username="operator_1", password="wrong", role="operator"))
         self.assertEqual(ctx.exception.status_code, 401)
 
     def test_simulation_time_and_speed_control(self):
@@ -514,10 +514,10 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         client = TestClient(app)
         
         # 1. Проверка авторизации
-        response = client.post("/api/auth/login", json={"username": "Иван_Тест", "password": "12345", "role": "operator"})
+        response = client.post("/api/auth/login", json={"username": "operator_1", "password": "Ktk_2026!", "role": "operator"})
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data["username"], "Иван_Тест")
+        self.assertEqual(data["username"], "operator_1")
         self.assertTrue(len(data["token"]) > 20) # Real JWT
         
         # 2. Проверка метрик системы
@@ -535,11 +535,11 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         client = TestClient(app)
         
         # Получаем JWT для оператора
-        op_resp = client.post("/api/auth/login", json={"username": "Test_Operator", "password": "12345", "role": "operator"})
+        op_resp = client.post("/api/auth/login", json={"username": "operator_1", "password": "Ktk_2026!", "role": "operator"})
         op_token = op_resp.json()["token"]
         
         # 1. Проверка запрета роли оператора на команды инструктора (RBAC)
-        with client.websocket_connect(f"/ws?role=operator&username=Test_Operator&token={op_token}&session_id=test_session") as websocket:
+        with client.websocket_connect(f"/ws?role=operator&username=operator_1&token={op_token}&session_id=test_session") as websocket:
             # При подключении сразу приходит первичная телеметрия
             init_data = websocket.receive_json()
             self.assertIn("sensors", init_data)
@@ -556,11 +556,11 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
             self.assertIn("Access denied", err_data["message"])
 
         # Получаем JWT для инструктора
-        inst_resp = client.post("/api/auth/login", json={"username": "Test_Instructor", "password": "12345", "role": "instructor"})
+        inst_resp = client.post("/api/auth/login", json={"username": "instructor_1", "password": "Ktk_2026!", "role": "instructor"})
         inst_token = inst_resp.json()["token"]
 
         # 2. Разрешение команды инструктору
-        with client.websocket_connect(f"/ws?role=instructor&username=Test_Instructor&token={inst_token}&session_id=test_session") as websocket_inst:
+        with client.websocket_connect(f"/ws?role=instructor&username=instructor_1&token={inst_token}&session_id=test_session") as websocket_inst:
             init_inst_data = websocket_inst.receive_json()
             self.assertIn("sensors", init_inst_data)
             
@@ -575,14 +575,15 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         
         client = TestClient(app)
         
-        op1_resp = client.post("/api/auth/login", json={"username": "Operator1", "password": "12345", "role": "operator"})
+        # Важно: Так как в БД всего два сидированных юзера, используем одного из них для теста.
+        # В реальной системе для параллельных сессий нужны разные юзеры,
+        # но для теста WebSocket сессий подойдет один и тот же токен, переданный разным подключениям,
+        # так как session_id определяет изоляцию симуляции, а не username.
+        op1_resp = client.post("/api/auth/login", json={"username": "operator_1", "password": "Ktk_2026!", "role": "operator"})
         op1_token = op1_resp.json()["token"]
 
-        op2_resp = client.post("/api/auth/login", json={"username": "Operator2", "password": "12345", "role": "operator"})
-        op2_token = op2_resp.json()["token"]
-
-        with client.websocket_connect(f"/ws?role=operator&username=Operator1&token={op1_token}&session_id=session_A") as ws1:
-            with client.websocket_connect(f"/ws?role=operator&username=Operator2&token={op2_token}&session_id=session_B") as ws2:
+        with client.websocket_connect(f"/ws?role=operator&username=operator_1&token={op1_token}&session_id=session_A") as ws1:
+            with client.websocket_connect(f"/ws?role=operator&username=operator_1&token={op1_token}&session_id=session_B") as ws2:
                 # Читаем стартовые данные
                 state1 = ws1.receive_json()
                 state2 = ws2.receive_json()
