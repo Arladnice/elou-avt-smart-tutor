@@ -88,6 +88,8 @@ def seed_users():
             hashed_password = get_password_hash("Ktk_2026!")
             users = [
                 ("operator_1", hashed_password, "operator"),
+                ("operator_2", hashed_password, "operator"),
+                ("operator_3", hashed_password, "operator"),
                 ("instructor_1", hashed_password, "instructor")
             ]
             cursor.executemany(
