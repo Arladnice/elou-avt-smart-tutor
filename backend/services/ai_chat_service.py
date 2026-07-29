@@ -22,6 +22,27 @@ def load_kb_file(filename: str) -> str:
             logger.error("Ошибка чтения файла БЗ %s: %s", filename, e)
     return ""
 
+def evaluate_condition(cond: dict, valves: dict, sensors: dict) -> bool:
+    """Вычисляет логическое условие выполнения шага динамического сценария."""
+    c_type = cond.get("type")
+    if c_type == "valve_is":
+        target = cond.get("target")
+        expected = cond.get("expected", True)
+        return valves.get(target) == expected
+    elif c_type == "sensor_gte":
+        target = cond.get("target")
+        expected = float(cond.get("expected", 0))
+        return float(sensors.get(target, 0)) >= expected
+    elif c_type == "sensor_lte":
+        target = cond.get("target")
+        expected = float(cond.get("expected", 999))
+        return float(sensors.get(target, 999)) <= expected
+    elif c_type == "composite_and":
+        sub_conds = cond.get("conditions", [])
+        return all(evaluate_condition(sub, valves, sensors) for sub in sub_conds)
+    return False
+
+
 def get_scenario_checklist_progress(telemetry: Dict[str, Any]) -> str:
     """Генерирует точный статус выполнения чек-листа сценария для передачи в LLM."""
     scenario_id = telemetry.get("scenarioId", "startup")
@@ -60,35 +81,31 @@ def get_scenario_checklist_progress(telemetry: Dict[str, Any]) -> str:
 
     if emergency_tasks:
         tasks = emergency_tasks
-    elif scenario_id == "startup":
-        tasks = [
-            ("1. Подача сырья в змеевик П-1 (Открыть V-1)", v1),
-            ("2. Разогрев печи (Поднять уставку и выйти на Т-1 >= 280°C)", t1 >= 280.0),
-            ("3. Регулирование дренажа (Открыть V-3 при уровне L-1 >= 20%)", v3 and l1 >= 20.0)
-        ]
-    elif scenario_id == "shutdown":
-        tasks = [
-            ("1. Снижение нагрева печи П-1 (Понизить уставку, Т-1 <= 245°C)", t1 <= 245.0),
-            ("2. Сброс давления в колонне K-1 (Открыть сброс V-2)", v2),
-            ("3. Перекрытие подачи сырья (Закрыть V-1 и дождаться уровня L-1 < 15%)", (not v1) and l1 < 15.0)
-        ]
-    elif scenario_id == "column_shutdown":
-        tasks = [
-            ("1. Снижение нагрева печи П-1 (Т-1 <= 245°C)", t1 <= 245.0),
-            ("2. Перекрытие подачи сырья (Закрыть V-1)", not v1),
-            ("3. Прекращение дренажа куба K-1 (Закрыть V-3, уровень L-1 < 15%)", (not v3) and l1 < 15.0)
-        ]
-    elif scenario_id == "overpressure_relief":
-        tasks = [
-            ("1. Сброс избыточного давления (Открыть V-2)", v2),
-            ("2. Снижение тепловой нагрузки (Т-1 <= 245°C)", t1 <= 245.0)
-        ]
-    elif scenario_id == "recirculation":
-        tasks = [
-            ("1. Снижение нагрева сырья в печи П-1 (Т-1 <= 250°C)", t1 <= 250.0),
-            ("2. Прекращение вывода кубового остатка (Закрыть V-3)", not v3),
-            ("3. Открытие сдувки на факел (Открыть V-2)", v2)
-        ]
+    else:
+        try:
+            from backend.services.scenario_manager import get_scenario_by_id
+            sc = get_scenario_by_id(scenario_id)
+        except Exception:
+            sc = None
+
+        if sc and "checklist" in sc:
+            tasks = []
+            for item in sc["checklist"]:
+                title = item.get("title", "")
+                is_done = evaluate_condition(item.get("condition", {}), valves, sensors)
+                tasks.append((title, is_done))
+        elif scenario_id == "startup":
+            tasks = [
+                ("1. Подача сырья в змеевик П-1 (Открыть V-1)", v1),
+                ("2. Разогрев печи (Поднять уставку и выйти на Т-1 >= 280°C)", t1 >= 280.0),
+                ("3. Регулирование дренажа (Открыть V-3 при уровне L-1 >= 20%)", v3 and l1 >= 20.0)
+            ]
+        else:
+            tasks = [
+                ("1. Снижение нагрева печи П-1 (Понизить уставку, Т-1 <= 245°C)", t1 <= 245.0),
+                ("2. Сброс давления в колонне K-1 (Открыть сброс V-2)", v2),
+                ("3. Перекрытие подачи сырья (Закрыть V-1)", not v1)
+            ]
         
     lines = []
     active_found = False
@@ -138,7 +155,7 @@ def query_local_llm(messages: List[Dict[str, str]], model: str = "local-model") 
         "model": model,
         "messages": messages,
         "temperature": 0.3,
-        "max_tokens": 1024
+        "max_tokens": 2048
     }
     
     req = urllib.request.Request(

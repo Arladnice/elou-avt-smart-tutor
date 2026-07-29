@@ -2,11 +2,11 @@ import React from 'react';
 import { useSimulator } from '../context/SimulatorContext';
 import { Modal } from 'antd';
 
-import { Award, AlertOctagon, RefreshCw, LogOut, CheckCircle2, FileText } from 'lucide-react';
+import { Award, AlertOctagon, RefreshCw, LogOut, CheckCircle2, FileText, ArrowRight, GraduationCap, RotateCcw } from 'lucide-react';
 import * as S from './ScoreCard.styles';
 
 const ScoreCard: React.FC = () => {
-  const { scoreCard, status, resetSession, logoutUser, selectScenario, username, scenarioId, logs } = useSimulator();
+  const { scoreCard, status, resetSession, logoutUser, selectScenario, username, scenarioId, logs, mode, selectMode } = useSimulator();
 
   if (!scoreCard) return null;
 
@@ -32,16 +32,45 @@ const ScoreCard: React.FC = () => {
       case 'column_shutdown': return 'Останов колонны К-1';
       case 'overpressure_relief': return 'Ликвидация роста давления';
       case 'recirculation': return 'Перевод на рециркуляцию';
+      case 'pump_fail': return 'Отказ сырьевого насоса Н-1';
+      case 'coil_overheat': return 'Прогар змеевика печи П-1';
+      case 'valve_jam': return 'Зависание клапана сброса V-2';
+      case 'power_fail': return 'Отказ электроснабжения';
+      case 'air_fail': return 'Отказ воздуха КИПиА';
+      case 'steam_fail': return 'Срыв подачи отпарного пара';
       default: return id;
     }
   };
 
-  const handleStartRecommended = () => {
-    if (scoreCard.recommended_scenario_id) {
-      selectScenario(scoreCard.recommended_scenario_id);
+  const targetScenarioId = scoreCard.recommended_scenario_id || (isSuccess ? 'shutdown' : scenarioId);
+  const targetScenarioTitle = getScenarioTitle(targetScenarioId);
+
+  let primaryButtonText = `🎓 Следующий шаг: ${targetScenarioTitle}`;
+  let PrimaryIcon = ArrowRight;
+
+  if (mode === 'exam') {
+    if (isSuccess) {
+      primaryButtonText = `🎯 Сдать Экзамен: ${targetScenarioTitle}`;
+      PrimaryIcon = Award;
     } else {
-      selectScenario('startup');
+      primaryButtonText = `🎓 Перейти в Обучение: ${targetScenarioTitle}`;
+      PrimaryIcon = GraduationCap;
     }
+  } else {
+    if (isSuccess) {
+      primaryButtonText = `🎓 Следующий шаг: ${targetScenarioTitle}`;
+      PrimaryIcon = ArrowRight;
+    } else {
+      primaryButtonText = `🎓 Дообучение: ${targetScenarioTitle}`;
+      PrimaryIcon = RefreshCw;
+    }
+  }
+
+  const handlePrimaryAction = () => {
+    if (mode === 'exam' && !isSuccess) {
+      selectMode('training');
+    }
+    selectScenario(targetScenarioId);
   };
 
   const handleExportPdf = () => {
@@ -222,6 +251,10 @@ const ScoreCard: React.FC = () => {
               <td><strong>${getScenarioTitle(scenarioId)}</strong></td>
             </tr>
             <tr>
+              <td class="label">Режим тренажёра:</td>
+              <td><strong>${mode === 'exam' ? '🎯 Экзамен (Контроль ГОСТ)' : '🎓 Обучение (Подсказки)'}</strong></td>
+            </tr>
+            <tr>
               <td class="label">Дата и время аттестации:</td>
               <td>${dateStr}</td>
             </tr>
@@ -281,7 +314,7 @@ const ScoreCard: React.FC = () => {
       }
       footer={null}
       closable={false}
-      width={540}
+      width={580}
       styles={{
         mask: maskStyle,
       }}
@@ -292,13 +325,12 @@ const ScoreCard: React.FC = () => {
           {scoreCard.grade}
         </S.GradeBadge>
 
-
         <S.CenterTextContainer>
           <S.HeaderTitle color={getHeaderColor()}>
             {getHeaderTitle()}
           </S.HeaderTitle>
           <S.HeaderSubtitle>
-            Параметры сессии верифицированы ИИ по требованиям безопасности
+            Параметры сессии верифицированы ИИ по требованиям безопасности ({mode === 'exam' ? 'Экзаменационный контроль' : 'Обучающий режим'})
           </S.HeaderSubtitle>
         </S.CenterTextContainer>
 
@@ -350,7 +382,7 @@ const ScoreCard: React.FC = () => {
             </S.SectionTitle>
             <S.FullWidthContainer>
               {scoreCard.recommendations.map((rec, idx) => {
-                const isAdaptiveScenario = rec.startsWith('Рекомендуемый адаптивный сценарий:');
+                const isAdaptiveScenario = rec.includes('Рекомендуемый');
                 if (isAdaptiveScenario) {
                   return (
                     <S.AdaptiveRetrainingBanner key={idx}>
@@ -365,38 +397,38 @@ const ScoreCard: React.FC = () => {
         )}
 
         {/* Кнопки управления */}
-        <S.FooterButtons>
-          {scoreCard.recommended_scenario_id ? (
-            <S.StyledRepeatButton
-              type="primary"
-              icon={<RefreshCw size={14} />}
-              onClick={handleStartRecommended}
-            >
-              Пройти рекомендованный тренинг
-            </S.StyledRepeatButton>
-          ) : (
-            <S.StyledRepeatButton
-              type="primary"
-              icon={<RefreshCw size={14} />}
+        <S.FooterContainer>
+          <S.PrimaryActionButton
+            type="primary"
+            icon={<PrimaryIcon size={16} />}
+            onClick={handlePrimaryAction}
+          >
+            {primaryButtonText}
+          </S.PrimaryActionButton>
+
+          <S.SecondaryButtonsRow>
+            <S.StyledSecondaryButton
+              icon={<RotateCcw size={14} />}
               onClick={resetSession}
+              title="Повторить текущую попытку заново"
             >
               Повторить попытку
-            </S.StyledRepeatButton>
-          )}
-          <S.StyledPdfButton
-            icon={<FileText size={14} />}
-            onClick={handleExportPdf}
-            title="Печать/Скачивание официального протокола оценивания квалификации (PDF)"
-          >
-            Протокол (PDF)
-          </S.StyledPdfButton>
-          <S.StyledExitButton
-            icon={<LogOut size={14} />}
-            onClick={logoutUser}
-          >
-            Выйти
-          </S.StyledExitButton>
-        </S.FooterButtons>
+            </S.StyledSecondaryButton>
+            <S.StyledPdfButton
+              icon={<FileText size={14} />}
+              onClick={handleExportPdf}
+              title="Печать/Скачивание официального протокола оценивания квалификации (PDF)"
+            >
+              Протокол (PDF)
+            </S.StyledPdfButton>
+            <S.StyledExitButton
+              icon={<LogOut size={14} />}
+              onClick={logoutUser}
+            >
+              Выйти
+            </S.StyledExitButton>
+          </S.SecondaryButtonsRow>
+        </S.FooterContainer>
       </S.CardContainer>
     </Modal>
   );

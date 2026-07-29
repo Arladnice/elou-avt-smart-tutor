@@ -10,7 +10,7 @@ from ai_core.config import (
     MODEL_PATH, ONNX_PATH, INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM, DROPOUT,
     SCALER_MIN, SCALER_MAX, OUT_MIN, OUT_MAX,
     FURNACE_TEMP_CRITICAL, FURNACE_TEMP_WARNING, COLUMN_PRES_CRITICAL, COLUMN_PRES_WARNING,
-    COLUMN_PRES_ESD, COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
+    COLUMN_PRES_ESD, COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_LOW_INTERLOCK, COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
     STARTUP_HEATING_THRESHOLD_TEMP, STARTUP_FILLING_TIME_LIMIT_SEC, VALVE_ACTION_TIMEOUT_SEC,
     RISK_WEIGHT_TEMP, RISK_WEIGHT_PRES, RISK_WEIGHT_LEVEL, RISK_PENALTY_NO_FEED
 )
@@ -216,7 +216,7 @@ class RiskPredictor:
         if pred_pres > COLUMN_PRES_WARNING:
             risk += (pred_pres - COLUMN_PRES_WARNING) / (COLUMN_PRES_ESD - COLUMN_PRES_WARNING) * RISK_WEIGHT_PRES
             
-        # 3. По уровню в колонне (пределы: < COLUMN_LEVEL_LOW=15% или > COLUMN_LEVEL_HIGH=85%)
+        # 3. По уровню в колонне (пределы: < COLUMN_LEVEL_LOW=25% или > COLUMN_LEVEL_HIGH=85%)
         # При пуске (startup) на первых двух минутах колонна естественно пуста и заполняется сырьем
         is_startup_filling = (scenario_id == "startup" and time_elapsed <= STARTUP_FILLING_TIME_LIMIT_SEC)
         
@@ -224,7 +224,10 @@ class RiskPredictor:
             risk += (pred_level - COLUMN_LEVEL_HIGH) / (COLUMN_LEVEL_HIGH_CRITICAL - COLUMN_LEVEL_HIGH) * RISK_WEIGHT_LEVEL
         elif pred_level < COLUMN_LEVEL_LOW:
             if not is_startup_filling:
-                risk += (COLUMN_LEVEL_LOW - pred_level) / COLUMN_LEVEL_LOW * RISK_WEIGHT_LEVEL
+                if pred_level <= COLUMN_LEVEL_LOW_INTERLOCK:
+                    risk += 75.0 + (COLUMN_LEVEL_LOW_INTERLOCK - pred_level) / (COLUMN_LEVEL_LOW_INTERLOCK - COLUMN_LEVEL_LOW_CRITICAL) * 25.0
+                else:
+                    risk += (COLUMN_LEVEL_LOW - pred_level) / (COLUMN_LEVEL_LOW - COLUMN_LEVEL_LOW_INTERLOCK) * 75.0
             elif time_elapsed > VALVE_ACTION_TIMEOUT_SEC and window[-1, 0] < 0.5:  # V-1 закрыт > 15с
                 risk += RISK_PENALTY_NO_FEED
             

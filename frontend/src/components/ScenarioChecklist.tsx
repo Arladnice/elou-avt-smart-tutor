@@ -51,26 +51,41 @@ export const useScenarioInfo = () => {
   return { title, isEmergency };
 };
 
+const evalCondition = (cond: any, valves: Record<string, boolean>, sensors: Record<string, number>): boolean => {
+  if (!cond) return false;
+  if (cond.type === 'valve_is') {
+    return valves[cond.target || ''] === cond.expected;
+  }
+  if (cond.type === 'sensor_gte') {
+    return (sensors[cond.target || ''] ?? 0) >= Number(cond.expected);
+  }
+  if (cond.type === 'sensor_lte') {
+    return (sensors[cond.target || ''] ?? 999) <= Number(cond.expected);
+  }
+  if (cond.type === 'composite_and') {
+    return (cond.conditions || []).every((c: any) => evalCondition(c, valves, sensors));
+  }
+  return false;
+};
+
 const ScenarioChecklist: React.FC = () => {
-  const { scenarioId, valves, sensors, setpoints, defects, status, mode } = useSimulator();
+  const { scenarioId, valves, sensors, setpoints, defects, status, mode, scenarios } = useSimulator();
   const isExam = mode === 'exam';
 
   // Определение шагов на основе текущего состояния симулятора
   const getTasks = (): TaskInfo[] => {
     const emergencyTasks: TaskInfo[] = [];
 
-    // При отказе сырьевого насоса необходимо снизить нагрев печи
+    // При возникновении нештатных ситуаций (дефектов) — выдаем приоритетные аварийные задачи
     if (defects?.pump_fail) {
-      const limitTemp = scenarioId === 'startup' ? 240 : 245;
       emergencyTasks.push({
         id: 'pump_fail_recovery',
-        title: 'Аварийное снижение нагрева печи П-1',
-        hint: `Понизьте уставку и дождитесь снижения фактической температуры Т-1 ниже ${limitTemp}°C (сейчас факт: ${sensors?.T_1?.toFixed(1) ?? '...'}°C, уставка: ${setpoints?.T_1_Sp ?? '...'}°C) для предотвращения прогара сухого змеевика.`,
-        isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp && (sensors?.T_1 ?? 999) <= limitTemp,
+        title: 'Отказ сырьевого насоса Н-1',
+        hint: 'Снизьте уставку печи ниже 200°C для предотвращения сухого прогара змеевиков печи П-1.',
+        isDone: (setpoints?.T_1_Sp ?? 280) <= 200,
       });
     }
 
-    // При прогаре змеевика печи необходимо снизить нагрев и открыть сброс V-2
     if (defects?.coil_overheat) {
       const limitTemp = scenarioId === 'startup' ? 240 : 245;
       if (!emergencyTasks.some(t => t.id === 'pump_fail_recovery')) {
@@ -89,7 +104,6 @@ const ScenarioChecklist: React.FC = () => {
       });
     }
 
-    // При заклинивании V-2 необходим аварийный останов (ESD)
     if (defects?.valve_jam) {
       emergencyTasks.push({
         id: 'valve_jam_esd',
@@ -99,7 +113,6 @@ const ScenarioChecklist: React.FC = () => {
       });
     }
 
-    // При отказе электроснабжения (power_fail) останавливаются насосы и гаснет печь
     if (defects?.power_fail) {
       emergencyTasks.push({
         id: 'power_fail_action',
@@ -109,18 +122,16 @@ const ScenarioChecklist: React.FC = () => {
       });
     }
 
-    // При отказе воздуха КИПиА (air_fail) клапаны V-1 и V-3 закрываются в безопасное положение
     if (defects?.air_fail) {
-      const limitTemp = scenarioId === 'startup' ? 240 : 245;
+      const limitTemp = 245;
       emergencyTasks.push({
         id: 'air_fail_action',
-        title: 'Отказ КИПиА: Снижение нагрева П-1 / ПАЗ (ESD)',
-        hint: `При потере пневмопитания регулирующие клапаны V-1 и V-3 перешли в закрытое положение (Fail-Closed), а V-2 заблокирован. Из-за прекращения подачи сырья немедленно снизьте уставку нагрева Т-1 ниже ${limitTemp}°C (сейчас факт: ${sensors?.T_1?.toFixed(1) ?? '...'}°C, уставка: ${setpoints?.T_1_Sp ?? '...'}°C) или нажмите кнопку ПАЗ (ESD).`,
+        title: 'Отказ воздуха КИПиА: Снижение нагрева печи П-1 / ПАЗ',
+        hint: 'При отказе сжатого воздуха арматура отсеклась. Снизьте уставку печи П-1 ниже 245°C или активируйте кнопкой ESD.',
         isDone: status === 'esd' || ((setpoints?.T_1_Sp ?? 280) < limitTemp && (sensors?.T_1 ?? 999) <= limitTemp),
       });
     }
 
-    // При срыве подачи отпарного пара (steam_fail) нарушается стриппинг и растёт давление/уровень
     if (defects?.steam_fail) {
       emergencyTasks.push({
         id: 'steam_fail_pressure',
@@ -140,129 +151,26 @@ const ScenarioChecklist: React.FC = () => {
       return emergencyTasks;
     }
 
-    if (scenarioId === 'startup') {
-      return [
-        {
-          id: 'v1_open',
-          title: '1. Подача сырья в печь',
-          hint: isExam 
-            ? 'Обеспечить подачу сырья в змеевики печи П-1 согласно п. 7.9.1 техрегламента.'
-            : 'Убедитесь, что задвижка V-1 находится в положении ОТКРЫТО',
-          isDone: valves.V_1,
-        },
-        {
-          id: 'sp_up',
-          title: '2. Разогрев змеевиков печи П-1',
-          hint: isExam
-            ? 'Вывести печь П-1 на нормативный режим нагрева сырья согласно технологическому регламенту.'
-            : `Поднимите уставку и дождитесь, пока фактическая температура Т-1 достигнет 285°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.T_1 ?? 0) >= 285,
-        },
-        {
-          id: 'v3_open',
-          title: '3. Регулирование дренажа колонны K-1',
-          hint: isExam
-            ? 'Обеспечить поддержание технологического уровня кубовой жидкости колонны К-1.'
-            : `Откройте V-3 при уровне в кубе выше 20% (сейчас L-1: ${sensors?.L_1?.toFixed(1) ?? '...'}%)`,
-          isDone: valves.V_3 && (sensors?.L_1 ?? 0) >= 20,
-        },
-      ];
-    } else if (scenarioId === 'column_shutdown') {
-      return [
-        {
-          id: 'sp_down',
-          title: '1. Снижение нагрева печи П-1',
-          hint: isExam
-            ? 'Снизить тепловую нагрузку печи П-1 перед остановом колонны К-1.'
-            : `Понизьте уставку и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.T_1 ?? 999) <= 245,
-        },
-        {
-          id: 'v1_close',
-          title: '2. Перекрытие подачи сырья',
-          hint: isExam
-            ? 'Отсечь подачу сырья на вход установки.'
-            : 'Переведите V-1 в положение ЗАКРЫТО',
-          isDone: !valves.V_1,
-        },
-        {
-          id: 'v3_close',
-          title: '3. Прекращение дренажа куба K-1',
-          hint: isExam
-            ? 'Остановить вывод кубового остатка при достижении критического минимального уровня.'
-            : `Закройте клапан дренажа V-3 при уровне в кубе ниже 15% (сейчас: ${sensors?.L_1?.toFixed(1) ?? '...'}%)`,
-          isDone: !valves.V_3 && (sensors?.L_1 ?? 100) < 15,
-        },
-      ];
-    } else if (scenarioId === 'overpressure_relief') {
-      return [
-        {
-          id: 'v2_open',
-          title: '1. Сброс избыточного давления',
-          hint: isExam
-            ? 'Выполнить стравливание паровой фазы из колонны К-1 на факельную установку.'
-            : 'Откройте клапан V-2 для сброса газа на факел',
-          isDone: valves.V_2,
-        },
-        {
-          id: 'sp_down',
-          title: '2. Снижение тепловой нагрузки',
-          hint: isExam
-            ? 'Снизить интенсивность испарения сырья в печи П-1.'
-            : `Понизьте уставку печи и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.T_1 ?? 999) <= 245,
-        },
-      ];
-    } else if (scenarioId === 'recirculation') {
-      return [
-        {
-          id: 'sp_down',
-          title: '1. Снижение нагрева сырья в печи П-1',
-          hint: isExam
-            ? 'Перевести печь П-1 в циркуляционный режим нагрева.'
-            : `Понизьте уставку и дождитесь снижения температуры Т-1 ниже 250°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.T_1 ?? 999) <= 250,
-        },
-        {
-          id: 'v3_close',
-          title: '2. Прекращение вывода кубового остатка',
-          hint: isExam
-            ? 'Перекрыть линию отвода кубовой фракции.'
-            : 'Переведите клапан V-3 (Дренаж) в положение ЗАКРЫТО',
-          isDone: !valves.V_3,
-        },
-        {
-          id: 'v2_open',
-          title: '3. Открытие сдувки на факел',
-          hint: isExam
-            ? 'Обеспечить сброс легких фракций при рециркуляции.'
-            : 'Переведите клапан V-2 (Сброс давления) в положение ОТКРЫТО',
-          isDone: valves.V_2,
-        },
-      ];
-    } else {
-      // Сценарий shutdown (Останов)
-      return [
-        {
-          id: 'sp_down',
-          title: '1. Снижение нагрева печи П-1',
-          hint: `Понизьте уставку и дождитесь остывания Т-1 ниже 245°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C)`,
-          isDone: (sensors?.T_1 ?? 999) <= 245,
-        },
-        {
-          id: 'v2_open',
-          title: '2. Сброс давления в колонне K-1',
-          hint: 'Откройте регулирующий клапан V-2 для сдувки газа на факел',
-          isDone: valves.V_2,
-        },
-        {
-          id: 'v1_close',
-          title: '3. Перекрытие подачи сырья',
-          hint: `Переведите V-1 в положение ЗАКРЫТО и дождитесь дренажа куба (уровень < 15%, сейчас: ${sensors?.L_1?.toFixed(1) ?? '...'}%)`,
-          isDone: !valves.V_1 && (sensors?.L_1 ?? 100) < 15,
-        },
-      ];
+    // Динамический расчёт шагов из центрального реестра сценариев
+    const activeScenario = scenarios.find(s => s.id === scenarioId);
+    if (activeScenario && activeScenario.checklist) {
+      return activeScenario.checklist.map(item => ({
+        id: item.id,
+        title: item.title,
+        hint: isExam ? item.hint_exam : item.hint_training,
+        isDone: evalCondition(item.condition, valves, sensors || {}),
+      }));
     }
+
+    // Fallback для неизвестного сценария
+    return [
+      {
+        id: 'v1_close',
+        title: '1. Перекрытие подачи сырья V-1',
+        hint: 'Переведите клапан V-1 в положение ЗАКРЫТО',
+        isDone: !valves.V_1,
+      },
+    ];
   };
 
   const tasks = getTasks();

@@ -271,16 +271,38 @@ class TestKTKComponents(unittest.TestCase):
         self.assertLess(score, 100)
         self.assertEqual(rec_id, "overpressure_relief")
 
-    # --- Тесты адаптивного сценария при УСПЕШНОМ парировании дефекта ---
+    # --- Тесты адаптивного сценария при УСПЕШНОМ и ОШИБОЧНОМ прохождении ---
 
-    def test_adaptive_scenario_none_on_success(self):
-        """При успешном парировании дефекта recommended_scenario_id = None."""
-        actions = ["SP_DOWN"]
-        score, errors, recs, rec_id = self.analyzer.evaluate_session(
-            actions, "startup", defects_triggered={"pump_fail"}
-        )
-        self.assertEqual(score, 100)
-        self.assertIsNone(rec_id)
+    def test_adaptive_trajectory_full_chain(self):
+        """Проверяет полную цепочку адаптивной прогрессии от пуска до всех дефектов при 100% сдаче."""
+        chain = [
+            ("startup", ["V1_OPEN", "SP_UP", "V3_OPEN"], "shutdown"),
+            ("shutdown", ["SP_DOWN", "V2_OPEN", "V1_CLOSE"], "column_shutdown"),
+            ("column_shutdown", ["SP_DOWN", "V1_CLOSE", "V3_CLOSE"], "overpressure_relief"),
+            ("overpressure_relief", ["V2_OPEN", "SP_DOWN"], "recirculation"),
+            ("recirculation", ["SP_DOWN", "V3_CLOSE", "V2_OPEN"], "pump_fail"),
+        ]
+        for scen, actions, expected_next in chain:
+            score, errs, recs, rec_id = self.analyzer.evaluate_session(actions, scen)
+            self.assertEqual(score, 100)
+            self.assertEqual(rec_id, expected_next, f"Сценарий {scen} должен рекомендовать {expected_next}")
+
+    def test_adaptive_defect_progression_chain(self):
+        """Проверяет переход между нештатными ситуациями при успешной их ликвидации."""
+        defect_chain = [
+            ({"pump_fail"}, ["SP_DOWN"], "coil_overheat"),
+            ({"coil_overheat"}, ["SP_DOWN", "V2_OPEN"], "valve_jam"),
+            ({"valve_jam"}, ["SP_UP", "V2_OPEN", "ESD"], "power_fail"),
+            ({"power_fail"}, ["SP_DOWN", "V1_CLOSE"], "air_fail"),
+            ({"air_fail"}, ["ESD"], "steam_fail"),
+            ({"steam_fail"}, ["SP_DOWN", "V3_OPEN"], "startup"),
+        ]
+        for defects, actions, expected_next in defect_chain:
+            score, errs, recs, rec_id = self.analyzer.evaluate_session(
+                actions, "startup", defects_triggered=defects
+            )
+            self.assertEqual(score, 100)
+            self.assertEqual(rec_id, expected_next, f"Дефект {defects} должен рекомендовать {expected_next}")
 
     # --- Тесты адаптивного сценария при штатном провале ---
 

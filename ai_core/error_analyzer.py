@@ -22,23 +22,16 @@ from ai_core.sequence_alignment import calculate_lcs_alignment
 class ErrorAnalyzer:
     """Анализирует действия оператора, классифицирует ошибки и формирует адаптивные рекомендации."""
 
-    def __init__(self):
-        # Эталонные последовательности действий для различных сценариев.
-        # Действия кодируются как: V1_OPEN, V1_CLOSE, V2_OPEN, V2_CLOSE,
-        # V3_OPEN, V3_CLOSE, SP_UP, SP_DOWN, ESD.
-        self.golden_sequences = {
-            "startup": ["V1_OPEN", "SP_UP", "V3_OPEN"],
-            "shutdown": ["SP_DOWN", "V2_OPEN", "V1_CLOSE"],
-            "column_shutdown": ["SP_DOWN", "V1_CLOSE", "V3_CLOSE"],
-            "overpressure_relief": ["V2_OPEN", "SP_DOWN"],
-            "recirculation": ["SP_DOWN", "V3_CLOSE", "V2_OPEN"],
-            "pump_fail_recovery": ["SP_DOWN"],
-            "coil_overheat_recovery": ["SP_DOWN", "V2_OPEN"],
-            "valve_jam_recovery": ["ESD"],
-            "power_fail_recovery": ["SP_DOWN", "V1_CLOSE"],
-            "air_fail_recovery": ["ESD"],
-            "steam_fail_recovery": ["SP_DOWN", "V3_OPEN"],
-        }
+    def _get_golden_sequence(self, scenario_id: str) -> list:
+        """Динамически получает эталонную последовательность из центрального реестра."""
+        try:
+            from backend.services.scenario_manager import get_scenario_by_id
+            sc = get_scenario_by_id(scenario_id)
+            if sc and "golden_sequence" in sc:
+                return sc["golden_sequence"]
+        except Exception:
+            pass
+        return self.golden_sequences.get(scenario_id, [])
 
     def evaluate_session(self, actions, scenario_id, defects_triggered=None,
                          final_sensors=None, time_elapsed=0):
@@ -130,7 +123,8 @@ class ErrorAnalyzer:
                     "Поздравляем! Вы успешно локализовали неисправность 'Прогар змеевика П-1'.",
                     "Вы своевременно снизили температурную нагрузку на печь и открыли сброс "
                     "давления V-2 в факельную систему, предотвратив взрыв колонны.",
-                ], None
+                    "Рекомендуемый следующий этап траектории: 'Зависание клапана сброса V-2'"
+                ], "valve_jam"
             errors, recs = [], []
             if not has_sp_down:
                 errors.append({
@@ -148,6 +142,7 @@ class ErrorAnalyzer:
                             "открыть регулирующий клапан V-2 на факельную линию."
                 })
                 recs.append("При росте давления откройте клапан аварийного сброса V-2.")
+            recs.append("Рекомендуемый адаптивный сценарий дообучения: 'Аварийный останов печи П-1'")
             return 40, errors, recs, "shutdown"
 
         # Отказ сырьевого насоса
@@ -157,10 +152,12 @@ class ErrorAnalyzer:
                     "Поздравляем! Вы успешно локализовали отказ сырьевого насоса.",
                     "Вы своевременно снизили уставку температуры (SP_DOWN) при прекращении "
                     "подачи холодного сырья, предотвратив сухой перегрев змеевиков.",
-                ], None
+                    "Рекомендуемый следующий этап траектории: 'Прогар змеевика печи П-1'"
+                ], "coil_overheat"
             return 30, [TECH_REGULATIONS["P1_DRY_HEAT"]], [
                 "При прекращении подачи сырья немедленно снизьте уставку температуры "
-                "печи П-1, так как нагрев сухого змеевика приведет к его прогару."
+                "печи П-1, так как нагрев сухого змеевика приведет к его прогару.",
+                "Рекомендуемый адаптивный сценарий дообучения: 'Аварийный останов печи П-1'"
             ], "shutdown"
 
         # Зависание клапана сброса V-2
@@ -170,14 +167,16 @@ class ErrorAnalyzer:
                     "Поздравляем! Вы успешно локализовали неисправность 'Зависание клапана сброса V-2'.",
                     "Вы своевременно задействовали систему аварийного останова (ESD) для "
                     "предотвращения аварии.",
-                ], None
+                    "Рекомендуемый следующий этап траектории: 'Отказ электроснабжения'"
+                ], "power_fail"
             return 30, [{
                 "clause": "Раздел 3.5 / п. 7.10.4",
                 "title": "Угроза взрыва колонны К-1",
                 "text": "При зависании клапана сброса V-2 в закрытом состоянии оператор обязан "
                         "немедленно активировать систему ручного аварийного останова (ESD)."
             }], [
-                "При зависании клапана V-2 немедленно нажмите красную кнопку аварийного останова ESD."
+                "При зависании клапана V-2 немедленно нажмите красную кнопку аварийного останова ESD.",
+                "Рекомендуемый адаптивный сценарий дообучения: 'Ликвидация роста давления'"
             ], "overpressure_relief"
 
         # Отказ электроснабжения
@@ -188,7 +187,8 @@ class ErrorAnalyzer:
                 return 100, [], [
                     "Поздравляем! Вы успешно парировали последствия обесточивания установки (power_fail).",
                     "Вы перекрыли подачу сырья V-1 при остановке сырьевых насосов и обезопасили колонну.",
-                ], None
+                    "Рекомендуемый следующий этап траектории: 'Отказ воздуха КИПиА'"
+                ], "air_fail"
             errors, recs = [], []
             if not (has_v1_close or "V2_OPEN" in actions):
                 errors.append({
@@ -198,6 +198,7 @@ class ErrorAnalyzer:
                             "сброс на факел (V2_OPEN)."
                 })
                 recs.append("При обесточивании перекройте сырьевую задвижку V-1 или откройте сброс V-2.")
+            recs.append("Рекомендуемый адаптивный сценарий дообучения: 'Аварийный останов печи П-1'")
             return 40, errors, recs, "shutdown"
 
         # Отказ воздуха КИПиА
@@ -213,7 +214,8 @@ class ErrorAnalyzer:
                     "Поздравляем! Вы успешно отреагировали на отказ воздуха КИПиА (air_fail).",
                     "При потере управления пневмоклапанами вы снизили нагрев печи / "
                     "задействовали блокировку ПАЗ (ESD).",
-                ], None
+                    "Рекомендуемый следующий этап траектории: 'Срыв подачи отпарного пара'"
+                ], "steam_fail"
             return 30, [{
                 "clause": "Раздел 7.10.4 / КИПиА",
                 "title": "Потеря управления арматурой при отказе воздуха КИПиА",
@@ -223,7 +225,8 @@ class ErrorAnalyzer:
                         "активировать ESD."
             }], [
                 "При отказе воздуха КИПиА немедленно снизьте уставку нагрева Т-1 ниже "
-                "допустимой или нажмите кнопку ПАЗ (ESD)."
+                "допустимой или нажмите кнопку ПАЗ (ESD).",
+                "Рекомендуемый адаптивный сценарий дообучения: 'Аварийный останов печи П-1'"
             ], "shutdown"
 
         # Срыв подачи отпарного пара
@@ -234,7 +237,8 @@ class ErrorAnalyzer:
                     "Поздравляем! Вы успешно локализовали срыв подачи отпарного пара в стриппинг-секции.",
                     "Вы открыли дренаж куба V-3 / сброс V-2 для предотвращения переполнения "
                     "и роста давления.",
-                ], None
+                    "Квалификационная траектория успешно завершена! Вы готовы к итоговому экзамену."
+                ], "startup"
             return 40, [{
                 "clause": "Раздел 7.10.4",
                 "title": "Накопление жидкости и рост давления в колонне",
@@ -250,7 +254,7 @@ class ErrorAnalyzer:
     def _evaluate_normal_session(self, actions, scenario_id, defects_triggered,
                                   final_sensors, time_elapsed):
         """Оценивает штатную сессию без инъецированных дефектов."""
-        golden = self.golden_sequences.get(scenario_id, [])
+        golden = self._get_golden_sequence(scenario_id)
         if not golden:
             return 100, [], ["Сценарий успешно выполнен."]
 
@@ -435,32 +439,34 @@ class ErrorAnalyzer:
         "column_shutdown": "Останов колонны К-1",
         "overpressure_relief": "Ликвидация роста давления",
         "recirculation": "Перевод на рециркуляцию",
+        "pump_fail": "Отказ сырьевого насоса Н-1",
+        "coil_overheat": "Прогар змеевика печи П-1",
+        "valve_jam": "Зависание клапана сброса V-2",
+        "power_fail": "Отказ электроснабжения (power_fail)",
+        "air_fail": "Отказ воздуха КИПиА (air_fail)",
+        "steam_fail": "Срыв подачи отпарного пара (steam_fail)",
+    }
+
+    # Последовательная траектория обучения при успешном прохождении
+    PROGRESSION_MAP = {
+        "startup": "shutdown",
+        "shutdown": "column_shutdown",
+        "column_shutdown": "overpressure_relief",
+        "overpressure_relief": "recirculation",
+        "recirculation": "pump_fail",
+        "pump_fail": "coil_overheat",
+        "coil_overheat": "valve_jam",
+        "valve_jam": "power_fail",
+        "power_fail": "air_fail",
+        "air_fail": "steam_fail",
+        "steam_fail": "startup",
     }
 
     @staticmethod
     def _add_adaptive_scenario(score, violations, recommendations, scenario_id):
         """
-        Назначает персональный адаптивный тренировочный сценарий на основе ошибок.
-
-        Логика выбора:
-        1. При score >= 75 — квалификация подтверждена, сценарий не назначается.
-        2. При нарушениях теплового режима (P1_DRY_HEAT, HOT_CUT, FORCED_HEATING)
-           → направить на 'shutdown' (аварийный останов печи).
-        3. При нарушениях материального баланса (V3_DRAIN_BLOCK)
-           → направить на 'overpressure_relief' (ликвидация роста давления).
-        4. При общих ошибках — повторить текущий сценарий, кроме overpressure_relief
-           и recirculation, которые сбрасываются на 'startup'.
-
-        Параметры:
-            score: итоговый балл сессии (0-100).
-            violations: dict обнаруженных нарушений {key: bool}.
-            recommendations: list рекомендаций (мутируется in-place).
-            scenario_id: ID сценария, который оператор только что проходил.
-
-        Возвращает:
-            str или None — ID рекомендуемого сценария для дообучения.
+        Назначает персональный адаптивный тренировочный сценарий на основе ошибок и прогрессии.
         """
-        recommended_scenario_id = None
         if score < 75:
             # Приоритет 1: Нарушения теплового режима печи
             if violations.get("P1_DRY_HEAT") or violations.get("HOT_CUT") or violations.get("FORCED_HEATING"):
@@ -470,7 +476,6 @@ class ErrorAnalyzer:
                 recommended_scenario_id = "overpressure_relief"
             # Приоритет 3: Общие ошибки — повторить текущий сценарий
             else:
-                # Для сложных сценариев сбрасываем на базовый пуск
                 if scenario_id in ("overpressure_relief", "recirculation"):
                     recommended_scenario_id = "startup"
                 else:
@@ -480,12 +485,15 @@ class ErrorAnalyzer:
                 recommended_scenario_id, recommended_scenario_id
             )
             recommendations.append(
-                f"Рекомендуемый адаптивный сценарий: '{scenario_name}'"
+                f"Рекомендуемый адаптивный сценарий дообучения: '{scenario_name}'"
             )
         else:
+            recommended_scenario_id = ErrorAnalyzer.PROGRESSION_MAP.get(scenario_id, "shutdown")
+            scenario_name = ErrorAnalyzer.SCENARIO_NAMES.get(
+                recommended_scenario_id, recommended_scenario_id
+            )
             recommendations.append(
-                "Поздравляем! Квалификация подтверждена. "
-                "Можете переходить к сложным сценариям с инъекцией дефектов."
+                f"Квалификация подтверждена! Рекомендуемый следующий этап траектории: '{scenario_name}'"
             )
         return recommended_scenario_id
 

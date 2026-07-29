@@ -135,15 +135,6 @@ export const RecItem = styled.div`
   width: 100%;
 `;
 
-export const FooterButtons = styled.div`
-  display: flex;
-  gap: 8px;
-  width: 100%;
-  margin-top: 15px;
-`;
-
-// New semantic wrappers to clean up inline styles
-
 export const ModalTitle = styled.span`
   display: flex;
   align-items: center;
@@ -182,41 +173,6 @@ export const FullWidthContainer = styled.div`
   width: 100%;
 `;
 
-export const StyledRepeatButton = styled(Button)`
-  flex: 1;
-  height: 38px;
-  padding: 0 8px;
-  font-size: 11px;
-  background-color: rgba(0, 229, 255, 0.1);
-  border-color: #00e5ff;
-  color: #00e5ff;
-  font-weight: 600;
-  text-transform: uppercase;
-
-  &&:hover, &&:focus {
-    background-color: #00e5ff;
-    border-color: #00e5ff;
-    color: #0b0f17;
-  }
-`;
-
-export const StyledExitButton = styled(Button)`
-  height: 38px;
-  padding: 0 12px;
-  font-size: 11px;
-  background-color: #0a0e14;
-  border-color: #222c3e;
-  color: #7c8ba1;
-  font-weight: 600;
-  text-transform: uppercase;
-
-  &&:hover, &&:focus {
-    background-color: #222c3e;
-    border-color: #222c3e;
-    color: #e1e7f0;
-  }
-`;
-
 export const AdaptiveRetrainingBanner = styled.div`
   width: 100%;
   background: rgba(255, 153, 0, 0.1);
@@ -231,9 +187,61 @@ export const AdaptiveRetrainingBanner = styled.div`
   margin-top: 4px;
 `;
 
+export const FooterContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 15px;
+`;
+
+export const PrimaryActionButton = styled(Button)`
+  width: 100%;
+  height: 40px;
+  font-size: 12px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.2) 0%, rgba(0, 229, 255, 0.05) 100%);
+  border: 1px solid #00e5ff;
+  color: #00e5ff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
+
+  &&:hover, &&:focus {
+    background: #00e5ff;
+    border-color: #00e5ff;
+    color: #0b0f17;
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.4);
+  }
+`;
+
+export const SecondaryButtonsRow = styled.div`
+  display: flex;
+  gap: 8px;
+  width: 100%;
+`;
+
+export const StyledSecondaryButton = styled(Button)`
+  flex: 1;
+  height: 36px;
+  padding: 0 8px;
+  font-size: 11px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #a0aec0;
+  font-weight: 600;
+
+  &&:hover, &&:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+  }
+`;
+
 export const StyledPdfButton = styled(Button)`
-  height: 38px;
-  padding: 0 10px;
+  flex: 1;
+  height: 36px;
+  padding: 0 8px;
   font-size: 11px;
   background-color: rgba(16, 185, 129, 0.15);
   border-color: #10b981;
@@ -246,6 +254,24 @@ export const StyledPdfButton = styled(Button)`
     border-color: #10b981;
     color: #ffffff;
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  }
+`;
+
+export const StyledExitButton = styled(Button)`
+  flex: 0 0 90px;
+  height: 36px;
+  padding: 0 10px;
+  font-size: 11px;
+  background-color: #0a0e14;
+  border-color: #222c3e;
+  color: #7c8ba1;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  &&:hover, &&:focus {
+    background-color: #222c3e;
+    border-color: #222c3e;
+    color: #e1e7f0;
   }
 `;
 

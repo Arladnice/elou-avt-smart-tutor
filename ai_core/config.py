@@ -52,8 +52,10 @@ COLUMN_PRES_NORMAL_MIN = 0.10     # МПа
 
 COLUMN_LEVEL_HIGH_CRITICAL = 98.0 # % (Полное переполнение)
 COLUMN_LEVEL_HIGH = 85.0          # % (Предупреждение)
-COLUMN_LEVEL_LOW = 25.0           # % (Предупреждение)
-COLUMN_LEVEL_LOW_CRITICAL = 15.0  # % (3500 мм: Блокировка ИПМ и насосов)
+COLUMN_LEVEL_LOW = 18.0           # % (Предупреждение по низкому уровню)
+COLUMN_LEVEL_LOW_INTERLOCK = 12.0 # % (3500 мм: Сработка ПАЗ / Блокировка насосов куба)
+COLUMN_LEVEL_LOW_CRITICAL = 5.0   # % (Полное опустошение, сухой ход и авария)
+COLUMN_LEVEL_LOW_CRITICAL_LEVEL = 8.0  # % (Критический уровень для эскалации алертов)
 COLUMN_LEVEL_BALANCE_MIN = 20.0   # %
 COLUMN_LEVEL_BALANCE_MAX = 80.0   # %
 

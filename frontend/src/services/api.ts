@@ -192,5 +192,99 @@ export const apiService = {
     }
     return response.json();
   },
+
+  /**
+   * Fetches all training scenarios from the central registry
+   */
+  async fetchScenarios(): Promise<ScenarioItem[]> {
+    const response = await fetch(`${BASE_URL}/scenarios`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch scenarios');
+    }
+    return response.json();
+  },
+
+  /**
+   * Creates a new custom instructor scenario
+   */
+  async createScenario(payload: ScenarioItem): Promise<{ status: string; message: string; scenario_id: string }> {
+    const response = await fetch(`${BASE_URL}/scenarios`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || 'Failed to create scenario');
+    }
+    return response.json();
+  },
+
+  /**
+   * Imports a scenario JSON payload
+   */
+  async importScenario(payload: any): Promise<{ status: string; message: string; scenario_id: string }> {
+    const response = await fetch(`${BASE_URL}/scenarios/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || 'Failed to import scenario');
+    }
+    return response.json();
+  },
+
+  /**
+   * Deletes a custom scenario
+   */
+  async deleteScenario(scenarioId: string): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${BASE_URL}/scenarios/${scenarioId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || 'Failed to delete scenario');
+    }
+    return response.json();
+  },
 };
+
+export interface ScenarioCondition {
+  type: 'valve_is' | 'sensor_gte' | 'sensor_lte' | 'composite_and';
+  target?: string;
+  expected?: any;
+  conditions?: ScenarioCondition[];
+}
+
+export interface ScenarioChecklistItem {
+  id: string;
+  title: string;
+  hint_training: string;
+  hint_exam: string;
+  condition: ScenarioCondition;
+}
+
+export interface ScenarioInitialState {
+  T_1: number;
+  P_1: number;
+  L_1: number;
+  T_1_Sp: number;
+  V_1: boolean;
+  V_2: boolean;
+  V_3: boolean;
+}
+
+export interface ScenarioItem {
+  id: string;
+  title: string;
+  short_name: string;
+  description?: string;
+  is_custom?: boolean;
+  initial_state: ScenarioInitialState;
+  checklist: ScenarioChecklistItem[];
+  golden_sequence: string[];
+}
+
 

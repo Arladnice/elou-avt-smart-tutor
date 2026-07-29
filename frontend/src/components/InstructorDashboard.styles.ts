@@ -466,6 +466,20 @@ export const StyledTable = styled(Table)`
       white-space: nowrap;
     }
 
+    .ant-table-cell:first-child {
+      padding-left: 16px;
+      @media (max-height: 950px) {
+        padding-left: 12px;
+      }
+    }
+
+    .ant-table-cell:last-child {
+      padding-right: 16px;
+      @media (max-height: 950px) {
+        padding-right: 12px;
+      }
+    }
+
     .ant-table-row:hover .ant-table-cell {
       background: rgba(255, 255, 255, 0.05);
     }

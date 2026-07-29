@@ -4,7 +4,7 @@ import copy
 
 from ai_core.config import (
     COLUMN_PRES_ESD, FURNACE_TEMP_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL, COLUMN_LEVEL_HIGH_CRITICAL,
-    COLUMN_LEVEL_LOW, FURNACE_TEMP_MIN_LIMIT, FURNACE_TEMP_MAX_LIMIT,
+    COLUMN_LEVEL_LOW, COLUMN_LEVEL_LOW_INTERLOCK, FURNACE_TEMP_MIN_LIMIT, FURNACE_TEMP_MAX_LIMIT,
     COLUMN_PRES_MIN_LIMIT, COLUMN_PRES_MAX_LIMIT, COLUMN_LEVEL_MIN_LIMIT, COLUMN_LEVEL_MAX_LIMIT,
     STARTUP_INITIAL_TEMP, STARTUP_INITIAL_PRES, STARTUP_INITIAL_LEVEL, STARTUP_SETPOINT_TEMP,
     NORMAL_INITIAL_TEMP, NORMAL_INITIAL_PRES, NORMAL_INITIAL_LEVEL, NORMAL_SETPOINT_TEMP,
@@ -40,7 +40,28 @@ class ELOUAVTSimulator:
         self.time_elapsed = 0         # Время сессии в секундах
         self.accident_reason = ""     # Причина аварии
 
-        if scenario_id == "startup":
+        try:
+            from backend.services.scenario_manager import get_scenario_by_id
+            sc = get_scenario_by_id(scenario_id)
+        except Exception:
+            sc = None
+
+        if sc and "initial_state" in sc:
+            st = sc["initial_state"]
+            self.valves = {
+                "V_1": st.get("V_1", False),
+                "V_2": st.get("V_2", False),
+                "V_3": st.get("V_3", False)
+            }
+            self.setpoints = {
+                "T_1_Sp": st.get("T_1_Sp", 280.0)
+            }
+            self.sensors = {
+                "T_1": st.get("T_1", 280.0),
+                "P_1": st.get("P_1", 0.35),
+                "L_1": st.get("L_1", 50.0)
+            }
+        elif scenario_id == "startup":
             # Холодное состояние для пуска
             self.valves = {
                 "V_1": False,  # Вход сырья в печь закрыт
@@ -133,7 +154,7 @@ class ELOUAVTSimulator:
         # насос Н-1 (через V-1) должен беспрепятственно нагнетать сырьё для набора уровня L-1.
         # После первого достижения 15% (_startup_filled=True) блокировка снова активна.
         is_startup_prefill = (self.scenario_id == "startup" and not self._startup_filled)
-        pump_interlock_active = (L < COLUMN_LEVEL_LOW_CRITICAL) and not is_startup_prefill
+        pump_interlock_active = (L < COLUMN_LEVEL_LOW_INTERLOCK) and not is_startup_prefill
         if V_1 and not self.defects["pump_fail"] and not self.defects["power_fail"] and not pump_interlock_active:
             F_in = 1.0  # Номинальный расход сырья
 
@@ -168,7 +189,7 @@ class ELOUAVTSimulator:
         if F_in > 0.0:
             dL += 0.5
         # Кубовый насос отбора (через V-3) останавливается при сработке блокировки сухого хода (L < 15%) или отказе питания
-        if V_3 and not self.defects["power_fail"] and not (L < COLUMN_LEVEL_LOW_CRITICAL):
+        if V_3 and not self.defects["power_fail"] and not (L < COLUMN_LEVEL_LOW_INTERLOCK):
             dL -= 0.6
             
         # При срыве подачи пара в стриппинге (steam_fail) ухудшается отпарка легких фракций, накопление жидкости растет
@@ -177,7 +198,7 @@ class ELOUAVTSimulator:
             
         next_L = L + dL + (random.random() - 0.5) * 0.1
         next_L = max(COLUMN_LEVEL_MIN_LIMIT, min(COLUMN_LEVEL_MAX_LIMIT, next_L))
-        if next_L >= COLUMN_LEVEL_LOW_CRITICAL:
+        if next_L >= COLUMN_LEVEL_LOW_INTERLOCK:
             self._startup_filled = True
 
         # -------------------------------------------------------------

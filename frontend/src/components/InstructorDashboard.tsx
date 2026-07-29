@@ -4,6 +4,7 @@ import { Switch, Alert, Modal, Button, App } from 'antd';
 import { ShieldCheck, Users, Play, AlertTriangle, LogOut, Trash2, Info, AlertOctagon } from 'lucide-react';
 import { apiService, type Session, type ActiveSession } from '../services/api';
 import { getTableColumns, SCENARIO_NAMES, SCENARIO_SHORT_NAMES } from './InstructorDashboard.config';
+import { ScenarioBuilderModal } from './ScenarioBuilderModal';
 import * as S from './InstructorDashboard.styles';
 
 const getStatusBadge = (s: string) => {
@@ -15,11 +16,13 @@ const getStatusBadge = (s: string) => {
 
 const InstructorDashboard: React.FC = () => {
   const { message, modal } = App.useApp();
+  const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
   const { 
     isOnline, 
     wsLatency, 
     username, 
     scenarioId, 
+    scenarios,
     activeSessionId,
     switchSession,
     mode,
@@ -240,18 +243,38 @@ const InstructorDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <S.ScenarioLabel>
-                    Выбор учебного сценария:
-                  </S.ScenarioLabel>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <S.ScenarioLabel style={{ margin: 0 }}>
+                      Выбор учебного сценария:
+                    </S.ScenarioLabel>
+                    <Button 
+                      type="dashed" 
+                      size="small" 
+                      onClick={() => setIsBuilderModalOpen(true)}
+                      style={{ fontSize: 11, borderColor: '#1890ff', color: '#1890ff' }}
+                    >
+                      ➕ Конструктор / Импорт JSON
+                    </Button>
+                  </div>
                   <S.ScenarioRadioGroup 
                     value={scenarioId} 
                     onChange={e => selectScenario(e.target.value)}
                   >
-                    <S.ScenarioRadioButton value="startup">Пуск установки ЭЛОУ-АВТ</S.ScenarioRadioButton>
-                    <S.ScenarioRadioButton value="shutdown">Аварийный останов печи П-1</S.ScenarioRadioButton>
-                    <S.ScenarioRadioButton value="column_shutdown">Останов колонны К-1</S.ScenarioRadioButton>
-                    <S.ScenarioRadioButton value="overpressure_relief">Ликвидация роста давления</S.ScenarioRadioButton>
-                    <S.ScenarioRadioButton value="recirculation" $fullWidth>Перевод на рециркуляцию</S.ScenarioRadioButton>
+                    {scenarios.length > 0 ? (
+                      scenarios.map(s => (
+                        <S.ScenarioRadioButton key={s.id} value={s.id}>
+                          {s.title} {s.is_custom ? ' [Кастомный]' : ''}
+                        </S.ScenarioRadioButton>
+                      ))
+                    ) : (
+                      <>
+                        <S.ScenarioRadioButton value="startup">Пуск установки ЭЛОУ-АВТ</S.ScenarioRadioButton>
+                        <S.ScenarioRadioButton value="shutdown">Аварийный останов печи П-1</S.ScenarioRadioButton>
+                        <S.ScenarioRadioButton value="column_shutdown">Останов колонны К-1</S.ScenarioRadioButton>
+                        <S.ScenarioRadioButton value="overpressure_relief">Ликвидация роста давления</S.ScenarioRadioButton>
+                        <S.ScenarioRadioButton value="recirculation" $fullWidth>Перевод на рециркуляцию</S.ScenarioRadioButton>
+                      </>
+                    )}
                   </S.ScenarioRadioGroup>
                 </div>
 
@@ -557,6 +580,11 @@ const InstructorDashboard: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      <ScenarioBuilderModal 
+        visible={isBuilderModalOpen} 
+        onClose={() => setIsBuilderModalOpen(false)} 
+      />
     </S.Container>
   );
 };

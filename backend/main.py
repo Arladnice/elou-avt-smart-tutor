@@ -15,7 +15,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 from backend.db.database import init_db
 from backend.services.simulation_loop import simulation_loop
 from backend.utils.security import log_audit_event
-from backend.routes import auth, sessions, ws, health, ai_chat, alarm_feedback
+from backend.routes import auth, sessions, ws, health, ai_chat, alarm_feedback, scenarios
 
 # Setup logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -63,6 +63,7 @@ app.include_router(ws.router)
 app.include_router(health.router)
 app.include_router(ai_chat.router)
 app.include_router(alarm_feedback.router)
+app.include_router(scenarios.router)
 
 
 

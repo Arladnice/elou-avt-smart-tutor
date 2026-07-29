@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { apiService, type ScenarioItem } from '../services/api';
 
 export interface LogEntry {
   id: string;
@@ -85,6 +86,8 @@ interface SimulatorContextType {
   callDispatcher: () => void;
   switchSession: (sessionId: string) => void;
   selectMode: (mode: 'training' | 'exam') => void;
+  scenarios: ScenarioItem[];
+  reloadScenarios: () => Promise<void>;
 }
 
 const SimulatorContext = createContext<SimulatorContextType | undefined>(undefined);
@@ -129,7 +132,21 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookActive, setWebhookActive] = useState(false);
   const [mutes, setMutes] = useState<string[]>([]);
-  
+  const [scenarios, setScenarios] = useState<ScenarioItem[]>([]);
+
+  const reloadScenarios = async () => {
+    try {
+      const data = await apiService.fetchScenarios();
+      setScenarios(data);
+    } catch {
+      console.warn('Не удалось загрузить список сценариев с бэкенда.');
+    }
+  };
+
+  useEffect(() => {
+    reloadScenarios();
+  }, []);
+
   const wsRef = useRef<WebSocket | null>(null);
   const latencyTimerRef = useRef<number | null>(null);
 
@@ -370,11 +387,25 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const selectScenario = (scenId: string) => {
-    setScenarioId(scenId);
-    if (isOnline) {
-      sendWsAction({ type: 'change_scenario', scenario_id: scenId });
+    setScoreCard(null);
+    const DEFECT_SCENARIOS = ['pump_fail', 'coil_overheat', 'valve_jam', 'power_fail', 'air_fail', 'steam_fail'];
+    if (DEFECT_SCENARIOS.includes(scenId)) {
+      const baseScenario = scenId === 'valve_jam' ? 'overpressure_relief' : 'startup';
+      setScenarioId(baseScenario);
+      if (isOnline) {
+        sendWsAction({ type: 'change_scenario', scenario_id: baseScenario });
+        sendWsAction({ type: 'trigger_defect', defect_id: scenId, state: true });
+      } else {
+        resetSession();
+        setDefects(prev => ({ ...prev, [scenId]: true }));
+      }
     } else {
-      resetSession();
+      setScenarioId(scenId);
+      if (isOnline) {
+        sendWsAction({ type: 'change_scenario', scenario_id: scenId });
+      } else {
+        resetSession();
+      }
     }
   };
 
@@ -590,7 +621,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       loadState,
       configureWebhook,
       toggleMute,
-      callDispatcher
+      callDispatcher,
+      scenarios,
+      reloadScenarios
     }}>
       {children}
     </SimulatorContext.Provider>
