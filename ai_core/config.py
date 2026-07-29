@@ -38,8 +38,9 @@ OUT_MIN = np.array([20.0, 0.02, 0.0  ], dtype=np.float32)
 OUT_MAX = np.array([600.0, 1.5, 100.0], dtype=np.float32)
 
 # === Physical Thresholds (from tech regulations) ===
-FURNACE_TEMP_CRITICAL = 380.0     # °C (Прогар змеевика, авария)
-FURNACE_TEMP_WARNING = 310.0      # °C (Коксование)
+FURNACE_TEMP_CRITICAL = 365.0     # °C (Прогар змеевика П-2, авария)
+FURNACE_TEMP_WARNING = 340.0      # °C (Максимум для П-3)
+COLUMN_TEMP_CRITICAL = 150.0      # °C (Максимум верха К-1)
 FURNACE_TEMP_MIN_STARTUP = 280.0  # °C (Минимум при пуске)
 FURNACE_TEMP_MAX_SHUTDOWN = 245.0 # °C (Максимум при останове)
 
@@ -51,8 +52,8 @@ COLUMN_PRES_NORMAL_MIN = 0.10     # МПа
 
 COLUMN_LEVEL_HIGH_CRITICAL = 98.0 # % (Полное переполнение)
 COLUMN_LEVEL_HIGH = 85.0          # % (Предупреждение)
-COLUMN_LEVEL_LOW = 15.0           # % (Предупреждение)
-COLUMN_LEVEL_LOW_CRITICAL = 5.0   # % (Срыв насосов куба)
+COLUMN_LEVEL_LOW = 25.0           # % (Предупреждение)
+COLUMN_LEVEL_LOW_CRITICAL = 15.0  # % (3500 мм: Блокировка ИПМ и насосов)
 COLUMN_LEVEL_BALANCE_MIN = 20.0   # %
 COLUMN_LEVEL_BALANCE_MAX = 80.0   # %
 
@@ -64,7 +65,7 @@ SESSION_MAX_TIME_SEC = 300        # Максимальное время сесс
 FURNACE_TEMP_CRITICAL_LEVEL = 350.0        # °C (Критический порог температуры печи для эскалации)
 COLUMN_PRES_CRITICAL_LEVEL = 0.43          # МПа (Критический порог давления колонны для эскалации)
 COLUMN_LEVEL_HIGH_CRITICAL_LEVEL = 90.0    # % (Критический верхний порог уровня куба для эскалации)
-COLUMN_LEVEL_LOW_CRITICAL_LEVEL = 10.0     # % (Критический нижний порог уровня куба для эскалации)
+COLUMN_LEVEL_LOW_CRITICAL_LEVEL = 18.0     # % (Критический нижний порог уровня куба для эскалации)
 ESCALATION_WARNING_DELAY_SEC = 30.0        # секунд (Время до предупреждения о бездействии оператора)
 ESCALATION_CRITICAL_DELAY_SEC = 60.0       # секунд (Время до критической ошибки при бездействии оператора)
 

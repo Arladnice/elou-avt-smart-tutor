@@ -133,7 +133,7 @@ class ELOUAVTSimulator:
         # насос Н-1 (через V-1) должен беспрепятственно нагнетать сырьё для набора уровня L-1.
         # После первого достижения 15% (_startup_filled=True) блокировка снова активна.
         is_startup_prefill = (self.scenario_id == "startup" and not self._startup_filled)
-        pump_interlock_active = (L < COLUMN_LEVEL_LOW) and not is_startup_prefill
+        pump_interlock_active = (L < COLUMN_LEVEL_LOW_CRITICAL) and not is_startup_prefill
         if V_1 and not self.defects["pump_fail"] and not self.defects["power_fail"] and not pump_interlock_active:
             F_in = 1.0  # Номинальный расход сырья
 
@@ -168,7 +168,7 @@ class ELOUAVTSimulator:
         if F_in > 0.0:
             dL += 0.5
         # Кубовый насос отбора (через V-3) останавливается при сработке блокировки сухого хода (L < 15%) или отказе питания
-        if V_3 and not self.defects["power_fail"] and not (L < COLUMN_LEVEL_LOW):
+        if V_3 and not self.defects["power_fail"] and not (L < COLUMN_LEVEL_LOW_CRITICAL):
             dL -= 0.6
             
         # При срыве подачи пара в стриппинге (steam_fail) ухудшается отпарка легких фракций, накопление жидкости растет
@@ -177,7 +177,7 @@ class ELOUAVTSimulator:
             
         next_L = L + dL + (random.random() - 0.5) * 0.1
         next_L = max(COLUMN_LEVEL_MIN_LIMIT, min(COLUMN_LEVEL_MAX_LIMIT, next_L))
-        if next_L >= COLUMN_LEVEL_LOW:
+        if next_L >= COLUMN_LEVEL_LOW_CRITICAL:
             self._startup_filled = True
 
         # -------------------------------------------------------------
