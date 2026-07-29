@@ -118,23 +118,35 @@ export const StyledInput = styled(Input)`
       background-color: #0a0e14;
       color: #e1e7f0;
     }
+
+    &:focus,
+    &:focus-within {
+      border-color: ${props => props.theme.colors.accent};
+      box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.2);
+    }
   }
 
   &:-webkit-autofill,
   &:-webkit-autofill:hover, 
-  &:-webkit-autofill:focus, 
   &:-webkit-autofill:active,
   & input:-webkit-autofill,
   & input:-webkit-autofill:hover, 
-  & input:-webkit-autofill:focus, 
   & input:-webkit-autofill:active,
   & .ant-input:-webkit-autofill,
   & .ant-input:-webkit-autofill:hover,
-  & .ant-input:-webkit-autofill:focus,
   & .ant-input:-webkit-autofill:active {
     transition: background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s;
     -webkit-text-fill-color: #e1e7f0;
     -webkit-box-shadow: 0 0 0 1000px #0a0e14 inset;
+  }
+
+  &:-webkit-autofill:focus,
+  & input:-webkit-autofill:focus,
+  & .ant-input:-webkit-autofill:focus {
+    transition: background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: #e1e7f0;
+    -webkit-box-shadow: 0 0 0 1000px #0a0e14 inset, 0 0 0 2px rgba(0, 229, 255, 0.2);
+    border-color: ${props => props.theme.colors.accent};
   }
   
   .ant-input-prefix {
