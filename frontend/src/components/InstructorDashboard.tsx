@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
-import { Switch, Alert, Modal, Button, Select, App } from 'antd';
+import { Switch, Alert, Modal, Button, App } from 'antd';
 import { ShieldCheck, Users, Play, AlertTriangle, LogOut, Trash2, Info, AlertOctagon } from 'lucide-react';
 import { apiService, type Session, type ActiveSession } from '../services/api';
 import { getTableColumns, SCENARIO_NAMES, SCENARIO_SHORT_NAMES } from './InstructorDashboard.config';
@@ -193,12 +193,11 @@ const InstructorDashboard: React.FC = () => {
           <S.ConnectedBadge>
             <Users size={14} color="#00e5ff" />
             Сессия оператора:
-            <Select
+            <S.SessionSelect
               size="small"
               value={activeSessionId}
-              onChange={switchSession}
+              onChange={(value: unknown) => switchSession(value as string)}
               popupMatchSelectWidth={false}
-              style={{ minWidth: 220, maxWidth: 320, marginLeft: 8 }}
               options={
                 activeSessions.length > 0
                   ? activeSessions.map(s => ({
@@ -231,14 +230,13 @@ const InstructorDashboard: React.FC = () => {
                   <S.ScenarioLabel>
                     Режим работы тренажёра:
                   </S.ScenarioLabel>
-                  <S.ScenarioRadioGroup 
+                  <S.ScenarioRadioGroupWithMargin 
                     value={mode} 
                     onChange={e => selectMode(e.target.value as 'training' | 'exam')}
-                    style={{ marginBottom: 12 }}
                   >
                     <S.ScenarioRadioButton value="training">🎓 Обучение (Подсказки)</S.ScenarioRadioButton>
                     <S.ScenarioRadioButton value="exam">🎯 Экзамен (Контроль ГОСТ)</S.ScenarioRadioButton>
-                  </S.ScenarioRadioGroup>
+                  </S.ScenarioRadioGroupWithMargin>
                 </div>
 
                 <div>

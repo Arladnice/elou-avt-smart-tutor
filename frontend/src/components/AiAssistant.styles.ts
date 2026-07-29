@@ -1,4 +1,5 @@
 import styled from 'styled-components';
+import { Alert } from 'antd';
 
 export const AssistantContent = styled.div`
   display: flex;
@@ -301,4 +302,10 @@ export const TypingIndicator = styled.div`
   font-style: italic;
   margin-left: 4px;
   margin-bottom: 2px;
+`;
+
+export const StyledAlert = styled(Alert)`
+  margin-bottom: 8px;
+  font-size: 11px;
+  padding: 6px 12px;
 `;

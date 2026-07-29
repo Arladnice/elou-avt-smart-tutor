@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSimulator } from '../context/SimulatorContext';
-import { Progress, Input, Button, Alert } from 'antd';
+import { Progress, Input, Button } from 'antd';
 import { MessageSquare, Send, Zap } from 'lucide-react';
 import { apiService } from '../services/api';
 import * as S from './AiAssistant.styles';
@@ -215,12 +215,11 @@ const AiAssistant: React.FC = () => {
       </S.TabsHeader>
 
       {simMode === 'exam' && (
-        <Alert
+        <S.StyledAlert
           type="warning"
           showIcon
           title="Режим Аттестации (Экзамен)"
           description="Автоматические подсказки отключены. Использование ИИ-чата списывает -15% балла."
-          style={{ marginBottom: 8, fontSize: '11px', padding: '6px 12px' }}
         />
       )}
 

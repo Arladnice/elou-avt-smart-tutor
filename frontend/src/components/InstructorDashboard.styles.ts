@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { Card, Radio, Button, Table, Badge } from 'antd';
+import { Card, Radio, Button, Table, Badge, Select } from 'antd';
 
 export const Container = styled.div`
   display: grid;
@@ -334,6 +334,10 @@ export const ScenarioRadioGroup = styled(Radio.Group)`
   @media (max-height: 950px) {
     gap: 6px;
   }
+`;
+
+export const ScenarioRadioGroupWithMargin = styled(ScenarioRadioGroup)`
+  margin-bottom: 12px;
 `;
 
 export const ScenarioRadioButton = styled(Radio.Button)<{ $fullWidth?: boolean }>`
@@ -831,4 +835,8 @@ export const MuteItem = styled.div`
   }
 `;
 
-
+export const SessionSelect = styled(Select)`
+  min-width: 220px;
+  max-width: 320px;
+  margin-left: 8px;
+`;

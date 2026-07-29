@@ -34,7 +34,7 @@ const Login: React.FC = () => {
     } catch (err: unknown) {
       const error = err as Error;
       if (error.message === 'AUTH_INVALID_PASSWORD') {
-        message.error('Неверный пароль! Пароль по умолчанию для демо: 12345');
+        message.error('Неверный логин или пароль');
       } else if (error.message === 'NETWORK_ERROR') {
         console.warn('Сервер недоступен, выполняем локальный вход.');
         loginUser(name.trim(), role);
@@ -68,10 +68,10 @@ const Login: React.FC = () => {
           </S.FormGroup>
 
           <S.FormGroup>
-            <S.Label>Пароль (демо: 12345):</S.Label>
+            <S.Label>Пароль:</S.Label>
             <S.StyledInput 
               type="password"
-              placeholder="Введите пароль (12345)" 
+              placeholder="Введите пароль" 
               value={password} 
               onChange={e => setPassword(e.target.value)}
             />
