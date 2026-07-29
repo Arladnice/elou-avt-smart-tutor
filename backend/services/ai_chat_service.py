@@ -355,6 +355,29 @@ def process_ai_chat(messages: List[Dict[str, str]], telemetry: Dict[str, Any], m
     Возвращает (текст_ответа, используемый_режим).
     """
     user_query = messages[-1].get("content", "")
+    
+    # 1. ЗАЩИТА ОТ PROMPT INJECTION (SEC-05)
+    import re
+    from backend.utils.security import log_audit_event
+    
+    prompt_injection_patterns = [
+        r"(?i)ignore\s+previous",
+        r"(?i)забудь\s+(все|всё)",
+        r"(?i)игнорируй",
+        r"(?i)system\s+prompt",
+        r"(?i)системный\s+промпт",
+        r"(?i)forget\s+all",
+        r"(?i)bypass\s+restriction"
+    ]
+    
+    for pattern in prompt_injection_patterns:
+        if re.search(pattern, user_query):
+            # Извлекаем актора из телеметрии (или дефолт)
+            actor = telemetry.get("operator_name", "UNKNOWN_OPERATOR")
+            log_audit_event(actor, "PROMPT_INJECTION_BLOCKED", f"Blocked query: {user_query}")
+            warning_msg = "⚠️ Внимание! Обнаружена попытка внедрения системных команд (Prompt Injection). Инцидент зафиксирован в журнале информационной безопасности."
+            return warning_msg, "security_blocked"
+
     rag_response = generate_rag_fallback(user_query, telemetry)
     
     if mode == "rag":

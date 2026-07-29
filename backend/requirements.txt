@@ -2,6 +2,10 @@ fastapi>=0.100.0
 uvicorn>=0.20.0
 websockets>=11.0
 pydantic>=2.0
+fastapi>=0.100.0
+uvicorn>=0.20.0
+websockets>=11.0
+pydantic>=2.0
 numpy>=1.20.0
 onnxruntime>=1.15.0
 # Опционально для тяжелого нейросетевого RAG (требует >512 MB RAM, не рекомендуется на бесплатном тарифе Render):
@@ -9,3 +13,5 @@ onnxruntime>=1.15.0
 # faiss-cpu>=1.7.4
 PyJWT>=2.8.0
 python-dotenv>=1.0.1
+passlib>=1.7.4
+bcrypt<4.0.0

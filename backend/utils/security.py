@@ -4,10 +4,13 @@ import hashlib
 import jwt
 from fastapi import HTTPException
 from dotenv import load_dotenv
+from passlib.context import CryptContext
 
 from backend.db.database import get_db_connection
 
 load_dotenv()
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 SECRET_SALT = os.environ.get("INTEGRITY_SALT")
 if not SECRET_SALT:
@@ -49,4 +52,47 @@ def log_audit_event(actor: str, action: str, details: str):
             "INSERT INTO audit_logs (timestamp, actor, action, details, integrity_hash) VALUES (?, ?, ?, ?, ?)",
             (timestamp, actor, action, details, h)
         )
+        conn.commit()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+def check_fail_to_ban(username: str):
+    """Проверяет не заблокирован ли пользователь по механизму Fail-to-Ban."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT attempts, lockout_until FROM login_attempts WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        if row:
+            attempts, lockout_until = row
+            if lockout_until > time.time():
+                raise HTTPException(status_code=429, detail="Слишком много попыток входа. Учетная запись временно заблокирована.")
+            # Если время блокировки прошло, сбрасываем счетчик
+            if lockout_until > 0 and lockout_until <= time.time():
+                cursor.execute("UPDATE login_attempts SET attempts = 0, lockout_until = 0 WHERE username = ?", (username,))
+                conn.commit()
+
+def record_failed_login(username: str):
+    """Увеличивает счетчик неудачных попыток входа (Fail-to-Ban)."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT attempts FROM login_attempts WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        
+        if row:
+            attempts = row[0] + 1
+            lockout_until = time.time() + 300 if attempts >= 5 else 0 # 5 минут блокировки после 5 неудачных попыток
+            cursor.execute("UPDATE login_attempts SET attempts = ?, lockout_until = ? WHERE username = ?", (attempts, lockout_until, username))
+        else:
+            cursor.execute("INSERT INTO login_attempts (username, attempts, lockout_until) VALUES (?, 1, 0)", (username,))
+        conn.commit()
+
+def reset_failed_login(username: str):
+    """Сбрасывает счетчик неудачных попыток входа."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE login_attempts SET attempts = 0, lockout_until = 0 WHERE username = ?", (username,))
         conn.commit()

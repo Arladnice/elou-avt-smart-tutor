@@ -52,4 +52,46 @@ def init_db():
             integrity_hash TEXT NOT NULL
         )
         """)
+
+        # Таблица пользователей (ИБ)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT 1
+        )
+        """)
+
+        # Таблица для блокировки Brute-force (Fail-to-Ban)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            lockout_until REAL DEFAULT 0
+        )
+        """)
         conn.commit()
+        
+    seed_users()
+
+def seed_users():
+    """Создает базовых пользователей, если БД пуста."""
+    from backend.utils.security import get_password_hash
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()[0] == 0:
+            # Создаем тестовые УЗ без админских прав
+            hashed_password = get_password_hash("Ktk_2026!")
+            users = [
+                ("operator_1", hashed_password, "operator"),
+                ("instructor_1", hashed_password, "instructor")
+            ]
+            cursor.executemany(
+                "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                users
+            )
+            conn.commit()
