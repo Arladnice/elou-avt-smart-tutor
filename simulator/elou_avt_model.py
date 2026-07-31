@@ -33,7 +33,9 @@ class ELOUAVTSimulator:
             "valve_jam": False,       # Заедание клапана сброса V_2 (не снижает давление при открытии)
             "power_fail": False,      # Отказ электроснабжения (останов насосов, падение уставки горелок до 20°C)
             "air_fail": False,        # Отказ воздуха КИПиА (V-1 и V-3 переходят в закрытое состояние, V-2 блокируется)
-            "steam_fail": False       # Срыв подачи отпарного пара (прекращение отпарки в стриппинге, рост P-1 и L-1)
+            "steam_fail": False,      # Срыв подачи отпарного пара (прекращение отпарки в стриппинге, рост P-1 и L-1)
+            "elou_desalt_fail": False,# Нарушение электрообессоливания в ЭЛОУ (проскок солей/воды)
+            "vt_vacuum_loss": False   # Срыв подачи пара на пароэжекторную группу ВТ (потеря вакуума)
         }
         
         self.status = "running"       # "running", "paused", "esd" (аварийный останов), "accident" (авария)
@@ -51,7 +53,9 @@ class ELOUAVTSimulator:
             self.valves = {
                 "V_1": st.get("V_1", False),
                 "V_2": st.get("V_2", False),
-                "V_3": st.get("V_3", False)
+                "V_3": st.get("V_3", False),
+                "V_ELOU": st.get("V_ELOU", True),
+                "V_VT": st.get("V_VT", True)
             }
             self.setpoints = {
                 "T_1_Sp": st.get("T_1_Sp", 280.0)
@@ -59,14 +63,20 @@ class ELOUAVTSimulator:
             self.sensors = {
                 "T_1": st.get("T_1", 280.0),
                 "P_1": st.get("P_1", 0.35),
-                "L_1": st.get("L_1", 50.0)
+                "L_1": st.get("L_1", 50.0),
+                "Sal_1": st.get("Sal_1", 4.2),
+                "W_1": st.get("W_1", 0.15),
+                "P_vac": st.get("P_vac", 0.04),
+                "T_2": st.get("T_2", 340.0)
             }
         elif scenario_id == "startup":
             # Холодное состояние для пуска
             self.valves = {
-                "V_1": False,  # Вход сырья в печь закрыт
-                "V_2": False,  # Сброс давления из колонны закрыт
-                "V_3": False   # Дренаж куба колонны закрыт
+                "V_1": False,     # Вход сырья в печь закрыт
+                "V_2": False,     # Сброс давления из колонны закрыт
+                "V_3": False,     # Дренаж куба колонны закрыт
+                "V_ELOU": True,   # Подача деэмульгатора в ЭЛОУ
+                "V_VT": True      # Рабочий пар на эжекторы ВТ
             }
             self.setpoints = {
                 "T_1_Sp": STARTUP_SETPOINT_TEMP  # Минимальная температура печи
@@ -74,14 +84,20 @@ class ELOUAVTSimulator:
             self.sensors = {
                 "T_1": STARTUP_INITIAL_TEMP,    # Холодная печь
                 "P_1": STARTUP_INITIAL_PRES,    # Атмосферное давление
-                "L_1": STARTUP_INITIAL_LEVEL    # Пустая колонна
+                "L_1": STARTUP_INITIAL_LEVEL,   # Пустая колонна
+                "Sal_1": 4.2,                   # Солесодержание в норме (мг/л)
+                "W_1": 0.15,                    # Обводненность в норме (%)
+                "P_vac": 0.04,                  # Нормальный вакуум в К-2 (МПа)
+                "T_2": 340.0                    # Температура куба К-2 (°C)
             }
         else:
             # Нормальное рабочее состояние для останова и прочих тестов
             self.valves = {
-                "V_1": True,   # Вход сырья в печь
-                "V_2": False,  # Сброс давления из колонны
-                "V_3": True    # Дренаж куба колонны
+                "V_1": True,      # Вход сырья в печь
+                "V_2": False,     # Сброс давления из колонны
+                "V_3": True,      # Дренаж куба колонны
+                "V_ELOU": True,   # Подача деэмульгатора в ЭЛОУ
+                "V_VT": True      # Рабочий пар на эжекторы ВТ
             }
             self.setpoints = {
                 "T_1_Sp": NORMAL_SETPOINT_TEMP  # Уставка температуры печи, °C
@@ -89,7 +105,11 @@ class ELOUAVTSimulator:
             self.sensors = {
                 "T_1": NORMAL_INITIAL_TEMP,   # T-1 (Температура печи), °C
                 "P_1": NORMAL_INITIAL_PRES,   # P-1 (Давление в колонне), МПа
-                "L_1": NORMAL_INITIAL_LEVEL   # L-1 (Уровень в колонне), %
+                "L_1": NORMAL_INITIAL_LEVEL,  # L-1 (Уровень в колонне), %
+                "Sal_1": 4.2,                 # Sal-1 (Солесодержание), мг/л
+                "W_1": 0.15,                  # W-1 (Содержание воды), %
+                "P_vac": 0.04,                # P-vac (Вакуум в К-2), МПа
+                "T_2": 340.0                  # T-2 (Температура К-2), °C
             }
 
     def set_valve(self, valve_id: str, state: bool):
@@ -143,43 +163,62 @@ class ELOUAVTSimulator:
         V_1 = self.valves["V_1"]
         V_2 = self.valves["V_2"]
         V_3 = self.valves["V_3"]
+        V_ELOU = self.valves.get("V_ELOU", True)
+        V_VT = self.valves.get("V_VT", True)
         T_sp = self.setpoints["T_1_Sp"]
+
+        # -------------------------------------------------------------
+        # 0. Моделирование агрегированного блока ЭЛОУ (Соли Sal_1, Вода W_1)
+        # -------------------------------------------------------------
+        sal_target = 4.2
+        w_target = 0.15
+        if self.defects.get("elou_desalt_fail", False) or not V_ELOU:
+            sal_target = 42.0  # Проскок солей до 42 мг/л
+            w_target = 3.2     # Проскок влаги до 3.2%
+        
+        next_Sal = self.sensors["Sal_1"] + (sal_target - self.sensors["Sal_1"]) * 0.15 + (random.random() - 0.5) * 0.2
+        next_W = self.sensors["W_1"] + (w_target - self.sensors["W_1"]) * 0.15 + (random.random() - 0.5) * 0.02
+        next_Sal = max(1.0, min(50.0, next_Sal))
+        next_W = max(0.05, min(5.0, next_W))
+
+        # -------------------------------------------------------------
+        # 0.1. Моделирование агрегированного блока ВТ (Вакуум P_vac, Температура куба T_2)
+        # -------------------------------------------------------------
+        p_vac_target = 0.04
+        t2_target = 340.0
+        if self.defects.get("vt_vacuum_loss", False) or not V_VT:
+            p_vac_target = 0.095 # Потеря вакуума в К-2 (падение остаточного давления)
+            t2_target = 378.0    # Перегрев куба К-2
+        
+        next_P_vac = self.sensors["P_vac"] + (p_vac_target - self.sensors["P_vac"]) * 0.12 + (random.random() - 0.5) * 0.001
+        next_T_2 = self.sensors["T_2"] + (t2_target - self.sensors["T_2"]) * 0.1 + (random.random() - 0.5) * 0.3
+        next_P_vac = max(0.02, min(0.12, next_P_vac))
+        next_T_2 = max(200.0, min(420.0, next_T_2))
 
         # -------------------------------------------------------------
         # 1. Моделирование расхода сырья (F_in) с учетом неисправностей и блокировок ПАЗ
         # -------------------------------------------------------------
         F_in = 0.0
-        # Блокировка насосов при падении уровня в колонне К-1 ниже 15% (защита от сухого хода, п. 7.9.1)
-        # В режиме пуска ("startup") до первоначального заполнения колонны (_startup_filled=False)
-        # насос Н-1 (через V-1) должен беспрепятственно нагнетать сырьё для набора уровня L-1.
-        # После первого достижения 15% (_startup_filled=True) блокировка снова активна.
         is_startup_prefill = (self.scenario_id == "startup" and not self._startup_filled)
         pump_interlock_active = (L < COLUMN_LEVEL_LOW_INTERLOCK) and not is_startup_prefill
         if V_1 and not self.defects["pump_fail"] and not self.defects["power_fail"] and not pump_interlock_active:
             F_in = 1.0  # Номинальный расход сырья
 
         # -------------------------------------------------------------
-        # 2. Нагрев от горелок и охлаждение сырьем
+        # 2. Нагрев от горелок и охлаждение сырьем (Блок АТ)
         # -------------------------------------------------------------
         if F_in > 0.0:
             Q_heat = (T_sp - T) * 0.15 + F_in * (T_sp - 60.0) * 0.05
             Q_cool = F_in * (T - 60.0) * 0.05
         else:
-            # При отсутствии протока сырья (отказ насоса/питания, закрытый V_1 или сработка блокировки <15%)
-            # Если горелки активны (T_sp > 240), змеевик быстро нагревается всухую.
-            # Если оператор снизил уставку T_sp до минимума или сработал power_fail (T_sp=20), идет остывание.
             Q_heat = max(0.0, (T_sp - STARTUP_SETPOINT_TEMP) * 0.18) if not self.defects["power_fail"] else 0.0
             Q_cool = (T - 60.0) * 0.01 + ( (T - STARTUP_INITIAL_TEMP) * 0.02 if self.defects["power_fail"] else 0.0 )
 
-        # Дополнительный нагрев при неисправности "coil_overheat" (неуправляемое горение / прогар змеевика)
         if self.defects["coil_overheat"]:
             Q_heat += 4.5
         
-        # Изменение температуры
         dT = Q_heat - Q_cool + (random.random() - 0.5) * 0.4
         next_T = T + dT
-        
-        # Физические ограничения температуры
         next_T = max(FURNACE_TEMP_MIN_LIMIT, min(FURNACE_TEMP_MAX_LIMIT, next_T))
 
         # -------------------------------------------------------------
@@ -188,14 +227,16 @@ class ELOUAVTSimulator:
         dL = 0.0
         if F_in > 0.0:
             dL += 0.5
-        # Кубовый насос отбора (через V-3) останавливается при сработке блокировки сухого хода (L < 15%) или отказе питания
         if V_3 and not self.defects["power_fail"] and not (L < COLUMN_LEVEL_LOW_INTERLOCK):
             dL -= 0.6
             
-        # При срыве подачи пара в стриппинге (steam_fail) ухудшается отпарка легких фракций, накопление жидкости растет
         if self.defects["steam_fail"]:
             dL += 0.25
             
+        # Межблочная связь ВТ -> АТ: потеря вакуума в К-2 вызывает подпор куба К-1
+        if next_P_vac > 0.07:
+            dL += 0.35
+
         next_L = L + dL + (random.random() - 0.5) * 0.1
         next_L = max(COLUMN_LEVEL_MIN_LIMIT, min(COLUMN_LEVEL_MAX_LIMIT, next_L))
         if next_L >= COLUMN_LEVEL_LOW_INTERLOCK:
@@ -205,8 +246,6 @@ class ELOUAVTSimulator:
         # 4. Моделирование давления в колонне К-1 (Давление P)
         # -------------------------------------------------------------
         if self.scenario_id == "startup" and not self._startup_filled:
-            # В режиме технологического пуска давление P-1 плавно поднимается от атмосферного (0.05 МПа) до рабочего (0.25 МПа)
-            # пропорционально прогреву печи и заполнению колонны парами/жидкостью
             temp_factor = min(1.0, max(0.0, (next_T - 100.0) / 180.0))
             level_factor = min(1.0, max(0.0, next_L / 30.0))
             P_target = STARTUP_INITIAL_PRES + (NORMAL_INITIAL_PRES - STARTUP_INITIAL_PRES) * temp_factor * level_factor
@@ -214,21 +253,27 @@ class ELOUAVTSimulator:
         else:
             dP = (next_T - NORMAL_INITIAL_TEMP) * 0.0002 + (next_L - NORMAL_INITIAL_LEVEL) * 0.0001 - (P - NORMAL_INITIAL_PRES) * 0.05
         
-        # Сброс давления через предохранительный/регулирующий клапан V_2
         if V_2 and not self.defects["valve_jam"]:
             dP -= 0.009
             
-        # При срыве подачи пара (steam_fail) нарушается термодинамическое равновесие паров
         if self.defects["steam_fail"]:
             dP += 0.006
             
+        # Межблочная связь ЭЛОУ -> АТ: вскипание влаги и солей вызывают рост давления dP
+        if next_W > 1.5:
+            dP += 0.008
+
         next_P = P + dP + (random.random() - 0.5) * 0.002
         next_P = max(COLUMN_PRES_MIN_LIMIT, min(COLUMN_PRES_MAX_LIMIT, next_P))
 
-        # Обновляем датчики
+        # Обновляем все датчики
         self.sensors["T_1"] = round(next_T, 2)
         self.sensors["P_1"] = round(next_P, 3)
         self.sensors["L_1"] = round(next_L, 2)
+        self.sensors["Sal_1"] = round(next_Sal, 1)
+        self.sensors["W_1"] = round(next_W, 2)
+        self.sensors["P_vac"] = round(next_P_vac, 3)
+        self.sensors["T_2"] = round(next_T_2, 1)
 
         # -------------------------------------------------------------
         # 5. Проверка аварийных условий и блокировок (ПАЗ / ESD)

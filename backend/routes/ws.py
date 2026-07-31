@@ -30,18 +30,24 @@ async def websocket_endpoint(websocket: WebSocket):
     # Минимальная валидация роли и токена (К8: RBAC)
     if role not in ["operator", "instructor"]:
         logger.warning("Отклонено WS-подключение с недействительной ролью: %s", role)
+        await websocket.accept()
         await websocket.close(code=4003, reason="Недопустимая роль пользователя")
         return
 
-    # В базовой модели проверяем соответствие токена роли, если токен передан
     if not token:
         logger.warning("Отклонено WS-подключение без токена для %s", username)
+        await websocket.accept()
         await websocket.close(code=4003, reason="Токен авторизации отсутствует")
         return
         
-    payload = verify_jwt_token(token)
+    try:
+        payload = verify_jwt_token(token)
+    except Exception:
+        payload = None
+
     if not payload or payload.get("role") != role:
         logger.warning("Отклонено WS-подключение с некорректным токеном для %s", username)
+        await websocket.accept()
         await websocket.close(code=4003, reason="Недействительный токен авторизации")
         return
     

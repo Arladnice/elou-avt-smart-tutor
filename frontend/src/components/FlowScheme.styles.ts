@@ -141,3 +141,19 @@ export const FlameWrapper = styled.g<{ $isActive: boolean }>`
   transition: opacity 0.5s ease;
 `;
 
+export const BlockFidelityBadge = styled.g<{ $level: 'aggregated' | 'detailed' }>`
+  rect {
+    fill: ${props => props.$level === 'detailed' ? 'rgba(0, 229, 255, 0.12)' : 'rgba(255, 170, 0, 0.12)'};
+    stroke: ${props => props.$level === 'detailed' ? '#00e5ff' : '#ffaa00'};
+    stroke-width: 1;
+    rx: 3;
+  }
+  text {
+    fill: ${props => props.$level === 'detailed' ? '#00e5ff' : '#ffaa00'};
+    font-size: 8px;
+    font-weight: 700;
+    text-anchor: middle;
+  }
+`;
+
+

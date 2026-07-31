@@ -204,6 +204,78 @@
         }
       ],
       "golden_sequence": ["SP_DOWN", "V3_CLOSE", "V2_OPEN"]
+    },
+    {
+      "id": "elou_salt_breakthrough",
+      "title": "Проскок солей и воды из ЭЛОУ",
+      "short_name": "Сбой ЭЛОУ",
+      "description": "Сквозной сценарий: нарушение обессоливания вызывает вскипание воды и бросок давления в АТ колонне К-1.",
+      "is_custom": false,
+      "initial_state": {
+        "T_1": 280.0,
+        "P_1": 0.38,
+        "L_1": 55.0,
+        "Sal_1": 42.0,
+        "W_1": 3.2,
+        "T_1_Sp": 280.0,
+        "V_1": true,
+        "V_2": false,
+        "V_3": true,
+        "V_ELOU": false
+      },
+      "checklist": [
+        {
+          "id": "v_elou_open",
+          "title": "1. Восстановление подачи деэмульгатора в ЭЛОУ",
+          "hint_training": "Откройте клапан V_ELOU для возобновления обессоливания",
+          "hint_exam": "Восстановить дозировку деэмульгатора в блок ЭЛОУ.",
+          "condition": { "type": "valve_is", "target": "V_ELOU", "expected": true }
+        },
+        {
+          "id": "v2_open_relief",
+          "title": "2. Сброс давления из колонны К-1",
+          "hint_training": "Откройте V-2 для стабилизации давления",
+          "hint_exam": "Снизить давление паров при пенообразовании в К-1.",
+          "condition": { "type": "valve_is", "target": "V_2", "expected": true }
+        }
+      ],
+      "golden_sequence": ["V_ELOU_OPEN", "V2_OPEN_RELIEF"]
+    },
+    {
+      "id": "vt_vacuum_failure",
+      "title": "Срыв вакуума вакуумного блока ВТ",
+      "short_name": "Срыв вакуума ВТ",
+      "description": "Сквозной сценарий: прекращение подачи пара на эжекторы ПЭУ нарушает отбор мазута и создает подпор в кубе К-1.",
+      "is_custom": false,
+      "initial_state": {
+        "T_1": 280.0,
+        "P_1": 0.35,
+        "L_1": 75.0,
+        "P_vac": 0.09,
+        "T_2": 370.0,
+        "T_1_Sp": 280.0,
+        "V_1": true,
+        "V_2": false,
+        "V_3": true,
+        "V_VT": false
+      },
+      "checklist": [
+        {
+          "id": "v_vt_open",
+          "title": "1. Восстановление подачи пара на эжекторы ВТ",
+          "hint_training": "Откройте клапан V_VT для восстановления вакуума в К-2",
+          "hint_exam": "Подать рабочий пар на пароэжекторную установку ВТ.",
+          "condition": { "type": "valve_is", "target": "V_VT", "expected": true }
+        },
+        {
+          "id": "sp_down_heat",
+          "title": "2. Снижение тепловой нагрузки печи П-1",
+          "hint_training": "Снизьте уставку печи для уменьшения выхода мазута",
+          "hint_exam": "Уменьшить сырьевой поток в куб колонны К-1.",
+          "condition": { "type": "sensor_lte", "target": "T_1", "expected": 255.0 }
+        }
+      ],
+      "golden_sequence": ["V_VT_OPEN", "SP_DOWN_HEAT"]
     }
   ]
 }

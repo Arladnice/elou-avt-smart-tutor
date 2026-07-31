@@ -27,11 +27,17 @@ interface SimulatorContextType {
     V_1: boolean;
     V_2: boolean;
     V_3: boolean;
+    V_ELOU: boolean;
+    V_VT: boolean;
   };
   sensors: {
     T_1: number;
     P_1: number;
     L_1: number;
+    Sal_1: number;
+    W_1: number;
+    P_vac: number;
+    T_2: number;
   };
   setpoints: {
     T_1_Sp: number;
@@ -43,6 +49,8 @@ interface SimulatorContextType {
     power_fail: boolean;
     air_fail: boolean;
     steam_fail: boolean;
+    elou_desalt_fail: boolean;
+    vt_vacuum_loss: boolean;
   };
   riskLevel: number;
   predictions: number[]; // Прогнозируемые параметры [temp, pres, level] на t+15 с
@@ -71,10 +79,10 @@ interface SimulatorContextType {
   loginUser: (name: string, role: 'operator' | 'instructor') => void;
   logoutUser: () => void;
   selectScenario: (scenId: string) => void;
-  toggleValve: (valveId: 'V_1' | 'V_2' | 'V_3') => void;
+  toggleValve: (valveId: 'V_1' | 'V_2' | 'V_3' | 'V_ELOU' | 'V_VT') => void;
   changeSetpoint: (temp: number) => void;
   triggerEsd: () => void;
-  triggerDefect: (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam' | 'power_fail' | 'air_fail' | 'steam_fail', state: boolean) => void;
+  triggerDefect: (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam' | 'power_fail' | 'air_fail' | 'steam_fail' | 'elou_desalt_fail' | 'vt_vacuum_loss', state: boolean) => void;
   resetSession: () => void;
   completeSession: () => void;
   changeSpeed: (multiplier: number) => void;
@@ -109,10 +117,10 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   
   const [status, setStatus] = useState<SimulatorContextType['status']>('running');
   const [timeElapsed, setTimeElapsed] = useState(0);
-  const [valves, setValves] = useState({ V_1: true, V_2: false, V_3: true });
+  const [valves, setValves] = useState({ V_1: true, V_2: false, V_3: true, V_ELOU: true, V_VT: true });
   const [setpoints, setSetpoints] = useState({ T_1_Sp: 280 });
-  const [sensors, setSensors] = useState({ T_1: 280, P_1: 0.25, L_1: 50 });
-  const [defects, setDefects] = useState({ pump_fail: false, coil_overheat: false, valve_jam: false, power_fail: false, air_fail: false, steam_fail: false });
+  const [sensors, setSensors] = useState({ T_1: 280, P_1: 0.25, L_1: 50, Sal_1: 4.2, W_1: 0.15, P_vac: 0.04, T_2: 340 });
+  const [defects, setDefects] = useState({ pump_fail: false, coil_overheat: false, valve_jam: false, power_fail: false, air_fail: false, steam_fail: false, elou_desalt_fail: false, vt_vacuum_loss: false });
   const [riskLevel, setRiskLevel] = useState(5);
   const [predictions, setPredictions] = useState<number[]>([280, 0.25, 50]);
   const [logs, setLogs] = useState<LogEntry[]>([
@@ -229,12 +237,13 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsOnline(false);
         if (pingInterval) clearInterval(pingInterval);
         
-        if (event.code === 4003) {
+        if (event.code === 4003 || event.code === 4001) {
           sessionStorage.removeItem('ktk_token');
           sessionStorage.removeItem('ktk_username');
           sessionStorage.removeItem('ktk_role');
           sessionStorage.removeItem('ktk_session_id');
           setUsername('');
+          setRole('operator');
           return;
         }
 
@@ -320,10 +329,19 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
         nextLevel = Math.max(0, Math.min(100, nextLevel));
 
+        const nextSal = (defects.elou_desalt_fail || !valves.V_ELOU) ? 42.0 : 4.2;
+        const nextW = (defects.elou_desalt_fail || !valves.V_ELOU) ? 3.2 : 0.15;
+        const nextPvac = (defects.vt_vacuum_loss || !valves.V_VT) ? 0.09 : 0.04;
+        const nextT2 = (defects.vt_vacuum_loss || !valves.V_VT) ? 370.0 : 340.0;
+
         return {
           T_1: Math.round(nextTemp * 100) / 100,
           P_1: Math.round(nextPres * 1000) / 1000,
           L_1: Math.round(nextLevel * 100) / 100,
+          Sal_1: nextSal,
+          W_1: nextW,
+          P_vac: nextPvac,
+          T_2: nextT2
         };
       });
     }, 1000);
@@ -416,7 +434,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const toggleValve = (valveId: 'V_1' | 'V_2' | 'V_3') => {
+  const toggleValve = (valveId: 'V_1' | 'V_2' | 'V_3' | 'V_ELOU' | 'V_VT') => {
     if (isOnline) {
       sendWsAction({ type: 'toggle_valve', valve_id: valveId, state: !valves[valveId] });
     } else {
@@ -464,7 +482,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const triggerDefect = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam' | 'power_fail' | 'air_fail' | 'steam_fail', state: boolean) => {
+  const triggerDefect = (defectId: 'pump_fail' | 'coil_overheat' | 'valve_jam' | 'power_fail' | 'air_fail' | 'steam_fail' | 'elou_desalt_fail' | 'vt_vacuum_loss', state: boolean) => {
     if (isOnline) {
       sendWsAction({ type: 'trigger_defect', defect_id: defectId, state });
     } else {
@@ -545,10 +563,10 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } else {
       setStatus('running');
       setTimeElapsed(0);
-      setValves({ V_1: true, V_2: false, V_3: true });
+      setValves({ V_1: true, V_2: false, V_3: true, V_ELOU: true, V_VT: true });
       setSetpoints({ T_1_Sp: 280 });
-      setSensors({ T_1: 280, P_1: 0.25, L_1: 50 });
-      setDefects({ pump_fail: false, coil_overheat: false, valve_jam: false, power_fail: false, air_fail: false, steam_fail: false });
+      setSensors({ T_1: 280, P_1: 0.25, L_1: 50, Sal_1: 4.2, W_1: 0.15, P_vac: 0.04, T_2: 340 });
+      setDefects({ pump_fail: false, coil_overheat: false, valve_jam: false, power_fail: false, air_fail: false, steam_fail: false, elou_desalt_fail: false, vt_vacuum_loss: false });
       setRiskLevel(5);
       setPredictions([280, 0.25, 50]);
       setLogs([{ id: '1', time: '00:00', type: 'info', message: 'Система перезапущена локально.' }]);

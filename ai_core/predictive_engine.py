@@ -192,6 +192,15 @@ class RiskPredictor:
             # -------------------------------------------------------------
             pred_temp, pred_pres, pred_level = pred_temp_math, pred_pres_math, pred_level_math
 
+        # Фактическая температура печи и уставка из последней точки окна
+        actual_temp = float(window[-1, 4])
+        setpoint_temp = float(window[-1, 3])
+        
+        # Защита от линейного "вылета" экстраполяции выше уставки при штатном разогреве:
+        # Если нет дефекта прогара, температура не может бесконечно расти выше уставки + 10°C.
+        if pred_temp > setpoint_temp + 10.0:
+            pred_temp = min(pred_temp, max(actual_temp, setpoint_temp + 10.0))
+
         # Физические пределы
         pred_temp = np.clip(pred_temp, 20.0, 500.0)
         pred_pres = np.clip(pred_pres, 0.02, 1.8)
@@ -200,16 +209,13 @@ class RiskPredictor:
         # Вычисляем риск аварии (%) по прогнозируемым параметрам
         risk = 0.0
         
-        # Фактическая температура печи из последней точки окна
-        actual_temp = float(window[-1, 4])
-        
-        # При пуске (startup) рост температуры — это ОЖИДАЕМОЕ поведение.
-        # Пока печь ещё не вышла на рабочий режим (< STARTUP_HEATING_THRESHOLD_TEMP), не учитываем
-        # риск по температуре.
+        # При пуске (startup) или при штатном разогреве до уставки рост температуры — это ОЖИДАЕМОЕ поведение.
+        # Не считаем температуру критической, если она не превышает уставку + 15°C
         is_startup_heating = (scenario_id == "startup" and actual_temp < STARTUP_HEATING_THRESHOLD_TEMP)
+        is_normal_heating = (actual_temp <= setpoint_temp + 5.0 and setpoint_temp <= FURNACE_TEMP_WARNING)
         
-        # 1. По температуре печи (предупреждение: FURNACE_TEMP_WARNING=310°C, авария: FURNACE_TEMP_CRITICAL=380°C)
-        if pred_temp > FURNACE_TEMP_WARNING and not is_startup_heating:
+        # 1. По температуре печи (предупреждение: FURNACE_TEMP_WARNING=340°C, авария: FURNACE_TEMP_CRITICAL=365°C)
+        if pred_temp > FURNACE_TEMP_WARNING and not is_startup_heating and not is_normal_heating:
             risk += (pred_temp - FURNACE_TEMP_WARNING) / (FURNACE_TEMP_CRITICAL - FURNACE_TEMP_WARNING) * RISK_WEIGHT_TEMP
             
         # 2. По давлению в колонне (предупреждение: COLUMN_PRES_WARNING=0.40 МПа, ПАЗ: COLUMN_PRES_ESD=0.48 МПа)

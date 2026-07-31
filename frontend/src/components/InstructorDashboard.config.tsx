@@ -25,6 +25,8 @@ export const SCENARIO_NAMES: Record<string, string> = {
   column_shutdown: 'Останов колонны К-1',
   overpressure_relief: 'Ликвидация роста давления',
   recirculation: 'Перевод на рециркуляцию',
+  elou_salt_breakthrough: 'Проскок солей и воды из ЭЛОУ',
+  vt_vacuum_failure: 'Срыв вакуума вакуумного блока ВТ',
 };
 
 export const SCENARIO_SHORT_NAMES: Record<string, string> = {
@@ -33,6 +35,8 @@ export const SCENARIO_SHORT_NAMES: Record<string, string> = {
   column_shutdown: 'Останов К-1',
   overpressure_relief: 'Рост давления',
   recirculation: 'Рециркуляция',
+  elou_salt_breakthrough: 'Сбой ЭЛОУ',
+  vt_vacuum_failure: 'Срыв вакуума ВТ',
 };
 
 export const getTableColumns = (): ColumnsType<Session> => [
