@@ -1,28 +1,41 @@
-version: '3.8'
-
 services:
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - tutor_data:/app/data
-      - .:/app
+      # Монтируем только код бэкенда (а не весь репозиторий) — вместе с --reload
+      # это даёт живую перезагрузку при правке файлов
+      - ./backend:/app/backend
+      - ./simulator:/app/simulator
+      - ./ai_core:/app/ai_core
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - DATABASE_PATH=/app/data/tutor.db
-    restart: always
+      # Секреты обязательны — задайте их в .env (файл в .gitignore)
+      - INTEGRITY_SALT=${INTEGRITY_SALT:?INTEGRITY_SALT не задан — создайте .env с dev-значениями}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY не задан — создайте .env с dev-значениями}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-80}:80"
     depends_on:
-      - backend
-    restart: always
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   tutor_data:

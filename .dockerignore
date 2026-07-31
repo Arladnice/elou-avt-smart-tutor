@@ -1,0 +1,11 @@
+.git
+.claude
+.agents
+.env
+**/node_modules
+frontend/dist
+**/__pycache__
+*.pyc
+*.db
+docs
+Исходные данные
