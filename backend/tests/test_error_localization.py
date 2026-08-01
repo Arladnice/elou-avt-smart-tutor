@@ -19,7 +19,7 @@ class TestActionTimeline(unittest.TestCase):
     """Каждое действие фиксируется вместе с секундой сессии."""
 
     def setUp(self):
-        from backend.services.connection_manager import SimulationSession
+        from elou_tutor.services.connection_manager import SimulationSession
         self.session = SimulationSession("timeline_probe")
 
     def test_action_is_recorded_with_timestamp(self):
@@ -42,7 +42,7 @@ class TestActionTimeline(unittest.TestCase):
         self.assertEqual([e["at_second"] for e in self.session.action_timeline], [5, 12, 30])
 
     def test_timeline_is_trimmed_together_with_actions(self):
-        from backend.services.connection_manager import MAX_SESSION_ACTIONS
+        from elou_tutor.services.connection_manager import MAX_SESSION_ACTIONS
 
         for i in range(MAX_SESSION_ACTIONS + 100):
             self.session.simulator.time_elapsed = i
@@ -182,7 +182,7 @@ class TestScoreCardExposesTimeline(unittest.TestCase):
     """ScoreCard отдаёт таймлайн наружу — на нём строится разбор тренировки."""
 
     def test_score_card_contains_timeline_and_localized_errors(self):
-        from backend.services.connection_manager import SimulationSession
+        from elou_tutor.services.connection_manager import SimulationSession
 
         session = SimulationSession("scorecard_probe")
         session.active_scenario = "startup"

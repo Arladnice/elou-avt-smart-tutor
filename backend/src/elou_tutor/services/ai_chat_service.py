@@ -4,7 +4,7 @@ import urllib.request
 import urllib.error
 import logging
 from typing import List, Dict, Any
-from backend.services.vector_store import get_relevant_context
+from elou_tutor.services.vector_store import get_relevant_context
 from elou_tutor.simulation.scenarios import get_scenario_by_id
 
 logger = logging.getLogger(__name__)
@@ -150,10 +150,14 @@ def get_telemetry_summary(telemetry: Dict[str, Any]) -> str:
 # и подвешивали всё API, а не только чат.
 LLM_TIMEOUT_SEC = float(os.environ.get("LLM_TIMEOUT_SEC", "30"))
 
+# Базовый адрес OpenAI-совместимого сервера (LM Studio). Внутри контейнера
+# 127.0.0.1 указывает на сам контейнер, поэтому адрес обязан быть настраиваемым.
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:1234")
+
 
 def query_local_llm(messages: List[Dict[str, str]], model: str = "local-model") -> str:
     """Выполняет запрос к локальной LLM через LM Studio (OpenAI API format)."""
-    url = "http://127.0.0.1:1234/v1/chat/completions"
+    url = f"{LLM_BASE_URL}/v1/chat/completions"
     data = {
         "model": model,
         "messages": messages,

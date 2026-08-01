@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from backend.services.connection_manager import manager
+from elou_tutor.services.connection_manager import manager
 from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_WARNING, COLUMN_PRES_WARNING, COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW,
     SESSION_MAX_TIME_SEC, STARTUP_FILLING_TIME_LIMIT_SEC,

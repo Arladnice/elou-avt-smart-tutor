@@ -4,8 +4,8 @@
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from backend.models.schemas import AlarmFeedbackRequest
-from backend.utils.deps import require_instructor
+from elou_tutor.api.schemas import AlarmFeedbackRequest
+from elou_tutor.api.deps import require_instructor
 from elou_tutor.db.audit import log_audit_event
 
 router = APIRouter(prefix="/api", tags=["Alarm Feedback"])

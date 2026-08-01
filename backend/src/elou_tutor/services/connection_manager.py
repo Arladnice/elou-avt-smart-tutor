@@ -2,6 +2,7 @@ import time
 import json
 import logging
 import asyncio
+import random
 import urllib.request
 from collections import deque
 from typing import List, Set, Dict
@@ -12,9 +13,8 @@ from elou_tutor.ml.predictor import RiskPredictor
 from elou_tutor.tutor.analyzer import ErrorAnalyzer
 from elou_tutor.db.audit import log_audit_event
 from elou_tutor.db.queries import save_session_db
-from backend.utils.net import is_webhook_url_allowed
-from backend.utils.security import calculate_integrity_hash
-from backend.utils.helpers import random_id
+from elou_tutor.services.net import is_webhook_url_allowed
+from elou_tutor.domain.integrity import calculate_integrity_hash
 
 logger = logging.getLogger(__name__)
 
@@ -307,7 +307,7 @@ class SimulationSession:
                     return
                 
         new_entry = {
-            "id": str(int(time.time() * 1000) + random_id()),
+            "id": str(int(time.time() * 1000) + random.randint(1, 999)),
             "time": time_str,
             "type": log_type,
             "severity": severity,

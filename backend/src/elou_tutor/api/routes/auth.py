@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from backend.models.schemas import LoginRequest
-from backend.utils.security import (
+from elou_tutor.api.schemas import LoginRequest
+from elou_tutor.api.security import (
     create_jwt_token,
     check_fail_to_ban,
     record_failed_login,

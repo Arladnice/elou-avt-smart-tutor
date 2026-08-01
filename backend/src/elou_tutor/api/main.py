@@ -8,13 +8,19 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
 from dotenv import load_dotenv
 
+# Модуль лежит в backend/src/elou_tutor/api/, корень репозитория — четырьмя
+# уровнями выше; от него отсчитываются .env и каталог собранного фронтенда.
+_REPO_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..")
+)
+
 # Загружаем переменные окружения
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(os.path.join(_REPO_ROOT, '.env'))
 
 from elou_tutor.db.audit import log_audit_event
 from elou_tutor.db.database import init_db
-from backend.services.simulation_loop import simulation_loop
-from backend.routes import auth, sessions, ws, health, ai_chat, alarm_feedback, scenarios
+from elou_tutor.services.simulation_loop import simulation_loop
+from elou_tutor.api.routes import auth, sessions, ws, health, ai_chat, alarm_feedback, scenarios
 
 # Setup logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -87,8 +93,9 @@ app.include_router(scenarios.router)
 
 
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-STATIC_DIR = os.path.join(ROOT_DIR, "frontend", "dist")
+# Фронтенд лежит в <корень>/frontend/dist.
+# Переменная окружения позволяет образу задать путь явно.
+STATIC_DIR = os.environ.get("STATIC_DIR", os.path.join(_REPO_ROOT, "frontend", "dist"))
 
 
 def resolve_static_file(static_dir: str, path: str):
@@ -127,4 +134,4 @@ if os.path.isdir(STATIC_DIR):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("elou_tutor.api.main:app", host="0.0.0.0", port=port, reload=True)

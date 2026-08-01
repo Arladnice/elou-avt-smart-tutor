@@ -8,7 +8,7 @@ Authorization: Bearer <token>.
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from backend.utils.security import verify_jwt_token
+from elou_tutor.api.security import verify_jwt_token
 
 # auto_error=False, чтобы на отсутствующий заголовок отвечать 401, а не 403
 _bearer = HTTPBearer(auto_error=False)

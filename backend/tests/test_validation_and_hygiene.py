@@ -18,7 +18,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from fastapi.testclient import TestClient
 
 from elou_tutor.db.database import init_db
-from backend.main import app
+from elou_tutor.api.main import app
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 BACKEND_DIR = os.path.join(REPO_ROOT, "backend")
@@ -121,7 +121,7 @@ class TestHealthMetricsAreHonest(unittest.TestCase):
         cls.token = _token(cls.client, "operator_1", "operator")
 
     def test_ping_latency_is_measured_not_hardcoded(self):
-        import backend.routes.health as health_module
+        import elou_tutor.api.routes.health as health_module
         source = open(health_module.__file__, encoding="utf-8").read()
         self.assertNotIn(
             "avg_ping_latency_ms=15.0", source,
@@ -136,7 +136,7 @@ class TestHealthMetricsAreHonest(unittest.TestCase):
 
     def test_checks_the_llm_actually_used_by_chat(self):
         """Чат ходит в LM Studio (порт 1234), значит и проверять надо его."""
-        import backend.routes.health as health_module
+        import elou_tutor.api.routes.health as health_module
         source = open(health_module.__file__, encoding="utf-8").read()
         self.assertIn("1234", source)
 

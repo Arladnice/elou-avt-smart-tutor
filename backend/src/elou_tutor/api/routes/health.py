@@ -22,8 +22,8 @@ def _read_cpu_percent() -> float:
         return psutil.cpu_percent(interval=0.1)
     return psutil.cpu_percent(interval=None)
 
-from backend.models.schemas import HealthResponse, SystemMetrics
-from backend.services.connection_manager import manager, average_broadcast_latency_ms
+from elou_tutor.api.schemas import HealthResponse, SystemMetrics
+from elou_tutor.services.connection_manager import manager, average_broadcast_latency_ms
 from elou_tutor.db.database import DB_PATH
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,8 @@ router = APIRouter(prefix="/api/health", tags=["health"])
 # Чат-ассистент обращается к LM Studio (OpenAI-совместимый API на порту 1234),
 # поэтому и проверять надо именно его: прежняя проверка Ollama на 11434
 # показывала недоступность сервиса, который в работе не участвует.
-LLM_HEALTH_URL = os.environ.get("LLM_HEALTH_URL", "http://127.0.0.1:1234/v1/models")
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:1234")
+LLM_HEALTH_URL = os.environ.get("LLM_HEALTH_URL", f"{LLM_BASE_URL}/v1/models")
 
 
 def check_llm_status() -> bool:

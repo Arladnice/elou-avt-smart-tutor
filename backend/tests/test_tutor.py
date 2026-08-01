@@ -331,15 +331,15 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
 
     def test_health_endpoint(self):
         """Тест эндпоинта /api/health для проверки работоспособности (health check)."""
-        from backend.routes.health import health_check
+        from elou_tutor.api.routes.health import health_check
         res = health_check()
         self.assertEqual(res, {"status": "ok"})
 
     def test_scenario_1_authorization_and_roles(self):
         """Тест сценария 1: Авторизация и разделение ролей"""
         from fastapi import HTTPException
-        from backend.routes.auth import login
-        from backend.models.schemas import LoginRequest
+        from elou_tutor.api.routes.auth import login
+        from elou_tutor.api.schemas import LoginRequest
         
         # Успешный вход под оператором
         req = LoginRequest(username="operator_1", password="Ktk_2026!", role="operator")
@@ -372,8 +372,8 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         поэтому не замечал, что множитель скорости ни на что не влияет.
         """
         import asyncio
-        from backend.services.connection_manager import SimulationSession
-        from backend.services.simulation_loop import step_session
+        from elou_tutor.services.connection_manager import SimulationSession
+        from elou_tutor.services.simulation_loop import step_session
 
         class FakeWS:
             async def send_json(self, data):
@@ -392,8 +392,8 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
 
     def test_scenario_6_security_integrity_sha256(self):
         """Тест сценария 6: Проверка ИБ-контроля целостности логов по SHA-256"""
-        from backend.routes.sessions import get_sessions, clear_sessions
-        from backend.utils.security import calculate_integrity_hash
+        from elou_tutor.api.routes.sessions import get_sessions, clear_sessions
+        from elou_tutor.api.security import calculate_integrity_hash
         from elou_tutor.db.database import DB_PATH
         import sqlite3
         
@@ -521,7 +521,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
 
     def test_escalation_flag_reset(self):
         """Тест-06: Проверка сброса флагов и сессии через session.reset_session()."""
-        from backend.services.connection_manager import manager
+        from elou_tutor.services.connection_manager import manager
         
         session = manager.get_session("test_session")
         session.escalation_warning_sent = True
@@ -538,7 +538,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def test_http_integration_endpoints(self):
         """Тест-07: Настоящий HTTP-интеграционный тест эндпоинтов /api/health/metrics и /api/auth/login."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+        from elou_tutor.api.main import app
         
         client = TestClient(app)
         
@@ -559,7 +559,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def test_websocket_integration_and_rbac(self):
         """Тест-08: Интеграционный тест WebSocket-протокола с проверкой RBAC и управления клапанами."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+        from elou_tutor.api.main import app
         
         client = TestClient(app)
         
@@ -600,7 +600,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def test_parallel_isolated_sessions(self):
         """Тест-09: Проверка полной изоляции двух параллельных сессий операторов."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+        from elou_tutor.api.main import app
         
         client = TestClient(app)
         

@@ -21,7 +21,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from fastapi.testclient import TestClient
 
 from elou_tutor.db.database import init_db, DB_PATH
-from backend.main import app
+from elou_tutor.api.main import app
 
 
 def _token(client, username, role):
@@ -37,7 +37,7 @@ class TestIntegrityHash(unittest.TestCase):
     """Хэш целостности должен однозначно покрывать границы полей."""
 
     def setUp(self):
-        from backend.utils.security import calculate_integrity_hash
+        from elou_tutor.api.security import calculate_integrity_hash
         self.hash = calculate_integrity_hash
 
     def test_field_boundaries_are_unambiguous(self):
@@ -184,7 +184,7 @@ class TestWebhookSsrf(unittest.TestCase):
     """Вебхук инструктора не должен доставать до внутренней сети и локальных файлов."""
 
     def setUp(self):
-        from backend.utils.net import is_webhook_url_allowed
+        from elou_tutor.services.net import is_webhook_url_allowed
         self.allowed = is_webhook_url_allowed
 
     def test_rejects_non_http_schemes(self):
@@ -221,7 +221,7 @@ class TestSessionOwnership(unittest.TestCase):
         cls.op2 = _token(cls.client, "operator_2", "operator")
 
     def test_foreign_operator_is_rejected(self):
-        from backend.services.connection_manager import manager
+        from elou_tutor.services.connection_manager import manager
         manager.sessions.pop("owned_session", None)
 
         url1 = f"/ws?role=operator&token={self.op1}&session_id=owned_session"
@@ -245,7 +245,7 @@ class TestSessionOwnership(unittest.TestCase):
 
     def test_instructor_may_observe_any_session(self):
         """Наблюдение инструктора за чужой сессией — штатный сценарий."""
-        from backend.services.connection_manager import manager
+        from elou_tutor.services.connection_manager import manager
         manager.sessions.pop("observed_session", None)
 
         instructor = _token(self.client, "instructor_1", "instructor")
@@ -261,7 +261,7 @@ class TestPredictorIsShared(unittest.TestCase):
     """Модель прогноза загружается один раз, а не на каждую сессию."""
 
     def test_sessions_share_predictor_instance(self):
-        from backend.services.connection_manager import SimulationSession
+        from elou_tutor.services.connection_manager import SimulationSession
         a = SimulationSession("shared_a")
         b = SimulationSession("shared_b")
         self.assertIs(a.predictor, b.predictor)

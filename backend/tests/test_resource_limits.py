@@ -20,7 +20,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from fastapi.testclient import TestClient
 
 from elou_tutor.db.database import init_db, DB_PATH
-from backend.main import app
+from elou_tutor.api.main import app
 
 
 def _token(client, username, role):
@@ -36,11 +36,11 @@ class TestSessionStateIsBounded(unittest.TestCase):
     """Состояние сессии не должно расти неограниченно за время тренировки."""
 
     def setUp(self):
-        from backend.services.connection_manager import SimulationSession
+        from elou_tutor.services.connection_manager import SimulationSession
         self.session = SimulationSession("bounded_probe")
 
     def test_logs_are_capped(self):
-        from backend.services.connection_manager import MAX_SESSION_LOGS
+        from elou_tutor.services.connection_manager import MAX_SESSION_LOGS
 
         for i in range(MAX_SESSION_LOGS * 3):
             self.session.add_log("info", f"Событие номер {i}")
@@ -49,7 +49,7 @@ class TestSessionStateIsBounded(unittest.TestCase):
 
     def test_newest_logs_are_kept(self):
         """Обрезать нужно старые записи: оператору важны последние события."""
-        from backend.services.connection_manager import MAX_SESSION_LOGS
+        from elou_tutor.services.connection_manager import MAX_SESSION_LOGS
 
         for i in range(MAX_SESSION_LOGS + 50):
             self.session.add_log("info", f"Событие номер {i}")
@@ -59,7 +59,7 @@ class TestSessionStateIsBounded(unittest.TestCase):
         self.assertNotIn("Событие номер 0", messages)
 
     def test_actions_are_capped(self):
-        from backend.services.connection_manager import MAX_SESSION_ACTIONS
+        from elou_tutor.services.connection_manager import MAX_SESSION_ACTIONS
 
         for _ in range(MAX_SESSION_ACTIONS * 3):
             self.session.record_action("SP_UP")
@@ -161,9 +161,10 @@ class TestHotPathsDoNotBlockLoop(unittest.TestCase):
     """
 
     _BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _PACKAGE = os.path.join(_BACKEND, "src", "elou_tutor")
     HOT_PATH_FILES = [
-        os.path.join(_BACKEND, "routes", "ws.py"),
-        os.path.join(_BACKEND, "services", "simulation_loop.py"),
+        os.path.join(_PACKAGE, "api", "routes", "ws.py"),
+        os.path.join(_PACKAGE, "services", "simulation_loop.py"),
     ]
 
     def test_session_save_is_offloaded_from_the_loop(self):

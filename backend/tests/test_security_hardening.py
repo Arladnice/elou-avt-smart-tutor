@@ -22,7 +22,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from fastapi.testclient import TestClient
 
 from elou_tutor.db.database import init_db
-from backend.main import app
+from elou_tutor.api.main import app
 
 
 def _token(client: TestClient, username: str, role: str) -> str:
@@ -107,7 +107,7 @@ class TestStaticPathTraversal(unittest.TestCase):
 
     def setUp(self):
         import tempfile
-        from backend.main import resolve_static_file
+        from elou_tutor.api.main import resolve_static_file
         self.resolve = resolve_static_file
         self.static_dir = tempfile.mkdtemp()
         with open(os.path.join(self.static_dir, "index.html"), "w") as f:
@@ -138,8 +138,8 @@ class TestSimulationLoopResilience(unittest.TestCase):
     """Сбой в одной сессии не должен останавливать симуляцию у остальных."""
 
     def test_broken_session_does_not_stop_others(self):
-        from backend.services.connection_manager import manager
-        from backend.services.simulation_loop import simulation_loop
+        from elou_tutor.services.connection_manager import manager
+        from elou_tutor.services.simulation_loop import simulation_loop
 
         class FakeWS:
             async def send_json(self, data):
@@ -205,7 +205,7 @@ class TestWebSocketRobustness(unittest.TestCase):
 
     def test_session_is_released_after_invalid_command(self):
         """Главный симптом дефекта: сессии-призраки копятся в менеджере."""
-        from backend.services.connection_manager import manager
+        from elou_tutor.services.connection_manager import manager
 
         url = f"/ws?role=operator&token={self.token}&session_id=ws_leak_probe"
         try:

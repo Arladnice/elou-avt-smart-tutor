@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from elou_tutor.db.queries import get_all_sessions, clear_all_sessions
-from backend.utils.deps import get_current_user, require_instructor
+from elou_tutor.api.deps import get_current_user, require_instructor
 from elou_tutor.db.audit import log_audit_event
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -19,7 +19,7 @@ def get_active_sessions(user: dict = Depends(get_current_user)):
     Возвращает список текущих активных сессий операторов в реальном времени.
     Используется инструктором для выбора отслеживаемой сессии.
     """
-    from backend.services.connection_manager import manager
+    from elou_tutor.services.connection_manager import manager
     
     # Удаляем пустые сессии
     dead_sids = [sid for sid, s in manager.sessions.items() if len(s.operator_sockets) == 0 and len(s.instructor_sockets) == 0]

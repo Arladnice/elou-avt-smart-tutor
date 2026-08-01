@@ -70,7 +70,7 @@ class TestEvaluateSessionArity(unittest.TestCase):
 
     def test_session_state_survives_scenario_without_golden_sequence(self):
         """Главный симптом: сборка состояния падала с ValueError при распаковке."""
-        from backend.services.connection_manager import SimulationSession
+        from elou_tutor.services.connection_manager import SimulationSession
         session = SimulationSession("arity_probe")
         session.active_scenario = "сценарий_без_эталона"
         session.actions_taken.append("V1_OPEN")
@@ -87,8 +87,8 @@ class TestSimulationSpeedMultiplier(unittest.TestCase):
             pass
 
     def _elapsed_after_one_tick(self, multiplier):
-        from backend.services.connection_manager import SimulationSession
-        from backend.services.simulation_loop import step_session
+        from elou_tutor.services.connection_manager import SimulationSession
+        from elou_tutor.services.simulation_loop import step_session
 
         session = SimulationSession(f"speed_{multiplier}")
         session.operator_sockets.add(self._FakeWS())

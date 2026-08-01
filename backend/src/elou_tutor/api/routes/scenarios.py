@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, ValidationError
 from typing import List, Dict, Any, Optional
 
-from backend.models.schemas import ImportScenarioModel
+from elou_tutor.api.schemas import ImportScenarioModel
 
 from elou_tutor.simulation.scenarios import (
     load_scenarios, add_custom_scenario, delete_scenario, get_scenario_by_id
 )
-from backend.utils.deps import get_current_user, require_instructor
+from elou_tutor.api.deps import get_current_user, require_instructor
 from elou_tutor.db.audit import log_audit_event
 
 router = APIRouter(prefix="/api/scenarios", tags=["Scenarios"])
