@@ -482,6 +482,15 @@ CI выполняет ровно эти шаги. Оба workflow запуска
 | | `architecture` | `lint-imports` — контракты слоёв |
 | `frontend-ci.yml` | `lint-and-build` | `npm run lint` → `npm run build` |
 | | `architecture` | `npm run check:fsd` — правила слоёв FSD |
+| `deploy.yml` | `backend-ci`, `frontend-ci` | вызов двух workflow выше целиком |
+| | `deploy` | раскатка по SSH — только после обеих (`needs`) |
+
+**Раскатка закрыта шлюзом.** `deploy.yml` не копирует шаги проверок, а вызывает `backend-ci.yml` и `frontend-ci.yml` как переиспользуемые workflow (`workflow_call`), и джоба `deploy` объявляет `needs: [backend-ci, frontend-ci]`. Источник правды остаётся один: правка в CI-workflow автоматически действует и на шлюз.
+
+Две тонкости, которые легко упустить:
+
+- **Фильтр `paths` при вызове через `workflow_call` не действует.** Для обычного PR он экономит время (не гонять фронт, если тронут только бэкенд), а перед деплоем проверки обязаны пройти целиком — что и происходит.
+- **В ключ `concurrency` обеих CI-workflow добавлен `github.workflow`.** При вызове из `deploy.yml` он равен имени *вызывающего* workflow, поэтому прогон-шлюз и обычный прогон по тому же PR попадают в разные группы. Без этого при `cancel-in-progress: true` они отменяли бы друг друга на одном `ref`.
 
 ### 8.3. Автоматический контроль архитектуры
 

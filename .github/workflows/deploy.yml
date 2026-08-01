@@ -4,6 +4,11 @@ name: Deploy
 # Раскатка стека на хост по SSH: собираем архив из отслеживаемых файлов,
 # копируем на сервер и поднимаем docker compose.
 #
+# Раскатке предшествует шлюз: сначала полностью проходят проверки бэкенда
+# (ruff, pytest, контракты слоёв) и фронтенда (oxlint, tsc+vite, правила FSD),
+# и только потом выполняется deploy. Проверки не скопированы сюда, а вызваны
+# из backend-ci.yml и frontend-ci.yml — источник правды один.
+#
 # Значения берутся из Variables репозитория
 # (Settings → Secrets and variables → Actions → вкладка Variables):
 #   DEPLOY_HOST       — IP или домен сервера
@@ -47,8 +52,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Шлюз перед раскаткой: те же проверки, что и на pull request, вызываются
+  # как переиспользуемые workflow — определения не дублируются. Обе джобы
+  # обязаны пройти, иначе deploy не стартует и на сервер ничего не поедет.
+  backend-ci:
+    name: Проверки бэкенда
+    uses: ./.github/workflows/backend-ci.yml
+
+  frontend-ci:
+    name: Проверки фронтенда
+    uses: ./.github/workflows/frontend-ci.yml
+
   deploy:
     name: Deploy to host
+    needs: [backend-ci, frontend-ci]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
