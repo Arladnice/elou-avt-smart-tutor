@@ -15,6 +15,7 @@ from elou_tutor.domain.process_limits import (
     COLUMN_LEVEL_BALANCE_MIN, COLUMN_LEVEL_BALANCE_MAX, STARTUP_MIN_TIME_SEC,
 )
 from elou_tutor.domain.regulations import TECH_REGULATIONS
+from elou_tutor.simulation.scenarios import get_scenario_by_id
 from ai_core.sequence_alignment import calculate_lcs_alignment
 
 
@@ -28,11 +29,7 @@ class ErrorAnalyzer:
         Для неизвестного сценария возвращает пустой список: эталона нет,
         и оценка идёт только по правилам техрегламента.
         """
-        try:
-            from backend.services.scenario_manager import get_scenario_by_id
-            sc = get_scenario_by_id(scenario_id)
-        except Exception:
-            return []
+        sc = get_scenario_by_id(scenario_id)
         if sc and sc.get("golden_sequence"):
             return sc["golden_sequence"]
         return []

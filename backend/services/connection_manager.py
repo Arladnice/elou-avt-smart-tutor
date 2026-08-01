@@ -7,7 +7,7 @@ from collections import deque
 from typing import List, Set, Dict
 from fastapi import WebSocket
 
-from simulator.elou_avt_model import ELOUAVTSimulator
+from elou_tutor.simulation.model import ELOUAVTSimulator
 from ai_core.predictive_engine import RiskPredictor
 from ai_core.error_analyzer import ErrorAnalyzer
 from backend.db.queries import save_session_db

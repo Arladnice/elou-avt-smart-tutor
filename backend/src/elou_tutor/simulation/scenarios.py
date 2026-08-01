@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 # Путь переопределяется переменной SCENARIOS_PATH: тесты работают с копией,
 # чтобы прогон набора не изменял боевой реестр сценариев.
+_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCENARIOS_FILE_PATH = os.environ.get(
-    "SCENARIOS_PATH",
-    os.path.join(os.path.dirname(__file__), "..", "data", "scenarios.json"),
+    "SCENARIOS_PATH", os.path.join(_PACKAGE_DIR, "data", "scenarios.json")
 )
 
 

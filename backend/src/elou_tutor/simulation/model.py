@@ -1,6 +1,7 @@
 import random
 import copy
 
+from elou_tutor.simulation.scenarios import get_scenario_by_id
 from elou_tutor.domain.process_limits import (
     COLUMN_PRES_ESD, FURNACE_TEMP_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
     COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_INTERLOCK,
@@ -43,11 +44,7 @@ class ELOUAVTSimulator:
         self.time_elapsed = 0         # Время сессии в секундах
         self.accident_reason = ""     # Причина аварии
 
-        try:
-            from backend.services.scenario_manager import get_scenario_by_id
-            sc = get_scenario_by_id(scenario_id)
-        except Exception:
-            sc = None
+        sc = get_scenario_by_id(scenario_id)
 
         if sc and "initial_state" in sc:
             st = sc["initial_state"]

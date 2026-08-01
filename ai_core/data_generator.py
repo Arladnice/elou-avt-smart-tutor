@@ -6,7 +6,7 @@ import random
 # Добавляем корневой путь в sys.path для импорта simulator
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from simulator.elou_avt_model import ELOUAVTSimulator
+from elou_tutor.simulation.model import ELOUAVTSimulator
 
 def generate_telemetry_data(output_path, num_samples=100000):
     """

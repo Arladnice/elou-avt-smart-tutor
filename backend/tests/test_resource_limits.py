@@ -207,7 +207,7 @@ class TestAtomicScenarioWrite(unittest.TestCase):
     """Сбой в момент записи не должен разрушать реестр сценариев."""
 
     def test_failed_write_leaves_file_intact(self):
-        from backend.services import scenario_manager
+        from elou_tutor.simulation import scenarios as scenario_manager
 
         original = scenario_manager.load_scenarios()
         self.assertTrue(original, "Тест бессмыслен на пустом реестре")

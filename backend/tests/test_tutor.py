@@ -9,7 +9,7 @@ os.environ["DATABASE_PATH"] = TEST_DB_PATH
 # Добавляем корневой путь в sys.path для импорта модулей
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from simulator.elou_avt_model import ELOUAVTSimulator
+from elou_tutor.simulation.model import ELOUAVTSimulator
 from ai_core.predictive_engine import RiskPredictor
 from ai_core.error_analyzer import ErrorAnalyzer
 

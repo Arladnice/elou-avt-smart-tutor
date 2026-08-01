@@ -5,6 +5,7 @@ import urllib.error
 import logging
 from typing import List, Dict, Any
 from backend.services.vector_store import get_relevant_context
+from elou_tutor.simulation.scenarios import get_scenario_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +83,7 @@ def get_scenario_checklist_progress(telemetry: Dict[str, Any]) -> str:
     if emergency_tasks:
         tasks = emergency_tasks
     else:
-        try:
-            from backend.services.scenario_manager import get_scenario_by_id
-            sc = get_scenario_by_id(scenario_id)
-        except Exception:
-            sc = None
+        sc = get_scenario_by_id(scenario_id)
 
         if sc and "checklist" in sc:
             tasks = []

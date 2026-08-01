@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 
 from backend.models.schemas import ImportScenarioModel
 
-from backend.services.scenario_manager import (
+from elou_tutor.simulation.scenarios import (
     load_scenarios, add_custom_scenario, delete_scenario, get_scenario_by_id
 )
 from backend.utils.deps import get_current_user, require_instructor
