@@ -9,11 +9,9 @@
 Источник: «Описание технологического процесса.pdf» (Раздел 3, 7).
 """
 
-from ai_core.config import (
-    FURNACE_TEMP_WARNING,
-    COLUMN_PRES_NORMAL_MIN, COLUMN_PRES_NORMAL_MAX,
-    COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW,
-    COLUMN_LEVEL_BALANCE_MIN, COLUMN_LEVEL_BALANCE_MAX,
+from elou_tutor.domain.process_limits import (
+    FURNACE_TEMP_WARNING, COLUMN_PRES_NORMAL_MIN, COLUMN_PRES_NORMAL_MAX,
+    COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_BALANCE_MIN, COLUMN_LEVEL_BALANCE_MAX,
 )
 
 

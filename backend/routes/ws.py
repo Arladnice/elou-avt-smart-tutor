@@ -7,7 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.services.connection_manager import (
     manager, SessionAccessDenied, SessionCapacityError
 )
-from ai_core.config import FURNACE_TEMP_MIN_LIMIT, FURNACE_TEMP_MAX_LIMIT
+from elou_tutor.domain.process_limits import FURNACE_TEMP_MIN_LIMIT, FURNACE_TEMP_MAX_LIMIT
 from backend.utils.net import is_webhook_url_allowed
 from backend.utils.security import log_audit_event_async, verify_jwt_token
 

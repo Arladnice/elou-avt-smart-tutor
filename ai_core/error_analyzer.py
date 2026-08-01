@@ -10,10 +10,9 @@
 Возвращает: (score, errors, recommendations) — кортеж для формирования ScoreCard.
 """
 
-from ai_core.config import (
+from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_WARNING, FURNACE_TEMP_MIN_STARTUP, FURNACE_TEMP_MAX_SHUTDOWN,
-    COLUMN_LEVEL_BALANCE_MIN, COLUMN_LEVEL_BALANCE_MAX,
-    STARTUP_MIN_TIME_SEC
+    COLUMN_LEVEL_BALANCE_MIN, COLUMN_LEVEL_BALANCE_MAX, STARTUP_MIN_TIME_SEC,
 )
 from ai_core.tech_regulations import TECH_REGULATIONS
 from ai_core.sequence_alignment import calculate_lcs_alignment
