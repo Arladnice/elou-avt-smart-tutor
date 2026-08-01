@@ -21,7 +21,7 @@ def main():
     print(f"Начинаем сборку пояснительной записки. Дата: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     with open(output_file, "w", encoding="utf-8") as outfile:
-        outfile.write(f"# Сводная Пояснительная Записка к КТК ЭЛОУ-АВТ Smart Tutor\n\n")
+        outfile.write("# Сводная Пояснительная Записка к КТК ЭЛОУ-АВТ Smart Tutor\n\n")
         outfile.write(f"**Сгенерировано автоматически:** {datetime.now().strftime('%d.%m.%Y')}\n\n")
         outfile.write("---\n\n")
         
@@ -42,7 +42,7 @@ def main():
             outfile.write("<div style='page-break-after: always;'></div>\n\n") # Разрыв страницы при печати в PDF
             
     print(f"✅ Сборка успешно завершена! Файл сохранен по пути:\n{output_file}")
-    print(f"Для конвертации в PDF откройте его в VSCode и используйте плагин 'Markdown PDF'.")
+    print("Для конвертации в PDF откройте его в VSCode и используйте плагин 'Markdown PDF'.")
 
 if __name__ == "__main__":
     main()

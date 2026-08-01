@@ -6,9 +6,7 @@ Baseline-модели для оценки эффективности ML-алго
 import numpy as np
 from ai_core.config import (
     FURNACE_TEMP_WARNING, FURNACE_TEMP_CRITICAL,
-    COLUMN_PRES_WARNING, COLUMN_PRES_ESD,
-    COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW,
-    OUT_MIN, OUT_MAX
+    COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW
 )
 
 class ThresholdBaselinePredictor:

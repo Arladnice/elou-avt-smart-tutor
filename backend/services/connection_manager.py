@@ -151,9 +151,12 @@ class SimulationSession:
         )
         
         safety_grade = "A"
-        if score < 50: safety_grade = "F"
-        elif score < 70: safety_grade = "C"
-        elif score < 85: safety_grade = "B"
+        if score < 50:
+            safety_grade = "F"
+        elif score < 70:
+            safety_grade = "C"
+        elif score < 85:
+            safety_grade = "B"
         
         if sim_state["status"] == "accident":
             safety_grade = "F"
@@ -242,8 +245,8 @@ class SimulationSession:
                     headers={"Content-Type": "application/json"},
                     method="POST"
                 )
-                with urllib.request.urlopen(req, timeout=2.0) as resp:
-                    pass
+                # Ответ вебхука не используется — важен сам факт доставки
+                urllib.request.urlopen(req, timeout=2.0).close()
             except Exception as e:
                 logger.error("Ошибка отправки вебхука на %s: %s", self.webhook_url, e)
         asyncio.create_task(asyncio.to_thread(_make_request))

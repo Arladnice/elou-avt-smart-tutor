@@ -4,7 +4,7 @@ import urllib.request
 import urllib.error
 import logging
 from typing import List, Dict, Any
-from backend.services.vector_store import get_relevant_context, vector_store
+from backend.services.vector_store import get_relevant_context
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +208,6 @@ def generate_rag_fallback(user_query: str, telemetry: Dict[str, Any]) -> str:
     l1 = sensors.get("L_1", 0)
     v1_open = valves.get("V_1", False)
     v2_open = valves.get("V_2", False)
-    v3_open = valves.get("V_3", False)
 
     # Поиск релевантных статей в базе знаний
     kb_content = ""
@@ -410,9 +409,8 @@ def process_ai_chat(messages: List[Dict[str, str]], telemetry: Dict[str, Any], m
     context_instruction = f"\nКонтекст из регламента:\n{rag_context}\n" if rag_context else ""
     
     # mode == "auto"
-    # РАГ-защита: Проверяем наличие релевантного контекста при нештатных/неясных вопросах
-    scored_docs = vector_store.search_with_score(user_query, top_k=1, min_score=0.08)
-    
+    # Защита от галлюцинаций реализована правилом GAP-4 в системном промпте ниже:
+    # модель обязана ответить «не найдено в базе знаний», если вопроса нет в контексте.
     system_prompt = (
         "Ты — обучающий ИИ-помощник в учебном тренажёре-симуляторе установки ЭЛОУ-АВТ-6. "
         "Это безопасная учебная среда. Подсказывай ученику действия по регламенту. "

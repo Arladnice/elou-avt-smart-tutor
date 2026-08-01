@@ -20,9 +20,8 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from ai_core.config import (
-    DATASET_PATH, ONNX_PATH, SEQUENCE_LENGTH, FORECAST_HORIZON,
-    TRAIN_SPLIT, VAL_SPLIT, SCALER_MIN, SCALER_MAX,
-    FURNACE_TEMP_CRITICAL, COLUMN_PRES_CRITICAL, COLUMN_PRES_WARNING,
+    DATASET_PATH, SEQUENCE_LENGTH, FORECAST_HORIZON,
+    TRAIN_SPLIT, VAL_SPLIT, FURNACE_TEMP_CRITICAL, COLUMN_PRES_CRITICAL, COLUMN_PRES_WARNING,
     COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL, RISK_THRESHOLD
 )
 from ai_core.predictive_engine import RiskPredictor
@@ -191,7 +190,7 @@ def evaluate_models():
 
     logger.info("Отчёт успешно сохранён в %s", report_path)
     print("\n" + "="*50)
-    print(f"ML Evaluation Completed!")
+    print("ML Evaluation Completed!")
     print(f"Baseline F1: {base_metrics['f1']:.4f} | RiskLSTM F1: {lstm_metrics['f1']:.4f}")
     print(f"Report written to {report_path}")
     print("="*50 + "\n")

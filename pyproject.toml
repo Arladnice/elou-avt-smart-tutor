@@ -15,3 +15,16 @@ authors = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["backend*", "simulator*", "ai_core*"]
+
+[tool.ruff]
+# Каталоги, которые линтер не проверяет: артефакты сборки и изолированные рабочие копии
+exclude = [".agents", ".claude", ".venv", "frontend", "node_modules"]
+line-length = 120
+
+[tool.ruff.lint]
+# Набор по умолчанию (E4 — импорты, E7 — синтаксические конструкции,
+# E9 — ошибки разбора, F — pyflakes: реальные ошибки и мёртвый код).
+select = ["E4", "E7", "E9", "F"]
+# E402: модули backend/, ai_core/ и scripts/ дополняют sys.path до импортов,
+# чтобы пакеты монорепозитория резолвились при прямом запуске файлов.
+ignore = ["E402"]

@@ -507,7 +507,6 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def test_risk_predictor_aligned_thresholds(self):
         """Тест-05: Проверка согласованности порогов риска предиктора с конфигом (COLUMN_PRES_WARNING = 0.40 МПа)."""
         import numpy as np
-        from ai_core.config import COLUMN_PRES_WARNING, COLUMN_PRES_ESD
         predictor = RiskPredictor()
         
         # Окно со стабильным давлением 0.35 МПа (ниже предупреждения 0.40 МПа)
@@ -615,7 +614,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         with client.websocket_connect(f"/ws?role=operator&username=operator_1&token={op1_token}&session_id=session_A") as ws1:
             with client.websocket_connect(f"/ws?role=operator&username=operator_1&token={op1_token}&session_id=session_B") as ws2:
                 # Читаем стартовые данные
-                state1 = ws1.receive_json()
+                ws1.receive_json()
                 state2 = ws2.receive_json()
 
                 # Изменяем уставку в сессии A
