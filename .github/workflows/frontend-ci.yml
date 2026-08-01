@@ -1,14 +1,19 @@
 name: Frontend CI
 
+# Только pull request: на промежуточных коммитах в ветке сборка не гоняется.
+# Джоба перезапускается автоматически при каждом новом пуше в ветку PR,
+# поэтому состояние проверки всегда соответствует головe ветки.
 on:
-  push:
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-ci.yml'
   pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
+
+# Новый пуш в ту же ветку отменяет ещё не завершившийся прогон
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-build:

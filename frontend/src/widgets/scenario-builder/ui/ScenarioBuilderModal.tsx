@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { Modal, Tabs, Form, Input, InputNumber, Switch, Button, Select, App, Upload, Card, Popconfirm } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, FileTextOutlined, CodeOutlined, DownloadOutlined } from '@ant-design/icons';
-import { createScenario, importScenario, deleteScenario, type ScenarioItem } from '@/entities/scenario';
+import {
+  createScenario,
+  importScenario,
+  deleteScenario,
+  type ScenarioItem,
+  type ScenarioCondition,
+} from '@/entities/scenario';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 
@@ -9,6 +15,77 @@ interface ScenarioBuilderModalProps {
   visible: boolean;
   onClose: () => void;
 }
+
+/** Пресеты условий завершения шага — то, что оператор выбирает в выпадающем списке */
+type ConditionPreset =
+  | 'V_1_CLOSE' | 'V_1_OPEN'
+  | 'V_2_OPEN' | 'V_2_CLOSE'
+  | 'V_3_OPEN' | 'V_3_CLOSE'
+  | 'T_1_LTE' | 'T_1_GTE'
+  | 'L_1_LTE' | 'L_1_GTE';
+
+/** Строка чек-листа в том виде, в каком её отдаёт Form.List */
+interface ChecklistFormRow {
+  id?: string;
+  title: string;
+  hint_training?: string;
+  hint_exam?: string;
+  conditionType: ConditionPreset;
+  /** Порог для условий по датчикам; для условий по клапанам не используется */
+  targetVal?: number;
+}
+
+/** Значения формы визуального конструктора */
+interface ScenarioFormValues {
+  id: string;
+  title: string;
+  short_name: string;
+  description?: string;
+  T_1?: number;
+  P_1?: number;
+  L_1?: number;
+  T_1_Sp?: number;
+  V_1?: boolean;
+  V_2?: boolean;
+  V_3?: boolean;
+  checklist?: ChecklistFormRow[];
+  golden_sequence?: string[];
+}
+
+/** Пресеты по клапанам разворачиваются в условие «клапан в положении» */
+const VALVE_PRESETS: Record<string, { target: string; expected: boolean }> = {
+  V_1_CLOSE: { target: 'V_1', expected: false },
+  V_1_OPEN: { target: 'V_1', expected: true },
+  V_2_OPEN: { target: 'V_2', expected: true },
+  V_2_CLOSE: { target: 'V_2', expected: false },
+  V_3_OPEN: { target: 'V_3', expected: true },
+  V_3_CLOSE: { target: 'V_3', expected: false },
+};
+
+/** Пресеты по датчикам: тип сравнения, параметр и порог по умолчанию */
+const SENSOR_PRESETS: Record<string, { type: 'sensor_lte' | 'sensor_gte'; target: string; fallback: number }> = {
+  T_1_LTE: { type: 'sensor_lte', target: 'T_1', fallback: 245.0 },
+  T_1_GTE: { type: 'sensor_gte', target: 'T_1', fallback: 285.0 },
+  L_1_LTE: { type: 'sensor_lte', target: 'L_1', fallback: 25.0 },
+  L_1_GTE: { type: 'sensor_gte', target: 'L_1', fallback: 20.0 },
+};
+
+/** Разворачивает выбранный в форме пресет в условие реестра сценариев */
+const presetToCondition = (row: ChecklistFormRow): ScenarioCondition => {
+  const valve = VALVE_PRESETS[row.conditionType];
+  if (valve) {
+    return { type: 'valve_is', target: valve.target, expected: valve.expected };
+  }
+  const sensor = SENSOR_PRESETS[row.conditionType];
+  if (sensor) {
+    return { type: sensor.type, target: sensor.target, expected: row.targetVal ?? sensor.fallback };
+  }
+  // Неизвестный пресет: безопасный дефолт, совпадающий с первым пунктом списка
+  return { type: 'valve_is', target: 'V_1', expected: false };
+};
+
+/** Текст ошибки из отказа API или JSON.parse */
+const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visible, onClose }) => {
   const { message } = App.useApp();
@@ -46,7 +123,7 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
     golden_sequence: ['V1_CLOSE'],
   };
 
-  const handleVisualSubmit = async (values: any) => {
+  const handleVisualSubmit = async (values: ScenarioFormValues) => {
     try {
       setLoading(true);
       // Преобразуем формы в объект ScenarioItem
@@ -64,27 +141,13 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
           V_2: !!values.V_2,
           V_3: !!values.V_3,
         },
-        checklist: (values.checklist || []).map((c: any, index: number) => {
-          let conditionObj: any = { type: 'valve_is', target: 'V_1', expected: false };
-          if (c.conditionType === 'V_1_CLOSE') conditionObj = { type: 'valve_is', target: 'V_1', expected: false };
-          if (c.conditionType === 'V_1_OPEN') conditionObj = { type: 'valve_is', target: 'V_1', expected: true };
-          if (c.conditionType === 'V_2_OPEN') conditionObj = { type: 'valve_is', target: 'V_2', expected: true };
-          if (c.conditionType === 'V_2_CLOSE') conditionObj = { type: 'valve_is', target: 'V_2', expected: false };
-          if (c.conditionType === 'V_3_OPEN') conditionObj = { type: 'valve_is', target: 'V_3', expected: true };
-          if (c.conditionType === 'V_3_CLOSE') conditionObj = { type: 'valve_is', target: 'V_3', expected: false };
-          if (c.conditionType === 'T_1_LTE') conditionObj = { type: 'sensor_lte', target: 'T_1', expected: c.targetVal ?? 245.0 };
-          if (c.conditionType === 'T_1_GTE') conditionObj = { type: 'sensor_gte', target: 'T_1', expected: c.targetVal ?? 285.0 };
-          if (c.conditionType === 'L_1_LTE') conditionObj = { type: 'sensor_lte', target: 'L_1', expected: c.targetVal ?? 25.0 };
-          if (c.conditionType === 'L_1_GTE') conditionObj = { type: 'sensor_gte', target: 'L_1', expected: c.targetVal ?? 20.0 };
-
-          return {
-            id: c.id || `step_${index + 1}`,
-            title: c.title,
-            hint_training: c.hint_training,
-            hint_exam: c.hint_exam,
-            condition: conditionObj,
-          };
-        }),
+        checklist: (values.checklist || []).map((row, index) => ({
+          id: row.id || `step_${index + 1}`,
+          title: row.title,
+          hint_training: row.hint_training ?? '',
+          hint_exam: row.hint_exam ?? '',
+          condition: presetToCondition(row),
+        })),
         golden_sequence: values.golden_sequence || [],
       };
 
@@ -93,8 +156,8 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
       await reloadScenarios();
       form.resetFields();
       onClose();
-    } catch (e: any) {
-      message.error(`Ошибка создания сценария: ${e.message}`);
+    } catch (e) {
+      message.error(`Ошибка создания сценария: ${errorText(e)}`);
     } finally {
       setLoading(false);
     }
@@ -109,8 +172,8 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
       await reloadScenarios();
       setJsonText('');
       onClose();
-    } catch (e: any) {
-      message.error(`Ошибка при импорте JSON: ${e.message}`);
+    } catch (e) {
+      message.error(`Ошибка при импорте JSON: ${errorText(e)}`);
     } finally {
       setLoading(false);
     }
@@ -156,8 +219,8 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
       await deleteScenario(id);
       message.success(`Сценарий '${id}' удален.`);
       await reloadScenarios();
-    } catch (e: any) {
-      message.error(e.message);
+    } catch (e) {
+      message.error(errorText(e));
     }
   };
 
