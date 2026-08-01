@@ -21,6 +21,15 @@ from backend.routes import auth, sessions, ws, health, ai_chat, alarm_feedback, 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+def _report_simulation_task_exit(task: asyncio.Task):
+    """Фоновый цикл симуляции не должен умирать молча."""
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        logger.critical("Фоновый цикл симуляции аварийно завершился: %s", exc, exc_info=exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Жизненный цикл FastAPI приложения: инициализация БД и запуск симуляции."""
@@ -29,6 +38,7 @@ async def lifespan(app: FastAPI):
     
     # Запуск циклического фонового потока симуляции техпроцесса
     sim_task = asyncio.create_task(simulation_loop())
+    sim_task.add_done_callback(_report_simulation_task_exit)
     log_audit_event("SYSTEM", "STARTUP", "Сервер КТК ЭЛОУ-АВТ Smart Tutor запущен.")
     logger.info("Сервер КТК ЭЛОУ-АВТ Smart Tutor успешно запущен.")
     
@@ -50,19 +60,21 @@ app = FastAPI(
 # Подключение CORS.
 # В Docker и на PaaS (Render/HF Spaces) фронтенд и API живут на одном origin,
 # CORS нужен только для дев-режима Vite; дополнительные origins — через ALLOWED_ORIGINS.
-allowed_origins = [
+# Wildcard несовместим с allow_credentials по спецификации CORS, поэтому список явный.
+ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         "ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
     ).split(",")
     if origin.strip()
 ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Подключение роутеров
@@ -78,6 +90,28 @@ app.include_router(scenarios.router)
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 STATIC_DIR = os.path.join(ROOT_DIR, "frontend", "dist")
+
+
+def resolve_static_file(static_dir: str, path: str):
+    """
+    Разрешает путь запроса в файл внутри каталога статики.
+
+    Возвращает абсолютный путь к существующему файлу либо None, если файла нет
+    или он лежит за пределами static_dir (защита от path traversal).
+    """
+    if not path or path.startswith("/") or "\x00" in path:
+        return None
+
+    root = os.path.realpath(static_dir)
+    candidate = os.path.realpath(os.path.join(root, path))
+
+    if candidate != root and not candidate.startswith(root + os.sep):
+        return None
+    if not os.path.isfile(candidate):
+        return None
+    return candidate
+
+
 if os.path.isdir(STATIC_DIR):
     assets_dir = os.path.join(STATIC_DIR, "assets")
     if os.path.isdir(assets_dir):
@@ -86,8 +120,8 @@ if os.path.isdir(STATIC_DIR):
     @app.get("/{path:path}")
     async def serve_spa(path: str):
         """Раздача SPA: любой маршрут, не начинающийся с /api или /ws, отдаёт index.html."""
-        file_path = os.path.join(STATIC_DIR, path)
-        if os.path.isfile(file_path):
+        file_path = resolve_static_file(STATIC_DIR, path)
+        if file_path:
             return FileResponse(file_path)
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 

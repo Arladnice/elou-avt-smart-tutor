@@ -1,5 +1,15 @@
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Literal
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Dict, Any, Literal, Optional
+
+# Действия, которые реально порождает обработчик WS-команд. Эталон сценария
+# (golden_sequence) может состоять только из них: шаг, которого оператор не
+# способен выполнить, делает сценарий принципиально неоцениваемым.
+_VALVE_IDS = ("V1", "V2", "V3", "V_ELOU", "V_VT")
+PRODUCIBLE_ACTIONS = frozenset(
+    [f"{v}_OPEN" for v in _VALVE_IDS]
+    + [f"{v}_CLOSE" for v in _VALVE_IDS]
+    + ["SP_UP", "SP_DOWN", "ESD", "CALL_DISPATCHER"]
+)
 
 class LoginRequest(BaseModel):
     username: str
@@ -22,11 +32,13 @@ class HealthResponse(BaseModel):
 class ChatMessage(BaseModel):
     """Отдельное сообщение в чате."""
     role: Literal["user", "assistant", "system"]
-    content: str
+    content: str = Field(..., max_length=4000)
 
 class ChatRequest(BaseModel):
     """Запрос к ИИ-чату с контекстом телеметрии."""
-    messages: List[ChatMessage]
+    # min_length=1: обработчик читает messages[-1], на пустом списке падал с 500.
+    # max_length ограничивает объём запроса к локальной LLM.
+    messages: List[ChatMessage] = Field(..., min_length=1, max_length=50)
     telemetry: Dict[str, Any]
     mode: Literal["auto", "rag", "llm"] = "auto"
 
@@ -48,8 +60,43 @@ class SystemMetrics(BaseModel):
     db_size_kb: float
     active_ws_connections: int
     processed_events_total: int
+    # Реально измеренная средняя длительность рассылки состояния, мс
     avg_ping_latency_ms: float
     is_ollama_available: bool
+    # False, если psutil недоступен: значения нагрузки в этом случае нулевые,
+    # а не выдуманные, и панель мониторинга может показать это честно
+    is_metrics_available: bool = True
+
+class ImportScenarioModel(BaseModel):
+    """
+    Схема импортируемого сценария.
+
+    Сценарий задаёт начальное состояние установки и эталон оценки, поэтому
+    принимается только строго описанная структура, а не произвольный JSON.
+    """
+    model_config = {"extra": "forbid"}
+
+    # Идентификатор попадает в имена и сравнения — только безопасные символы
+    id: str = Field(..., pattern=r"^[A-Za-z0-9_-]{1,64}$")
+    title: str = Field(..., min_length=1, max_length=200)
+    short_name: str = Field("", max_length=100)
+    description: str = Field("", max_length=2000)
+    initial_state: Optional[Dict[str, Any]] = None
+    checklist: List[Dict[str, Any]] = Field(default_factory=list, max_length=50)
+    golden_sequence: List[str] = Field(default_factory=list, max_length=50)
+    is_custom: bool = True
+
+    @field_validator("golden_sequence")
+    @classmethod
+    def _known_actions_only(cls, value: List[str]) -> List[str]:
+        unknown = [step for step in value if step not in PRODUCIBLE_ACTIONS]
+        if unknown:
+            raise ValueError(
+                f"Эталонная последовательность содержит действия, которые оператор "
+                f"не может выполнить: {', '.join(unknown)}"
+            )
+        return value
+
 
 class AlarmFeedbackRequest(BaseModel):
     """Запрос на фидбек к аларму ИИ (GAP-6: Обратная связь для замкнутого контура)."""

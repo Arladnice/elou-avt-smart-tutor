@@ -1,11 +1,17 @@
 import os
 import json
 import logging
+import tempfile
 from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-SCENARIOS_FILE_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "scenarios.json")
+# Путь переопределяется переменной SCENARIOS_PATH: тесты работают с копией,
+# чтобы прогон набора не изменял боевой реестр сценариев.
+SCENARIOS_FILE_PATH = os.environ.get(
+    "SCENARIOS_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "data", "scenarios.json"),
+)
 
 
 def load_scenarios() -> List[Dict[str, Any]]:
@@ -32,13 +38,31 @@ def get_scenario_by_id(scenario_id: str) -> Optional[Dict[str, Any]]:
 
 
 def save_scenarios(scenarios: List[Dict[str, Any]]) -> bool:
-    """Сохраняет обновленный список сценариев в JSON-файл."""
+    """
+    Атомарно сохраняет список сценариев.
+
+    Запись идёт во временный файл рядом с целевым и завершается os.replace:
+    прямая запись в открытый на "w" файл при сбое оставляла бы обрезанный
+    JSON, то есть уничтожала весь реестр сценариев.
+    """
+    target_dir = os.path.dirname(os.path.abspath(SCENARIOS_FILE_PATH))
+    tmp_path = None
     try:
-        with open(SCENARIOS_FILE_PATH, "w", encoding="utf-8") as f:
+        os.makedirs(target_dir, exist_ok=True)
+        fd, tmp_path = tempfile.mkstemp(dir=target_dir, prefix=".scenarios-", suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump({"scenarios": scenarios}, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, SCENARIOS_FILE_PATH)
         return True
     except Exception as e:
         logger.error(f"Ошибка записи в файл сценариев: {e}")
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
         return False
 
 

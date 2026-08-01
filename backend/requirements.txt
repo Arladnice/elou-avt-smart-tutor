@@ -8,6 +8,8 @@ PyJWT==2.13.0
 python-dotenv==1.2.2
 passlib==1.7.4
 bcrypt==3.2.2
+# Используется в /api/health/metrics для сбора USE-метрик
+psutil==7.2.2
 # Опционально для тяжелого нейросетевого RAG (требует >512 MB RAM, не рекомендуется на бесплатном тарифе Render):
 # sentence-transformers>=2.2.2
 # faiss-cpu>=1.7.4

@@ -363,25 +363,32 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
             login(LoginRequest(username="operator_1", password="wrong", role="operator"))
         self.assertEqual(ctx.exception.status_code, 401)
 
-    def test_simulation_time_and_speed_control(self):
-        """Проверяет логику паузы и изменения скорости в SimulationSession."""
-        from backend.services.connection_manager import manager
-        
-        session = manager.get_session("test_session")
-        
-        # По умолчанию симуляция идет с нормальной скоростью и не на паузе
-        self.assertEqual(session.speed_multiplier, 1.0)
-        self.assertFalse(session.is_paused)
-        
-        # Меняем параметры
+    def test_pause_stops_the_process(self):
+        """
+        Пауза должна останавливать ход техпроцесса, а не только менять флаг.
+
+        Проверка скорости симуляции вынесена в test_scoring_and_speed.py:
+        прежний вариант этого теста лишь присваивал и читал то же поле,
+        поэтому не замечал, что множитель скорости ни на что не влияет.
+        """
+        import asyncio
+        from backend.services.connection_manager import SimulationSession
+        from backend.services.simulation_loop import step_session
+
+        class FakeWS:
+            async def send_json(self, data):
+                pass
+
+        session = SimulationSession("pause_probe")
+        session.operator_sockets.add(FakeWS())
         session.is_paused = True
-        session.speed_multiplier = 2.0
-        self.assertEqual(session.speed_multiplier, 2.0)
-        self.assertTrue(session.is_paused)
-        
-        # Сбрасываем назад
+
+        asyncio.run(step_session(session))
+        self.assertEqual(session.simulator.time_elapsed, 0, "Пауза не остановила процесс")
+
         session.is_paused = False
-        session.speed_multiplier = 1.0
+        asyncio.run(step_session(session))
+        self.assertEqual(session.simulator.time_elapsed, 1, "Снятие паузы не возобновило процесс")
 
     def test_scenario_6_security_integrity_sha256(self):
         """Тест сценария 6: Проверка ИБ-контроля целостности логов по SHA-256"""
@@ -390,8 +397,9 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         from backend.db.database import DB_PATH
         import sqlite3
         
-        # Сначала очистим историю
-        clear_sessions()
+        # Сначала очистим историю (эндпоинты требуют авторизованного пользователя)
+        instructor = {"sub": "instructor_1", "role": "instructor"}
+        clear_sessions(user=instructor)
 
         # Создаем тестовую запись напрямую в БД с корректным хэшем
         conn = sqlite3.connect(DB_PATH)
@@ -416,7 +424,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         conn.commit()
         
         # Запрашиваем сессии и проверяем валидность
-        sessions = get_sessions()
+        sessions = get_sessions(user=instructor)
         self.assertGreater(len(sessions), 0)
         self.assertTrue(sessions[0]["integrity_valid"])
 
@@ -426,7 +434,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         conn.close()
 
         # Запрашиваем снова и проверяем, что статус целостности изменился на False (нарушено!)
-        sessions = get_sessions()
+        sessions = get_sessions(user=instructor)
         self.assertFalse(sessions[0]["integrity_valid"])
 
     def test_defect_power_fail(self):

@@ -4,11 +4,19 @@ from contextlib import contextmanager
 
 DB_PATH = os.environ.get("DATABASE_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tutor.db")))
 
+# Сколько ждать освобождения блокировки БД, прежде чем вернуть ошибку
+DB_TIMEOUT_SEC = 5.0
+
+
 @contextmanager
 def get_db_connection():
     """Контекстный менеджер для безопасного подключения к БД."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=DB_TIMEOUT_SEC)
     try:
+        # WAL позволяет читать во время записи: цикл симуляции пишет журнал
+        # параллельно с запросами истории от инструктора.
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
         yield conn
     finally:
         conn.close()
@@ -52,6 +60,13 @@ def init_db():
             integrity_hash TEXT NOT NULL
         )
         """)
+
+        # Сцепление записей журнала в цепочку: хэш предыдущей записи.
+        # У строк, созданных до этой миграции, колонка остаётся NULL.
+        try:
+            cursor.execute("ALTER TABLE audit_logs ADD COLUMN prev_hash TEXT DEFAULT NULL")
+        except sqlite3.OperationalError:
+            pass
 
         # Таблица пользователей (ИБ)
         cursor.execute("""

@@ -3,6 +3,7 @@ import json
 import logging
 import asyncio
 import urllib.request
+from collections import deque
 from typing import List, Set, Dict
 from fastapi import WebSocket
 
@@ -10,26 +11,71 @@ from simulator.elou_avt_model import ELOUAVTSimulator
 from ai_core.predictive_engine import RiskPredictor
 from ai_core.error_analyzer import ErrorAnalyzer
 from backend.db.queries import save_session_db
+from backend.utils.net import is_webhook_url_allowed
 from backend.utils.security import calculate_integrity_hash, log_audit_event
 from backend.utils.helpers import random_id
 
 logger = logging.getLogger(__name__)
 
+# Максимум одновременных учебных сессий: защищает от исчерпания памяти
+# при подключениях с произвольными session_id.
+MAX_ACTIVE_SESSIONS = 50
+
+# Состояние сессии целиком уходит в каждую рассылку (раз в секунду каждому
+# клиенту), поэтому оно ограничено. При лимите команд 30/сек за пятиминутную
+# сессию иначе накапливались бы тысячи записей и сотни килобайт на рассылку.
+MAX_SESSION_LOGS = 200
+MAX_SESSION_ACTIONS = 500
+
+# Реально измеренная длительность рассылки состояния (сборка + отправка всем
+# сокетам). Питает метрику мониторинга вместо прежней константы.
+broadcast_latencies_ms: deque = deque(maxlen=100)
+
+
+def average_broadcast_latency_ms() -> float:
+    if not broadcast_latencies_ms:
+        return 0.0
+    return sum(broadcast_latencies_ms) / len(broadcast_latencies_ms)
+
+# Модель прогноза не хранит состояния между вызовами, поэтому загружается
+# один раз на процесс, а не на каждую сессию (ONNX-рантайм дорог по памяти).
+_shared_predictor: RiskPredictor = None
+
+
+def get_shared_predictor() -> RiskPredictor:
+    global _shared_predictor
+    if _shared_predictor is None:
+        _shared_predictor = RiskPredictor()
+    return _shared_predictor
+
+
+class SessionCapacityError(RuntimeError):
+    """Достигнут предел одновременных учебных сессий."""
+
+
+class SessionAccessDenied(PermissionError):
+    """Оператор пытается войти в сессию, принадлежащую другому оператору."""
+
+
 class SimulationSession:
     """Изолированная сессия для одного учебного сценария."""
     def __init__(self, session_id: str):
         self.session_id = session_id
-        
+
         self.operator_sockets: Set[WebSocket] = set()
         self.instructor_sockets: Set[WebSocket] = set()
-        
+
         self.simulator = ELOUAVTSimulator()
-        self.predictor = RiskPredictor()
+        self.predictor = get_shared_predictor()
         self.analyzer = ErrorAnalyzer()
-        
+
+        # Оператор, за которым закреплена сессия (задаётся при первом подключении)
+        self.owner: str = None
         self.active_operator_name = "Оператор"
         self.active_scenario = "startup"
         self.actions_taken: List[str] = []
+        # Те же действия с отметками времени: нужны для локализации ошибок
+        self.action_timeline: List[dict] = []
         self.defects_triggered: Set[str] = set()
         self.telemetry_history: List[List[float]] = [] 
         self.logs: List[dict] = []
@@ -49,6 +95,7 @@ class SimulationSession:
         self.escalation_warning_sent: bool = False
 
     async def broadcast_state(self):
+        started = time.perf_counter()
         state = self.get_full_state()
         for ws in list(self.operator_sockets):
             try:
@@ -60,6 +107,8 @@ class SimulationSession:
                 await ws.send_json(state)
             except Exception:
                 self.instructor_sockets.discard(ws)
+
+        broadcast_latencies_ms.append((time.perf_counter() - started) * 1000.0)
 
     async def send_state_to(self, websocket: WebSocket):
         state = self.get_full_state()
@@ -97,7 +146,8 @@ class SimulationSession:
             self.active_scenario,
             self.defects_triggered,
             final_sensors=sensors,
-            time_elapsed=sim_state["timeElapsed"]
+            time_elapsed=sim_state["timeElapsed"],
+            timeline=self.action_timeline,
         )
         
         safety_grade = "A"
@@ -117,7 +167,10 @@ class SimulationSession:
                 "duration": sim_state["timeElapsed"],
                 "errors": errors,
                 "recommendations": recs,
-                "recommended_scenario_id": recommended_scenario_id
+                "recommended_scenario_id": recommended_scenario_id,
+                # Хронология действий оператора: на ней строится разбор
+                # тренировки и локализация ошибок во времени
+                "timeline": list(self.action_timeline)
             }
             
         return {
@@ -167,6 +220,11 @@ class SimulationSession:
     def send_webhook_notification(self, log_entry: dict):
         if not self.webhook_url or not self.webhook_active:
             return
+        # Повторная проверка перед самой отправкой: адрес мог быть записан
+        # в обход команды configure_webhook (снапшот, старое состояние).
+        if not is_webhook_url_allowed(self.webhook_url):
+            logger.warning("Отправка вебхука на запрещённый адрес отклонена: %s", self.webhook_url)
+            return
         def _make_request():
             try:
                 payload = {
@@ -200,6 +258,7 @@ class SimulationSession:
             
         self.simulator.reset(scenario)
         self.actions_taken.clear()
+        self.action_timeline.clear()
         self.defects_triggered.clear()
         self.telemetry_history.clear()
         self.logs.clear()
@@ -253,9 +312,33 @@ class SimulationSession:
             "repeat_count": 1
         }
         self.logs.append(new_entry)
-        
+        if len(self.logs) > MAX_SESSION_LOGS:
+            del self.logs[:-MAX_SESSION_LOGS]
+
         if severity == "CRITICAL":
             self.send_webhook_notification(new_entry)
+
+    def record_action(self, action_name: str):
+        """
+        Фиксирует управляющее действие оператора.
+
+        actions_taken остаётся плоским списком строк — на нём построены
+        LCS-выравнивание и правила техрегламента. Отметки времени идут
+        параллельным списком, позиции в обоих списках соответствуют друг другу.
+        """
+        self.actions_taken.append(action_name)
+        self.action_timeline.append({
+            "index": len(self.actions_taken) - 1,
+            "action": action_name,
+            "at_second": self.simulator.time_elapsed,
+        })
+
+        if len(self.actions_taken) > MAX_SESSION_ACTIONS:
+            del self.actions_taken[:-MAX_SESSION_ACTIONS]
+            del self.action_timeline[:-MAX_SESSION_ACTIONS]
+            # После обрезки позиции сдвинулись — восстанавливаем соответствие
+            for position, entry in enumerate(self.action_timeline):
+                entry["index"] = position
 
 
 class ConnectionManager:
@@ -265,8 +348,31 @@ class ConnectionManager:
 
     def get_session(self, session_id: str) -> SimulationSession:
         if session_id not in self.sessions:
+            if len(self.sessions) >= MAX_ACTIVE_SESSIONS:
+                raise SessionCapacityError(
+                    f"Достигнут предел одновременных сессий ({MAX_ACTIVE_SESSIONS})"
+                )
             self.sessions[session_id] = SimulationSession(session_id)
         return self.sessions[session_id]
+
+    def claim_session(self, session_id: str, role: str, username: str) -> SimulationSession:
+        """
+        Возвращает сессию, проверяя право доступа.
+
+        Оператор работает только в своей сессии: иначе подключение с чужим
+        session_id сбрасывало бы чужую тренировку. Инструктор наблюдает любую.
+        """
+        session = self.get_session(session_id)
+
+        if role == "operator":
+            if session.owner is None:
+                session.owner = username
+            elif session.owner != username:
+                raise SessionAccessDenied(
+                    f"Сессия {session_id} принадлежит оператору {session.owner}"
+                )
+
+        return session
 
     async def connect(self, websocket: WebSocket, session_id: str, role: str, username: str):
         await websocket.accept()
@@ -274,7 +380,7 @@ class ConnectionManager:
         
         if role == "instructor":
             session.instructor_sockets.add(websocket)
-            log_audit_event("INSTRUCTOR", "WS_CONNECT", f"Инструктор подключился к трансляции сессии {session_id}")
+            log_audit_event(username, "WS_CONNECT", f"Инструктор подключился к трансляции сессии {session_id}")
         else:
             session.operator_sockets.add(websocket)
             session.active_operator_name = username

@@ -1,6 +1,8 @@
+import asyncio
 import os
 import time
 import hashlib
+import hmac
 import jwt
 from fastapi import HTTPException
 from dotenv import load_dotenv
@@ -21,10 +23,35 @@ if not JWT_SECRET_KEY:
     raise ValueError("Критическая ошибка: переменная окружения SECRET_KEY не задана!")
 JWT_ALGORITHM = "HS256"
 
+# Разделитель полей: без него ("ab","c") и ("a","bc") давали одинаковый хэш,
+# то есть подмену границ полей было невозможно обнаружить.
+_FIELD_SEPARATOR = "\x1f"
+
+
 def calculate_integrity_hash(*args) -> str:
-    """Вычисляет SHA-256 хэш переданных полей с добавлением секретной соли для защиты от подмены."""
+    """Вычисляет HMAC-SHA256 переданных полей на секретной соли."""
+    payload = _FIELD_SEPARATOR.join(str(arg) for arg in args)
+    return hmac.new(
+        SECRET_SALT.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+
+
+def _legacy_integrity_hash(*args) -> str:
+    """Прежний алгоритм (SHA-256 от конкатенации с солью-суффиксом).
+
+    Нужен только для проверки записей, созданных до перехода на HMAC.
+    """
     payload = "".join(str(arg) for arg in args) + SECRET_SALT
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def verify_integrity_hash(stored_hash: str, *args) -> bool:
+    """Проверяет хэш записи, принимая как новый (HMAC), так и устаревший формат."""
+    if not stored_hash:
+        return False
+    if hmac.compare_digest(stored_hash, calculate_integrity_hash(*args)):
+        return True
+    return hmac.compare_digest(stored_hash, _legacy_integrity_hash(*args))
 
 def create_jwt_token(data: dict) -> str:
     """Создает JWT токен для пользователя."""
@@ -43,16 +70,71 @@ def verify_jwt_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Невалидный токен")
 
 def log_audit_event(actor: str, action: str, details: str):
-    """Записывает событие ИБ в журнал с хэшем целостности."""
+    """
+    Записывает событие ИБ в журнал.
+
+    Каждая запись включает хэш предыдущей, поэтому удаление или правка строки
+    разрывает цепочку и обнаруживается verify_audit_chain().
+    """
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    h = calculate_integrity_hash(timestamp, actor, action, details)
     with get_db_connection() as conn:
         cursor = conn.cursor()
+        row = cursor.execute(
+            "SELECT integrity_hash FROM audit_logs ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        prev_hash = row[0] if row else ""
+        h = calculate_integrity_hash(timestamp, actor, action, details, prev_hash)
         cursor.execute(
-            "INSERT INTO audit_logs (timestamp, actor, action, details, integrity_hash) VALUES (?, ?, ?, ?, ?)",
-            (timestamp, actor, action, details, h)
+            "INSERT INTO audit_logs (timestamp, actor, action, details, integrity_hash, prev_hash) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (timestamp, actor, action, details, h, prev_hash)
         )
         conn.commit()
+
+
+async def log_audit_event_async(actor: str, action: str, details: str):
+    """
+    Асинхронная обёртка записи в журнал.
+
+    Обработчик WebSocket и цикл симуляции пишут аудит на каждую команду и на
+    каждое событие; синхронная запись в SQLite блокировала бы event loop и
+    задерживала рассылку телеметрии всем подключённым клиентам.
+    """
+    await asyncio.to_thread(log_audit_event, actor, action, details)
+
+
+def verify_audit_chain():
+    """
+    Проверяет непрерывность журнала аудита.
+
+    Возвращает (True, None), если цепочка цела, иначе (False, id_записи),
+    где id_записи — первая строка, на которой цепочка разошлась.
+    Записи, созданные до внедрения цепочки (prev_hash IS NULL), пропускаются.
+    """
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, timestamp, actor, action, details, integrity_hash, prev_hash "
+            "FROM audit_logs ORDER BY id"
+        ).fetchall()
+
+    expected_prev = None
+    for row_id, timestamp, actor, action, details, stored_hash, prev_hash in rows:
+        if prev_hash is None:
+            # Устаревшая запись без цепочки — проверяем только собственный хэш
+            if not verify_integrity_hash(stored_hash, timestamp, actor, action, details):
+                return False, row_id
+            continue
+
+        if expected_prev is not None and prev_hash != expected_prev:
+            return False, row_id
+
+        expected = calculate_integrity_hash(timestamp, actor, action, details, prev_hash)
+        if not hmac.compare_digest(stored_hash or "", expected):
+            return False, row_id
+
+        expected_prev = stored_hash
+
+    return True, None
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
