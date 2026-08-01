@@ -23,7 +23,6 @@ COLUMN_LEVEL_HIGH = 85.0          # % (Предупреждение)
 COLUMN_LEVEL_LOW = 18.0           # % (Предупреждение по низкому уровню)
 COLUMN_LEVEL_LOW_INTERLOCK = 12.0 # % (3500 мм: Сработка ПАЗ / Блокировка насосов куба)
 COLUMN_LEVEL_LOW_CRITICAL = 5.0   # % (Полное опустошение, сухой ход и авария)
-COLUMN_LEVEL_LOW_CRITICAL_LEVEL = 8.0  # % (Критический уровень для эскалации алертов)
 COLUMN_LEVEL_BALANCE_MIN = 20.0   # %
 COLUMN_LEVEL_BALANCE_MAX = 80.0   # %
 
@@ -32,10 +31,13 @@ STARTUP_MIN_TIME_SEC = 45         # Минимальное время сесси
 SESSION_MAX_TIME_SEC = 300        # Максимальное время сессии (5 минут)
 
 # === Alert Escalation Thresholds ===
+# Вторая ступень тревоги: срабатывает строго ЗА порогом предупреждения
+# (340 → 350, 0.40 → 0.43, 85 → 90, 18 → 8). Если ступени совпадут,
+# ветка WARNING в simulation_loop выродится в пустой интервал.
 FURNACE_TEMP_CRITICAL_LEVEL = 350.0        # °C (Критический порог температуры печи для эскалации)
 COLUMN_PRES_CRITICAL_LEVEL = 0.43          # МПа (Критический порог давления колонны для эскалации)
 COLUMN_LEVEL_HIGH_CRITICAL_LEVEL = 90.0    # % (Критический верхний порог уровня куба для эскалации)
-COLUMN_LEVEL_LOW_CRITICAL_LEVEL = 18.0     # % (Критический нижний порог уровня куба для эскалации)
+COLUMN_LEVEL_LOW_CRITICAL_LEVEL = 8.0      # % (Критический нижний порог уровня куба для эскалации)
 ESCALATION_WARNING_DELAY_SEC = 30.0        # секунд (Время до предупреждения о бездействии оператора)
 ESCALATION_CRITICAL_DELAY_SEC = 60.0       # секунд (Время до критической ошибки при бездействии оператора)
 
