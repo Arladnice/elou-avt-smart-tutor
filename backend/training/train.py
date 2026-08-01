@@ -7,15 +7,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if ROOT_DIR not in sys.path:
-    sys.path.append(ROOT_DIR)
+# Каталог backend/ — родитель training/. Установленный пакет кладёт в sys.path
+# только backend/src, поэтому «training» приходится добавлять самим.
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
-from ai_core.config import (
-    RANDOM_SEED, INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM, DROPOUT,
-    LEARNING_RATE, EPOCHS, BATCH_SIZE, SEQUENCE_LENGTH, FORECAST_HORIZON,
-    TRAIN_SPLIT, VAL_SPLIT, DATASET_PATH, MODEL_PATH,
-    SCALER_MIN, SCALER_MAX, OUT_MIN, OUT_MAX, BASE_DIR
+from elou_tutor.ml.settings import (
+    INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM, DROPOUT,
+    SEQUENCE_LENGTH, FORECAST_HORIZON, SCALER_MIN, SCALER_MAX, OUT_MIN, OUT_MAX,
+)
+from training.config import (
+    RANDOM_SEED, LEARNING_RATE, EPOCHS, BATCH_SIZE,
+    TRAIN_SPLIT, VAL_SPLIT, DATASET_PATH, MODEL_PATH, TEST_DATA_PATH,
 )
 
 # Setup logging
@@ -135,9 +139,8 @@ def train_lstm_model():
     logger.info("Окна — Train: %d | Val: %d | Test: %d", X_train_np.shape[0], X_val_np.shape[0], X_test_np.shape[0])
     
     # Сохраняем непересекающийся Test Set для модуля evaluate.py (GAP-3)
-    test_path = os.path.join(BASE_DIR, "test_data.npz")
-    np.savez_compressed(test_path, X_test=X_test_np, y_test=y_test_np)
-    logger.info("Тестовая выборка сохранена в: %s", test_path)
+    np.savez_compressed(TEST_DATA_PATH, X_test=X_test_np, y_test=y_test_np)
+    logger.info("Тестовая выборка сохранена в: %s", TEST_DATA_PATH)
     
     X_train = torch.tensor(X_train_np, dtype=torch.float32)
     y_train = torch.tensor(y_train_np, dtype=torch.float32)

@@ -3,10 +3,14 @@ import os
 import csv
 import random
 
-# Добавляем корневой путь в sys.path для импорта simulator
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Каталог backend/ — родитель training/. Установленный пакет кладёт в sys.path
+# только backend/src, поэтому «training» приходится добавлять самим.
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
 from elou_tutor.simulation.model import ELOUAVTSimulator
+from training.config import DATASET_PATH
 
 def generate_telemetry_data(output_path, num_samples=100000):
     """
@@ -199,6 +203,4 @@ def generate_telemetry_data(output_path, num_samples=100000):
     print(f"Генерация завершена! Создано {records_generated} строк в файле {output_path}")
 
 if __name__ == "__main__":
-    dataset_dir = os.path.dirname(__file__)
-    output_file = os.path.join(dataset_dir, "telemetry_dataset.csv")
-    generate_telemetry_data(output_file)
+    generate_telemetry_data(DATASET_PATH)

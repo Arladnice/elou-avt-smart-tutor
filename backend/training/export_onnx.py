@@ -10,13 +10,15 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-# Add root directory to sys.path
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if ROOT_DIR not in sys.path:
-    sys.path.append(ROOT_DIR)
+# Каталог backend/ — родитель training/. Установленный пакет кладёт в sys.path
+# только backend/src, поэтому «training» приходится добавлять самим.
+BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
-from ai_core.config import MODEL_PATH
-from ai_core.train import RiskLSTM
+from elou_tutor.ml.settings import ONNX_PATH
+from training.config import MODEL_PATH
+from training.train import RiskLSTM
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -35,8 +37,8 @@ def export_to_onnx():
     # Create dummy input
     dummy_input = torch.randn(1, 30, 7, dtype=torch.float32)
 
-    # Export path
-    onnx_path = os.path.join(os.path.dirname(MODEL_PATH), "model.onnx")
+    # Путь выгрузки — артефакты рантайм-пакета: инференс читает модель оттуда
+    onnx_path = ONNX_PATH
 
     # Export
     logger.info("Exporting model to ONNX at %s...", onnx_path)

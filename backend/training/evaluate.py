@@ -6,7 +6,7 @@
 2. Оценку Базовой пороговой модели (Baseline).
 3. Оценку нейросетевой модели RiskLSTM (через ONNX / PyTorch).
 4. Расчёт классификационных метрик: Recall, Precision, F1-Score, Lead Time.
-5. Генерирует итоговый отчёт ai_core/evaluation_report.md.
+5. Генерирует итоговый отчёт training/reports/evaluation_report.md.
 """
 
 import os
@@ -14,14 +14,16 @@ import sys
 import logging
 import numpy as np
 
-# Поддержка импорта из корня проекта
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+# Каталог backend/ — родитель training/. Установленный пакет кладёт в sys.path
+# только backend/src, поэтому «training» приходится добавлять самим.
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
-from ai_core.config import (
-    DATASET_PATH, SEQUENCE_LENGTH, FORECAST_HORIZON,
-    TRAIN_SPLIT, VAL_SPLIT, RISK_THRESHOLD
+from elou_tutor.ml.settings import SEQUENCE_LENGTH, FORECAST_HORIZON
+from training.config import (
+    DATASET_PATH, TRAIN_SPLIT, VAL_SPLIT, RISK_THRESHOLD,
+    REPORT_PATH,
 )
 from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_CRITICAL, COLUMN_PRES_CRITICAL, COLUMN_PRES_WARNING,
@@ -187,7 +189,7 @@ def evaluate_models():
 2. **Отсутствие Data Leakage:** Выборки разбиты строго по `session_id`, исключая попадание соседних окон одной сессии в обучении и тесте.
 """
 
-    report_path = os.path.join(os.path.dirname(__file__), "evaluation_report.md")
+    report_path = REPORT_PATH
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report_content)
 
