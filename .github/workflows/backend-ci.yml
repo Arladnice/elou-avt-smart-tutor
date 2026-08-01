@@ -8,9 +8,6 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'backend/**'
-      - 'simulator/**'
-      - 'ai_core/**'
-      - 'pyproject.toml'
       - '.github/workflows/backend-ci.yml'
       - 'docs/architecture.md'
 
@@ -23,9 +20,14 @@ jobs:
   lint-and-test:
     name: Lint & Test (backend)
     runs-on: ubuntu-latest
+    # Конфигурация проекта живёт в backend/pyproject.toml, поэтому ruff,
+    # pytest и pip запускаются из каталога backend.
+    defaults:
+      run:
+        working-directory: backend
     env:
-      # Секреты обязательны: backend/utils/security.py падает на импорте без них.
-      # Значения тестовые и используются только внутри прогона CI.
+      # Секреты обязательны: api/security.py и domain/integrity.py падают
+      # на импорте без них. Значения тестовые, только внутри прогона CI.
       INTEGRITY_SALT: ci-integrity-salt
       SECRET_KEY: ci-secret-key-for-tests-only-32b
     steps:
@@ -36,25 +38,29 @@ jobs:
           # Совпадает с базовым образом Dockerfile (python:3.12-slim)
           python-version: '3.12'
           cache: pip
+          # Пути кэша отсчитываются от корня репозитория, а не от working-directory
           cache-dependency-path: |
             backend/requirements.txt
             backend/requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -r backend/requirements-dev.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Lint (ruff)
         run: ruff check .
 
       - name: Tests (pytest)
-        run: pytest backend/tests -q
+        run: pytest tests -q
 
   architecture:
     name: Architecture (layers)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     env:
-      # lint-imports импортирует модули для построения графа,
-      # а backend/utils/security.py падает без секретов.
+      # lint-imports строит граф импортов и падает без секретов
+      # на api/security.py и domain/integrity.py.
       INTEGRITY_SALT: ci-integrity-salt
       SECRET_KEY: ci-secret-key-for-tests-only-32b
     steps:
@@ -69,8 +75,8 @@ jobs:
             backend/requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -r backend/requirements-dev.txt
+        run: pip install -r requirements-dev.txt
 
-      # Контракты слоёв заданы в [tool.importlinter] в pyproject.toml
+      # Контракты слоёв заданы в [tool.importlinter] в backend/pyproject.toml
       - name: Check layer contracts
         run: lint-imports

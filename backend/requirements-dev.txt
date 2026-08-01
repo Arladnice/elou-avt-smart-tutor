@@ -1,6 +1,9 @@
 # Зависимости только для запуска тестов и линтинга — в production-образ не входят.
 -r requirements.txt
 
+# Сам пакет: тесты импортируют elou_tutor, а не файлы по путям
+-e .
+
 # Запуск тестов
 pytest>=8.0.0
 # Нужен starlette.testclient (TestClient) в backend/tests/test_tutor.py
