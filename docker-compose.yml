@@ -34,9 +34,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    # 8080, а не 80: стандартный порт часто занят (Docker Desktop, OrbStack, nginx)
     ports:
-      - "8080:80"
+      - "80:80"
     depends_on:
       backend:
         condition: service_healthy
