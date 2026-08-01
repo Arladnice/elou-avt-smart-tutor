@@ -156,7 +156,7 @@ jobs:
           for i in $(seq 1 12); do
             if curl -fsS http://127.0.0.1:8000/api/health >/dev/null; then
               echo "✓ API отвечает"
-              curl -fsS http://127.0.0.1:8080/ >/dev/null && echo "✓ Интерфейс отдаётся"
+              curl -fsS http://127.0.0.1/ >/dev/null && echo "✓ Интерфейс отдаётся"
               exit 0
             fi
             sleep 5

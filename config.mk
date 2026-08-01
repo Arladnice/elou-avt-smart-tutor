@@ -28,7 +28,7 @@ endif
 # Значения зашиты в docker-compose.yml; здесь они нужны только чтобы
 # make start напечатал верные адреса. Меняете там — поправьте и тут.
 BACKEND_PORT  ?= 8000
-FRONTEND_PORT ?= 8080
+FRONTEND_PORT ?= 80
 
 # --- Исходники ---
 FRONTEND_DIR ?= frontend
