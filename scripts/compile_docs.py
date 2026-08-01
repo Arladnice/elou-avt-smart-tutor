@@ -2,7 +2,8 @@ import os
 from datetime import datetime
 
 def main():
-    base_dir = r"e:\Git-Projects\elou-avt-smart-tutor"
+    # Корень репозитория — на уровень выше каталога scripts/ (работает на любой машине)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     docs_dir = os.path.join(base_dir, "docs")
     output_file = os.path.join(docs_dir, "Сводная_пояснительная_записка.md")
     

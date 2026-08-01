@@ -17,7 +17,7 @@
 | :--- | :--- | :--- | :--- |
 | **Центральный сервер приложений** | CPU: 16 Cores (AMD EPYC / Intel Xeon 3.0+ GHz)<br>RAM: 32 GB DDR4/DDR5<br>SSD: 500 GB NVMe (RAID 1) | CPU: 8 Cores<br>RAM: 16 GB<br>SSD: 240 GB | Работа оркестратора сессий, API бэкенда (FastAPI), СУБД и веб-сервера. |
 | **Сервер симуляции процессов (Simulation Cluster)** | CPU: 32 Cores (высокая частота ядра)<br>RAM: 64 GB<br>SSD: 500 GB NVMe | CPU: 16 Cores<br>RAM: 32 GB | Изолированное выполнение математических моделей (stateful-вычисления). |
-| **Вычислительный узел ИИ (AI Core Server)** | CPU: 8 Cores<br>RAM: 32 GB<br>GPU: NVIDIA A10G / T4 (16 GB VRAM)<br>CUDA Cores: 2560+ | CPU: 4 Cores<br>RAM: 16 GB<br>GPU: NVIDIA T4 (8 GB VRAM) | Инференс LSTM-моделей прогнозирования риска, расчет DTW и подбор рекомендаций. |
+| **Вычислительный узел ИИ (AI Core Server)** | CPU: 8 Cores<br>RAM: 32 GB<br>GPU: NVIDIA A10G / T4 (16 GB VRAM)<br>CUDA Cores: 2560+ | CPU: 4 Cores<br>RAM: 16 GB<br>GPU: NVIDIA T4 (8 GB VRAM) | Инференс LSTM-моделей прогнозирования риска, расчет LCS-выравнивания и подбор рекомендаций. |
 
 ---
 
