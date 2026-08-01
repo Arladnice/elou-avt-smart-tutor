@@ -10,8 +10,6 @@ passlib==1.7.4
 bcrypt==3.2.2
 # Используется в /api/health/metrics для сбора USE-метрик
 psutil==7.2.2
-# Транспорт для fastapi.testclient (TestClient) в тестах
-httpx==0.28.1
 # Опционально для тяжелого нейросетевого RAG (требует >512 MB RAM, не рекомендуется на бесплатном тарифе Render):
 # sentence-transformers>=2.2.2
 # faiss-cpu>=1.7.4

@@ -146,27 +146,43 @@ class TestPackagingHygiene(unittest.TestCase):
     """Зависимости и образ должны быть воспроизводимыми."""
 
     def setUp(self):
-        with open(os.path.join(BACKEND_DIR, "requirements.txt"), encoding="utf-8") as f:
-            self.requirements = [
+        self.requirements = self._read("requirements.txt")
+        self.dev_requirements = self._read("requirements-dev.txt")
+
+    @staticmethod
+    def _read(filename):
+        path = os.path.join(BACKEND_DIR, filename)
+        if not os.path.isfile(path):
+            return []
+        with open(path, encoding="utf-8") as f:
+            return [
                 line.strip() for line in f
-                if line.strip() and not line.strip().startswith("#")
+                if line.strip()
+                and not line.strip().startswith("#")
+                and not line.strip().startswith("-r ")
             ]
 
-    def _names(self):
+    @staticmethod
+    def _names(requirements):
         import re
-        return [re.split(r"[<>=!]", r)[0].strip().lower() for r in self.requirements]
+        return [re.split(r"[<>=!]", r)[0].strip().lower() for r in requirements]
 
     def test_no_duplicate_dependencies(self):
-        names = self._names()
+        names = self._names(self.requirements)
         duplicates = {n for n in names if names.count(n) > 1}
         self.assertEqual(duplicates, set(), f"Дублирующиеся зависимости: {duplicates}")
 
-    def test_declares_runtime_dependencies_actually_imported(self):
-        """psutil импортируется в health.py, httpx нужен тестам через TestClient."""
-        names = self._names()
-        for required in ("psutil", "httpx"):
-            with self.subTest(package=required):
-                self.assertIn(required, names)
+    def test_runtime_declares_what_the_service_imports(self):
+        """psutil импортируется в health.py — без него метрики молча нулевые."""
+        self.assertIn("psutil", self._names(self.requirements))
+
+    def test_test_only_dependencies_stay_out_of_runtime(self):
+        """
+        httpx нужен только TestClient. В рантайм-списке ему не место:
+        иначе тестовая зависимость едет в production-образ.
+        """
+        self.assertIn("httpx", self._names(self.dev_requirements))
+        self.assertNotIn("httpx", self._names(self.requirements))
 
     def test_dockerfile_declares_required_secrets(self):
         """Без INTEGRITY_SALT и SECRET_KEY контейнер падает на импорте."""
