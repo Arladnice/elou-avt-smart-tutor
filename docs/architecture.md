@@ -21,9 +21,9 @@
 
 | Уровень | Что это | Где в коде |
 |---|---|---|
-| 1. Физика | Математическая модель процесса | `simulator/elou_avt_model.py` |
-| 2. Дефекты | Формализованные отказы оборудования | `defects` в том же файле + `backend/data/scenarios.json` |
-| 3. ИИ | Прогноз риска, анализ действий, адаптивные траектории | `ai_core/` |
+| 1. Физика | Математическая модель процесса | `elou_tutor/simulation/model.py` |
+| 2. Дефекты | Формализованные отказы оборудования | `defects` в том же файле + `elou_tutor/data/scenarios.json` |
+| 3. ИИ | Прогноз риска, анализ действий, адаптивные траектории | `elou_tutor/ml/` и `elou_tutor/tutor/` |
 
 ### Границы модели (важно не переоценивать)
 
@@ -41,60 +41,96 @@
 
 ```
 elou-avt-smart-tutor/
-├── backend/          FastAPI: HTTP/WebSocket, БД, авторизация, оркестрация сессий
-├── simulator/        Физическая модель установки (чистая логика, без веб-слоя)
-├── ai_core/          ИИ: прогноз риска (LSTM/ONNX), анализ ошибок (LCS + правила), регламенты
+├── backend/
+│   ├── src/elou_tutor/   Питон-пакет: весь рантайм (см. дерево ниже)
+│   ├── training/         Офлайн-обучение LSTM. В прод-образ НЕ входит (нужен torch)
+│   ├── tests/            pytest: 149 тестов
+│   ├── pyproject.toml    Метаданные пакета, package data, конфиг ruff и контрактов слоёв
+│   └── Dockerfile        Образ бэкенда для docker-compose
 ├── frontend/         React 19 + TypeScript, архитектура Feature-Sliced Design
-├── docs/             Проектная документация и материалы защиты
-├── scripts/          Служебные скрипты (сборка пояснительной записки)
+├── docs/             Проектная документация, инструменты сборки, материалы защиты
 ├── Makefile          init / start / stop / lint
 ├── config.mk         Настройки Makefile (порты, инструменты) — правьте этот файл, не Makefile
 ├── docker-compose.yml   Локальный запуск: 2 контейнера (backend + nginx с фронтом)
 └── Dockerfile        Отдельная одноконтейнерная сборка для облака (Render / HF Spaces)
 ```
 
-**Зависимости между пакетами Python:**
+Весь рантайм — один устанавливаемый пакет `elou_tutor` со src-layout. Импорты везде абсолютные: `from elou_tutor.<слой>.<модуль> import ...`. Никаких `sys.path`-хаков в самом пакете нет.
 
 ```
-backend    →  simulator, ai_core                 (backend оркеструет)
-simulator  →  ai_core.config                     (только константы)
-simulator  →  backend.services.scenario_manager  (ленивый импорт в try/except)
-ai_core    →  backend.services.scenario_manager  (ленивый импорт в try/except)
-ai_core    →  simulator                          (только офлайн-генератор датасета)
+backend/src/elou_tutor/
+├── domain/         Предметная область: пороги регламента, тексты регламента,
+│   │               хэш целостности, хэширование паролей. Ни от кого не зависит
+│   ├── process_limits.py    Физические пороги (ПАЗ, ESD, аварийные уровни)
+│   ├── regulations.py       Тексты техрегламента для объяснений тьютора
+│   ├── integrity.py         HMAC-SHA256: calculate_/verify_integrity_hash
+│   └── credentials.py       bcrypt: get_password_hash / verify_password
+├── simulation/     Физическая модель и реестр сценариев
+│   ├── model.py             ELOUAVTSimulator — шаг физики раз в секунду
+│   └── scenarios.py         Загрузка/запись реестра сценариев
+├── tutor/          Оценка действий оператора (Уровень 3)
+│   ├── analyzer.py          ErrorAnalyzer: LCS + правила регламента
+│   └── alignment.py         calculate_lcs_alignment
+├── ml/             Рантайм-инференс риска
+│   ├── predictor.py         RiskPredictor: ONNX + математический fallback
+│   ├── settings.py          Гиперпараметры и нормировка (общие с обучением)
+│   └── artifacts/           model.onnx — package data
+├── db/             SQLite: схема, запросы, журнал аудита
+│   ├── database.py, queries.py
+│   └── audit.py             Цепочка блоков prev_hash
+├── services/       Оркестрация: сессии, фоновый цикл, ИИ-чат, RAG, анти-SSRF
+├── api/            Транспорт: FastAPI-приложение, роутеры, схемы, JWT/RBAC
+│   ├── main.py, security.py, deps.py, schemas.py
+│   └── routes/
+├── data/scenarios.json      Реестр сценариев — package data
+└── knowledge_base/          Документы для RAG — package data
 ```
 
-Три последние стрелки — **единственные допущенные исключения**, и они намеренные:
+**Правило зависимостей — строго вниз:**
 
-- `simulator.reset()` и `ErrorAnalyzer` берут из реестра сценариев начальное состояние и эталонную последовательность. Импорт ленивый (внутри функции) и обёрнут в `try/except`, поэтому офлайн-скрипты `train.py` и `evaluate.py` работают без запущенного бэкенда.
-- `ai_core/data_generator.py` специально крутит симулятор, чтобы получить синтетическую телеметрию для обучения.
+```
+api  →  services  →  db  →  domain
+                ↘   simulation  →  domain
+                ↘   tutor  →  simulation, domain
+                ↘   ml  →  domain
+```
 
-> Эти правила **проверяются автоматически** — см. §8.3. Любая новая связь между пакетами уронит CI, пока не будет осознанно добавлена в контракт.
+Восходящих зависимостей нет **ни одной**. Циклов нет: `tutor` знает про `simulation` (ему нужны эталонные последовательности из реестра сценариев), обратное направление запрещено контрактом.
+
+`backend/training/` стоит особняком: он импортирует `elou_tutor.ml.settings`, `elou_tutor.simulation.model` и `elou_tutor.domain.process_limits`, но сам пакет про него не знает и знать не должен — это проверяется тестом `backend/tests/test_training_isolation.py`.
+
+> Правила зависимостей **проверяются автоматически** — см. §8.3. Любая восходящая связь уронит CI.
 
 ---
 
 ## 3. Бэкенд
 
-### 3.1. Точка входа — `backend/main.py`
+### 3.1. Точка входа — `elou_tutor/api/main.py`
+
+Запуск: `uvicorn elou_tutor.api.main:app`. Пакет должен быть установлен (`pip install -e backend`).
 
 Порядок инициализации важен:
 
-1. `load_dotenv()` **до** импорта приложения — `backend/utils/security.py` бросает `ValueError` на импорте, если нет `INTEGRITY_SALT` и `SECRET_KEY`.
+1. `load_dotenv()` **до** импорта приложения — `api/security.py` бросает `ValueError` на импорте, если нет `INTEGRITY_SALT` и `SECRET_KEY`.
 2. `lifespan`: `init_db()` → запуск фоновой задачи `simulation_loop()` → аудит `STARTUP`. На выходе задача отменяется.
 3. CORS: origins из `ALLOWED_ORIGINS` (CSV), wildcard намеренно не используется.
 4. Регистрация роутеров.
-5. **Последней** — раздача SPA: `/assets` и catch-all `/{path:path}`. Регистрируется в конце, чтобы не перехватывать `/api` и `/ws`. Есть защита от path traversal (`resolve_static_file`).
+5. **Последней** — раздача SPA: `/assets` и catch-all `/{path:path}`. Каталог статики берётся из `STATIC_DIR`, по умолчанию `<корень репозитория>/frontend/dist`. Регистрируется в конце, чтобы не перехватывать `/api` и `/ws`. Есть защита от path traversal (`resolve_static_file`).
 
-> **Добавляя роутер:** создайте `backend/routes/<name>.py` с `router = APIRouter(prefix="/api/<name>")`, импортируйте в `main.py` и вызовите `app.include_router(...)` **до блока статики**.
+> **Добавляя роутер:** создайте `elou_tutor/api/routes/<name>.py` с `router = APIRouter(prefix="/api/<name>")`, импортируйте в `main.py` и вызовите `app.include_router(...)` **до блока статики**.
 
 ### 3.2. Слои
 
 | Слой | Каталог | Ответственность |
 |---|---|---|
-| Транспорт | `backend/routes/` | Разбор запроса, авторизация, вызов сервиса. Без бизнес-логики |
-| Сервисы | `backend/services/` | Состояние сессий, фоновый цикл, реестр сценариев, ИИ-чат, RAG |
-| Данные | `backend/db/` | SQLite: схема, запросы, целостность |
-| Утилиты | `backend/utils/` | JWT/RBAC-зависимости, крипто и аудит, анти-SSRF |
-| Контракты | `backend/models/schemas.py` | Pydantic-модели запросов и ответов |
+| Транспорт | `elou_tutor/api/routes/` | Разбор запроса, авторизация, вызов сервиса. Без бизнес-логики |
+| Транспорт (обвязка) | `elou_tutor/api/` | Приложение, JWT/RBAC (`security.py`, `deps.py`), Pydantic-схемы (`schemas.py`) |
+| Сервисы | `elou_tutor/services/` | Состояние сессий, фоновый цикл, ИИ-чат, RAG, анти-SSRF (`net.py`) |
+| Данные | `elou_tutor/db/` | SQLite: схема, запросы, журнал аудита |
+| Симуляция | `elou_tutor/simulation/` | Физическая модель, реестр сценариев |
+| Тьютор | `elou_tutor/tutor/` | Оценка действий: LCS-выравнивание + правила регламента |
+| Инференс | `elou_tutor/ml/` | Прогноз риска: ONNX + математический fallback |
+| Домен | `elou_tutor/domain/` | Пороги и тексты регламента, хэш целостности, хэш паролей |
 
 ### 3.3. REST API и права доступа
 
@@ -109,7 +145,7 @@ ai_core    →  simulator                          (только офлайн-г
 | `POST /api/ai/chat` | любой авторизованный |
 | `POST /api/alarm-feedback` | **только инструктор** |
 
-Права даются **декларативно**, через зависимости из `backend/utils/deps.py`:
+Права даются **декларативно**, через зависимости из `elou_tutor/api/deps.py`:
 
 ```python
 from backend.utils.deps import get_current_user, require_instructor
@@ -137,7 +173,7 @@ Handshake отклоняет соединение кодом `4003` при: не
 |---|---|
 | `toggle_valve`, `change_setpoint`, `trigger_esd`, `call_dispatcher`, `complete`, `ping`, `change_scenario`, `reset` | `trigger_defect`, `change_speed`, `toggle_pause`, `save_state`, `load_state`, `configure_webhook`, `toggle_mute`, `change_mode` |
 
-Список прав — константа в `backend/routes/ws.py`; попытка оператора выполнить команду инструктора даёт ошибку в сокет и запись `UNAUTHORIZED_COMMAND` в аудит.
+Список прав — константа в `elou_tutor/api/routes/ws.py`; попытка оператора выполнить команду инструктора даёт ошибку в сокет и запись `UNAUTHORIZED_COMMAND` в аудит.
 
 **Пакет телеметрии** (раз в секунду, формируется в `SimulationSession.get_full_state()`), 21 поле:
 
@@ -153,7 +189,7 @@ speedMultiplier, isPaused, hasSnapshot, mode, webhookUrl, webhookActive, mutes
 
 ### 3.5. Изоляция сессий
 
-`SimulationSession` (`backend/services/connection_manager.py`) — одна учебная сессия: **собственный экземпляр симулятора и анализатора ошибок**, свои действия, журнал, история телеметрии, снапшот. Ключ — `session_id` из query.
+`SimulationSession` (`elou_tutor/services/connection_manager.py`) — одна учебная сессия: **собственный экземпляр симулятора и анализатора ошибок**, свои действия, журнал, история телеметрии, снапшот. Ключ — `session_id` из query.
 
 Важные правила:
 - **Предиктор один на процесс** (`get_shared_predictor()`) — ONNX-рантайм дорого создавать.
@@ -161,7 +197,7 @@ speedMultiplier, isPaused, hasSnapshot, mode, webhookUrl, webhookActive, mutes
 - Сессия удаляется из пула, когда закрылся последний сокет.
 - Лимиты: не более 50 активных сессий, 200 записей журнала и 500 действий на сессию (кольцевая обрезка).
 
-### 3.6. Фоновый цикл физики — `backend/services/simulation_loop.py`
+### 3.6. Фоновый цикл физики — `elou_tutor/services/simulation_loop.py`
 
 Один `asyncio`-таск на процесс: раз в секунду проходит по всем сессиям, делает шаг физики, копит телеметрию (окно 30 точек × 7 признаков), проверяет пороги и рассылает состояние.
 
@@ -172,16 +208,16 @@ speedMultiplier, isPaused, hasSnapshot, mode, webhookUrl, webhookActive, mutes
 
 ### 3.7. Данные и целостность
 
-Четыре таблицы SQLite (`backend/db/database.py`): `training_sessions`, `audit_logs`, `users`, `login_attempts`.
+Четыре таблицы SQLite (`elou_tutor/db/database.py`): `training_sessions`, `audit_logs`, `users`, `login_attempts`.
 
-Два независимых механизма защиты от подделки:
+Два независимых механизма защиты от подделки. Сам алгоритм хэширования живёт в домене (`domain/integrity.py`) — он нужен и слою данных, и сервисам, поэтому не может лежать выше:
 
-1. **Результаты сессии** — `integrity_hash = HMAC-SHA256(INTEGRITY_SALT, поля через разделитель)`. При чтении `GET /api/sessions` хэш пересчитывается, в ответ добавляется `integrity_valid`. Правка оценки прямо в БД сразу видна в интерфейсе инструктора.
-2. **Журнал аудита** — **цепочка блоков**: каждая запись включает хэш предыдущей (`prev_hash`). `verify_audit_chain()` находит первую расхождение — так ловится не только правка, но и **удаление** записи.
+1. **Результаты сессии** — `integrity_hash = HMAC-SHA256(INTEGRITY_SALT, поля через разделитель)`, функции `calculate_integrity_hash` / `verify_integrity_hash` из `domain/integrity.py`. При чтении `GET /api/sessions` хэш пересчитывается, в ответ добавляется `integrity_valid`. Правка оценки прямо в БД сразу видна в интерфейсе инструктора.
+2. **Журнал аудита** — `db/audit.py`, **цепочка блоков**: каждая запись включает хэш предыдущей (`prev_hash`). `verify_audit_chain()` находит первое расхождение — так ловится не только правка, но и **удаление** записи.
 
-Демо-учётные записи (`seed_users`): `operator_1`, `operator_2`, `operator_3`, `instructor_1`, пароль `Ktk_2026!` (bcrypt).
+Демо-учётные записи (`seed_users`): `operator_1`, `operator_2`, `operator_3`, `instructor_1`, пароль `Ktk_2026!` (bcrypt, `domain/credentials.py`).
 
-### 3.8. Симулятор — `simulator/elou_avt_model.py`
+### 3.8. Симулятор — `elou_tutor/simulation/model.py`
 
 Чистый класс `ELOUAVTSimulator` без веб-зависимостей. Публичный API:
 
@@ -198,22 +234,28 @@ get_state() / get_snapshot() / load_snapshot(s)
 
 **8 дефектов:** `pump_fail`, `coil_overheat`, `valve_jam`, `power_fail`, `air_fail`, `steam_fail`, `elou_desalt_fail`, `vt_vacuum_loss`.
 
-Все пороги и коэффициенты — в `ai_core/config.py`. **Не хардкодьте числа в модели** — добавляйте константу туда.
+Все пороги — в `elou_tutor/domain/process_limits.py`. **Не хардкодьте числа в модели** — добавляйте константу туда.
 
 > **Добавляя дефект:** ключ в словарь `defects` → влияние на уравнения в `step()` → русское название в `DEFECT_NAMES_RU` (`ws.py`) → `DefectId` на фронте (`entities/telemetry/model/types.ts`) → тумблер в панели инструктора → тест парирования.
 
-### 3.9. ИИ-ядро — `ai_core/`
+### 3.9. ИИ: тьютор, инференс и офлайн-обучение
 
-| Файл | Роль |
+Бывшее «ИИ-ядро» разведено по трём местам — по признаку «нужно ли это в рантайме».
+
+| Модуль | Роль |
 |---|---|
-| `config.py` | Единственный источник констант: пороги, гиперпараметры, веса риска |
-| `predictive_engine.py` | `RiskPredictor` — прогноз на 15 с вперёд и уровень риска |
-| `error_analyzer.py` | `ErrorAnalyzer.evaluate_session(...)` — оценка действий оператора |
-| `sequence_alignment.py` | `calculate_lcs_alignment()` — сравнение с эталоном |
-| `tech_regulations.py` | Таксономия ошибок и тексты пунктов регламента |
-| `train.py` / `export_onnx.py` / `evaluate.py` / `data_generator.py` / `baselines.py` | Офлайн-конвейер: данные → обучение → экспорт в ONNX → честная оценка |
+| `elou_tutor/ml/predictor.py` | `RiskPredictor` — прогноз на 15 с вперёд и уровень риска |
+| `elou_tutor/ml/settings.py` | Гиперпараметры, нормировка, веса риска, путь к ONNX |
+| `elou_tutor/ml/artifacts/model.onnx` | Обученная модель, едет вместе с пакетом (package data) |
+| `elou_tutor/tutor/analyzer.py` | `ErrorAnalyzer.evaluate_session(...)` — оценка действий оператора |
+| `elou_tutor/tutor/alignment.py` | `calculate_lcs_alignment()` — сравнение с эталоном |
+| `elou_tutor/domain/regulations.py` | Таксономия ошибок и тексты пунктов регламента |
+| `elou_tutor/domain/process_limits.py` | Физические пороги: ПАЗ, ESD, аварийные уровни |
+| `backend/training/` | Офлайн-конвейер: данные → обучение → экспорт в ONNX → честная оценка |
 
-**Прогноз риска.** Вход — окно 30 с × 7 признаков `[V_1, V_2, V_3, T_1_Sp, T_1, P_1, L_1]`. Выход — прогноз `[T_1, P_1, L_1]` на t+15 с и риск 0–100 %. Каскад загрузки: **ONNX Runtime → PyTorch → математический fallback** (`np.polyfit` по последним 10 точкам). В продакшене работает ONNX-ветка: `onnxruntime` есть в зависимостях, `torch` — нет. Прогноз нейросети и математический объединяются консервативно (берётся худший случай).
+**Прогноз риска.** Вход — окно 30 с × 7 признаков `[V_1, V_2, V_3, T_1_Sp, T_1, P_1, L_1]`. Выход — прогноз `[T_1, P_1, L_1]` на t+15 с и риск 0–100 %. Каскад загрузки: **ONNX Runtime → математический fallback** (`np.polyfit` по последним 10 точкам). PyTorch в рантайме нет вовсе: `torch` не входит в зависимости прод-образа (сотни мегабайт против лимита Render в 512 МБ), поэтому и ветки для него в коде нет — она жила бы недостижимой. Прогноз нейросети и математический объединяются консервативно (берётся худший случай).
+
+Обучение и инференс не разъезжаются потому, что гиперпараметры и нормировка у них общие: `backend/training/` импортирует `elou_tutor.ml.settings`, а не держит свою копию констант.
 
 **Анализ действий.** `evaluate_session()` возвращает кортеж из **четырёх** элементов:
 
@@ -223,7 +265,7 @@ score, errors, recommendations, recommended_scenario_id = analyzer.evaluate_sess
 
 Оценка = процент совпадения с эталоном по **LCS** (наибольшая общая подпоследовательность) минус штрафы за нарушения регламента. Алгоритм именно LCS, не DTW — учитывает порядок действий независимо от темпа. Каждая ошибка содержит пункт регламента, объяснение и **локализацию во времени** (`at_second`, `action_index`). По итогам назначается следующий сценарий обучения (`PROGRESSION_MAP`) или повтор проблемного.
 
-### 3.10. Сценарии — `backend/data/scenarios.json`
+### 3.10. Сценарии — `elou_tutor/data/scenarios.json`
 
 Единый реестр для бэкенда, фронтенда и анализатора. Структура:
 
@@ -248,7 +290,7 @@ score, errors, recommendations, recommended_scenario_id = analyzer.evaluate_sess
 
 **Типы условий:** `valve_is`, `sensor_gte`, `sensor_lte`, `composite_and` (вложенные условия).
 
-**`golden_sequence`** — эталон для LCS-оценки. Элементы обязаны входить в `PRODUCIBLE_ACTIONS` (`backend/models/schemas.py`), иначе импорт отклоняется с 422. Допустимые значения: `V1/V2/V3/V_ELOU/V_VT` × `_OPEN/_CLOSE`, плюс `SP_UP`, `SP_DOWN`, `ESD`, `CALL_DISPATCHER`.
+**`golden_sequence`** — эталон для LCS-оценки. Элементы обязаны входить в `PRODUCIBLE_ACTIONS` (`elou_tutor/api/schemas.py`), иначе импорт отклоняется с 422. Допустимые значения: `V1/V2/V3/V_ELOU/V_VT` × `_OPEN/_CLOSE`, плюс `SP_UP`, `SP_DOWN`, `ESD`, `CALL_DISPATCHER`.
 
 > **Осторожно:** в `golden_sequence` пишутся **имена действий**, а не `id` шагов чек-листа. Ошибка здесь тихо ломает оценку — сценарий никогда не наберёт 100 баллов. Есть тест, проверяющий, что каждый шаг эталона достижим оператором.
 
@@ -325,16 +367,16 @@ widgets/<kebab-case>/
 | Что | Бэкенд | Фронтенд |
 |---|---|---|
 | Пакет телеметрии | `SimulationSession.get_full_state()` | `TelemetryState` + `SessionState` |
-| Клапаны, дефекты, датчики | `simulator/elou_avt_model.py` | `entities/telemetry/model/types.ts` |
-| Сценарии | `models/schemas.py` | `entities/scenario/model/types.ts` |
-| Метрики системы | `SystemMetrics` в `schemas.py` | `shared/api/healthApi.ts` |
+| Клапаны, дефекты, датчики | `elou_tutor/simulation/model.py` | `entities/telemetry/model/types.ts` |
+| Сценарии | `elou_tutor/api/schemas.py` | `entities/scenario/model/types.ts` |
+| Метрики системы | `SystemMetrics` в `api/schemas.py` | `shared/api/healthApi.ts` |
 
 **При изменении формата пакета телеметрии правьте обе стороны одновременно** — типизация фронта не выводится из бэкенда автоматически.
 
 ### Места, где логика продублирована (правьте все копии сразу)
 
-1. **Условия чек-листа** — три реализации: `backend/services/ai_chat_service.py`, `widgets/scenario-checklist`, тип в `entities/scenario`.
-2. **Пороговые значения** — `ai_core/config.py` и `frontend/src/shared/config/thresholds.ts` синхронизируются вручную. Сейчас есть расхождения: `TEMP_WARNING` 310 против 340, `LEVEL_LOW` 20 против 18. Фронтовые пороги влияют только на подсветку в интерфейсе, аварийная логика целиком на бэкенде.
+1. **Условия чек-листа** — три реализации: `elou_tutor/services/ai_chat_service.py`, `widgets/scenario-checklist`, тип в `entities/scenario`.
+2. **Пороговые значения** — `elou_tutor/domain/process_limits.py` и `frontend/src/shared/config/thresholds.ts` синхронизируются вручную. Сейчас есть расхождения: `TEMP_WARNING` 310 против 340, `LEVEL_LOW` 20 против 18. Фронтовые пороги влияют только на подсветку в интерфейсе, аварийная логика целиком на бэкенде.
 
 ---
 
@@ -349,8 +391,11 @@ widgets/<kebab-case>/
 | `ALLOWED_ORIGINS` | `http://localhost:5173,...` | CSV; в Docker фронт и API на одном origin |
 | `PORT` | `8000` | |
 | `DATABASE_PATH` | `backend/tutor.db` | В контейнере — том `/app/data` |
-| `SCENARIOS_PATH` | `backend/data/scenarios.json` | Тесты подменяют на временную копию |
+| `SCENARIOS_PATH` | `<пакет>/data/scenarios.json` | Тесты подменяют на временную копию |
+| `STATIC_DIR` | `<корень>/frontend/dist` | Каталог собранного SPA; в облачном образе `/app/frontend/dist` |
 | `LIGHTWEIGHT_RAG` | `1` | `1` — TF-IDF (<60 МБ); `0` — SentenceTransformer + FAISS |
+| `LLM_BASE_URL` | `http://127.0.0.1:1234` | OpenAI-совместимый сервер (LM Studio). В Compose — `host.docker.internal`: внутри контейнера `127.0.0.1` указывает на сам контейнер |
+| `LLM_HEALTH_URL` | `${LLM_BASE_URL}/v1/models` | Проба живости LLM для `/api/health` |
 | `LLM_TIMEOUT_SEC` | `30` | Таймаут локальной LLM |
 
 Фронтенд: `VITE_API_URL`, `VITE_WS_URL` (в дев-режиме заданы в `frontend/.env.development`).
@@ -377,7 +422,7 @@ make lint    # oxlint по фронту + проверка синтаксиса 
 ### Локально: `docker-compose.yml`
 
 Два контейнера:
-- `backend` — `backend/Dockerfile`, uvicorn с `--reload`, код примонтирован для горячей перезагрузки, БД в именованном томе `tutor_data`, healthcheck на `/api/health`. Секреты обязательны: синтаксис `${VAR:?...}` не даст стеку подняться без `.env`.
+- `backend` — `backend/Dockerfile`, uvicorn с `--reload`. Образ **ставит пакет** (`pip install .`), а исходники `backend/src` дополнительно монтируются в `/app/src` вместе с `PYTHONPATH=/app/src` — без этой переменной смонтированный код проигрывал бы копии в `site-packages`, и `--reload` перезапускал бы сервер вхолостую. БД в именованном томе `tutor_data`, healthcheck на `/api/health`. Секреты обязательны: синтаксис `${VAR:?...}` не даст стеку подняться без `.env`.
 - `frontend` — nginx со сборкой React; стартует только после `service_healthy` бэкенда; проксирует `/api` и `/ws` на `backend:8000`.
 
 Особенности `nginx.conf`: отдельный формат лога **без query string** — чтобы JWT из URL WebSocket не оседал в access-логах; таймаут WS 3600 с, так как учебные сессии долгие.
@@ -386,7 +431,9 @@ make lint    # oxlint по фронту + проверка синтаксиса 
 
 ### Облако: корневой `Dockerfile`
 
-Одноконтейнерная сборка для Render / Hugging Face Spaces: фронт собирается на первой стадии, статика кладётся в `frontend/dist`, и **FastAPI сам раздаёт SPA**. Отсюда и порядок регистрации catch-all в `main.py`. Compose этот образ не использует.
+Одноконтейнерная сборка для Render / Hugging Face Spaces: фронт собирается на первой стадии, статика кладётся в `/app/frontend/dist` (и туда же указывает `STATIC_DIR`), и **FastAPI сам раздаёт SPA**. Отсюда и порядок регистрации catch-all в `main.py`. Compose этот образ не использует.
+
+Оба образа ставят пакет из исходников (`COPY backend/pyproject.toml` + `COPY backend/src` + `pip install --no-deps .`). Это не косметика: `scenarios.json`, `knowledge_base/` и `model.onnx` объявлены как package data в `pyproject.toml` — при простом копировании каталога они бы не попали туда, где их ищет код. Каталог `backend/training/` в образы намеренно не копируется (он же в `.dockerignore`): обучение требует torch и в рантайме не нужно.
 
 ---
 
@@ -395,32 +442,34 @@ make lint    # oxlint по фронту + проверка синтаксиса 
 ### Порядок действий для новой функции
 
 1. **Тест первым.** Найдите подходящий файл в `backend/tests/` (или создайте новый) и напишите падающий тест, фиксирующий требуемое поведение.
-2. **Реализация в правильном слое:** физика → `simulator/`, оценка и прогноз → `ai_core/`, транспорт и права → `backend/routes/`, состояние сессии → `backend/services/`.
-3. **Константы — в `ai_core/config.py`**, не в теле функций.
+2. **Реализация в правильном слое:** физика → `simulation/`, оценка → `tutor/`, прогноз → `ml/`, транспорт и права → `api/routes/`, состояние сессии → `services/`, хранение → `db/`.
+3. **Константы — в `domain/`** (`process_limits.py` для порогов, `regulations.py` для текстов), не в теле функций.
 4. **Фронт:** тип в `entities/`, отображение в `widgets/`, сборка на странице в `pages/`.
 5. **Проверка:** линт и тесты (см. ниже).
 
 ### Проверки перед сдачей работы
 
+Python-проверки запускаются **из каталога `backend/`** — там лежит `pyproject.toml` с конфигом ruff и контрактами слоёв:
+
 ```bash
+cd backend
 ruff check .                                   # линт Python
-lint-imports                                   # контракты слоёв бэкенда
-pytest backend/tests -q                        # 128 тестов
+INTEGRITY_SALT=dev-salt SECRET_KEY=dev-secret pytest tests -q    # 149 тестов
+lint-imports                                   # контракты слоёв пакета
+```
+
+```bash
 cd frontend && npm run lint && npm run build   # oxlint + tsc + vite
 cd frontend && npm run check:fsd               # правила слоёв FSD
 ```
 
-Тестам нужны переменные окружения:
+Тестам обязательны `INTEGRITY_SALT` и `SECRET_KEY`: без них приложение падает уже на импорте — это намеренно.
 
-```bash
-INTEGRITY_SALT=dev-salt SECRET_KEY=dev-secret pytest backend/tests -q
-```
-
-CI выполняет ровно эти шаги. Оба workflow запускаются только на pull request и отменяют предыдущий прогон при новом пуше.
+CI выполняет ровно эти шаги. Оба workflow запускаются только на pull request и отменяют предыдущий прогон при новом пуше. В `backend-ci.yml` обе джобы объявляют `working-directory: backend` — это не косметика: строка `-e .` в `requirements-dev.txt` разрешается относительно текущего каталога, поэтому запуск из корня поставил бы не тот проект.
 
 | Workflow | Джоба | Шаги |
 |---|---|---|
-| `backend-ci.yml` | `lint-and-test` | `ruff check .` → `pytest backend/tests -q` |
+| `backend-ci.yml` | `lint-and-test` | `ruff check .` → `pytest tests -q` |
 | | `architecture` | `lint-imports` — контракты слоёв |
 | `frontend-ci.yml` | `lint-and-build` | `npm run lint` → `npm run build` |
 | | `architecture` | `npm run check:fsd` — правила слоёв FSD |
@@ -429,18 +478,20 @@ CI выполняет ровно эти шаги. Оба workflow запуска
 
 Правила из разделов 2 и 4.1 — не пожелания, а **проверяемые контракты**. Джоба падает, если появилась связь, которой не должно быть.
 
-**Бэкенд — `lint-imports`** ([import-linter](https://import-linter.readthedocs.io/)), контракты объявлены в `pyproject.toml`, секция `[tool.importlinter]`:
+**Бэкенд — `lint-imports`** ([import-linter](https://import-linter.readthedocs.io/)), шесть контрактов объявлены в `backend/pyproject.toml`, секция `[tool.importlinter]`:
 
 | Контракт | Что запрещает |
 |---|---|
-| Слои бэкенда | `services` не может импортировать `routes` |
-| Слой данных и утилиты | `db` и `utils` не тянут `routes`/`services` |
-| Pydantic-схемы | `models` остаётся чистым контрактом без зависимостей |
-| ai_core ↮ backend | ИИ-ядро не зависит от веб-слоя |
-| simulator ↮ backend | Симулятор не зависит от веб-слоя |
-| ai_core ↮ simulator | ИИ-ядро не тянет физику в рантайме |
+| Слои пакета: api → services → db → domain | Любой импорт снизу вверх по основной оси |
+| Домен автономен | `domain` не знает ни об одном другом слое |
+| Симуляция зависит только от домена | `simulation` не тянет `api`, `services`, `db`, а также `tutor` и `ml` |
+| Тьютор зависит от домена и симуляции | `tutor` не тянет `api`, `services`, `db`, `ml` |
+| Инференс зависит только от домена | `ml` не тянет `api`, `services`, `db`, `tutor`, `simulation` |
+| Слой данных не знает о бизнес-слоях | `db` не тянет `simulation`, `tutor`, `ml` |
 
-Три документированных исключения (ленивые импорты реестра сценариев и офлайн-генератор датасета) перечислены в `ignore_imports` — они видны в конфиге, а не спрятаны в коде.
+**Ни одного `ignore_imports`.** Это не случайность, а следствие того, как разложен домен: раньше физическая модель и анализатор тянули реестр сценариев ленивым импортом через веб-слой, обёрнутым в `try/except` — обход, который приходилось прощать контракту. Теперь реестр сам лежит в `simulation/`, и обход не нужен. Так же с криптографией: `calculate_integrity_hash` нужен и слою данных, и сервисам, поэтому живёт в `domain/integrity.py`, а `api/security.py` его лишь реэкспортирует для удобства роутеров.
+
+Разделение «симуляция» и «тьютор» на два отдельных контракта тоже не формальность: `tutor` обязан видеть `simulation` (ему нужны эталонные последовательности), поэтому обратное направление приходится запрещать явно — иначе пара образовала бы цикл, который контракт молча пропустил бы.
 
 **Фронтенд — `frontend/scripts/check-fsd.mjs`** (без зависимостей, только стандартная библиотека Node). Проверяет два правила:
 
@@ -449,7 +500,7 @@ CI выполняет ровно эти шаги. Оба workflow запуска
 
 Скрипт разбирает импорты по алиасу `@/`; в проекте нет обходов через `../../`, поэтому проверка полная.
 
-> **Если контракт мешает.** Сначала спросите себя, не является ли новая связь нарушением замысла (например, физике не нужно знать про HTTP). Если связь оправдана — вносите её в контракт явным исключением с комментарием и обновляйте этот документ. Молча отключать проверку не нужно: её ценность именно в том, что архитектурное решение принимается осознанно.
+> **Если контракт мешает.** Сначала спросите себя, не является ли новая связь нарушением замысла (например, физике не нужно знать про HTTP). Чаще всего правильный ответ — не ослабить контракт, а перенести нужную функцию вниз, в тот слой, где она востребована всеми потребителями. Если связь всё же оправдана — вносите её явно и обновляйте этот документ. Молча отключать проверку не нужно: её ценность именно в том, что архитектурное решение принимается осознанно.
 
 ### Состав тестов
 
@@ -462,6 +513,11 @@ CI выполняет ровно эти шаги. Оба workflow запуска
 | `test_validation_and_hygiene.py` | Валидация импорта сценариев, границы уставки, гигиена зависимостей и Dockerfile |
 | `test_error_localization.py` | Таймлайн действий и привязка нарушений ко времени |
 | `test_scoring_and_speed.py` | Достижимость эталона, идеальный прогон = 100 баллов, множитель скорости |
+| `test_simulation_layer.py` | Слой `simulation` собирается без обходных импортов, реестр сценариев доступен как package data |
+| `test_ml_runtime.py` | Инференс идёт через ONNX внутри пакета, torch-ветки нет, `evaluate_session` отдаёт 4 значения |
+| `test_db_layer.py` | Слой `db` импортируется из пакета, цепочка аудита цела |
+| `test_api_layer.py` | Приложение собирается из пакета, адрес LLM берётся из окружения |
+| `test_training_isolation.py` | Пакет не зависит от офлайн-пайплайна, чекпоинты и датасеты не лежат внутри пакета |
 
 `backend/tests/conftest.py` — не фикстуры, а подмена окружения до импорта приложения: отдельная тестовая БД и **копия** реестра сценариев, чтобы прогон не портил рабочие данные.
 
@@ -469,16 +525,20 @@ CI выполняет ровно эти шаги. Оба workflow запуска
 
 ## 9. Типичные задачи — куда смотреть
 
+Пути даны от `backend/src/` для Python и от `frontend/src/` для TypeScript.
+
 | Задача | Файлы |
 |---|---|
-| Добавить датчик | `simulator/elou_avt_model.py` (`sensors` + уравнение) → `Sensors` в `entities/telemetry` → мнемосхема `widgets/flow-scheme` |
+| Добавить датчик | `elou_tutor/simulation/model.py` (`sensors` + уравнение) → `Sensors` в `entities/telemetry` → мнемосхема `widgets/flow-scheme` |
 | Добавить дефект | см. §3.8 |
-| Добавить сценарий | Через интерфейс инструктора (конструктор) либо правкой `backend/data/scenarios.json` |
-| Новое правило оценки ошибки | `ai_core/tech_regulations.py` (текст и класс) → `ErrorAnalyzer._detect_violations` (условие) → штраф в `penalty_map` → тест |
+| Добавить сценарий | Через интерфейс инструктора (конструктор) либо правкой `elou_tutor/data/scenarios.json` |
+| Новое правило оценки ошибки | `elou_tutor/domain/regulations.py` (текст и класс) → `ErrorAnalyzer._detect_violations` в `elou_tutor/tutor/analyzer.py` (условие) → штраф в `penalty_map` → тест |
 | Новая команда WebSocket | см. §3.4 |
 | Новый экран | `pages/<name>/` + маршрутизация в `app/App.tsx` |
-| Изменить пороги аварий | `ai_core/config.py`, при необходимости синхронизировать `shared/config/thresholds.ts` |
-| Добавить эндпоинт | `backend/routes/`, модель в `models/schemas.py`, права через `Depends` |
+| Изменить пороги аварий | `elou_tutor/domain/process_limits.py`, при необходимости синхронизировать `shared/config/thresholds.ts` |
+| Добавить эндпоинт | `elou_tutor/api/routes/`, модель в `elou_tutor/api/schemas.py`, права через `Depends` |
+| Изменить гиперпараметры модели риска | `elou_tutor/ml/settings.py` — их читают и рантайм, и обучение; после правки модель надо переобучить и переэкспортировать |
+| Переобучить модель | `backend/training/` — см. `backend/training/README.md` |
 
 ---
 
@@ -488,7 +548,7 @@ CI выполняет ровно эти шаги. Оба workflow запуска
 
 - **Физическая модель — инженерная эвристика**, а не полноценная модель ректификации: разностные уравнения теплового и материального баланса с коэффициентами, подобранными под диапазоны техрегламента. Фазового равновесия, тарелок и составов фракций нет.
 - **Клапаны дискретные** (открыт/закрыт), не регулирующие.
-- **LSTM обучена на синтетических данных** самого симулятора. По честной оценке (`ai_core/evaluation_report.md`): полнота 100 % при упреждении 15 с, но точность низкая — политика «лучше ложная тревога, чем пропуск аварии». Калибровка на реальной архивной телеметрии — задача этапа пилота.
+- **LSTM обучена на синтетических данных** самого симулятора. По честной оценке (`backend/training/reports/evaluation_report.md`): полнота 100 % при упреждении 15 с, но точность низкая — политика «лучше ложная тревога, чем пропуск аварии». Калибровка на реальной архивной телеметрии — задача этапа пилота.
 - **Телеметрия не сохраняется в БД** — только кольцевой буфер 30 секунд в памяти. В БД пишется итог сессии и журнал событий.
 - **Снапшот состояния хранится в памяти сессии** и теряется при сбросе и отключении последнего сокета; сохранения в файл нет.
 - **RAG-база знаний невелика** — 5 коротких памяток в `backend/knowledge_base/`, а не оцифрованный регламент целиком.
