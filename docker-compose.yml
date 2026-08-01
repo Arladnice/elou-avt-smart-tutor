@@ -1,28 +1,57 @@
-version: '3.8'
-
 services:
   backend:
+    # Имя контейнера закреплено, чтобы не зависеть от имени compose-проекта:
+    # так `docker logs tutor-backend` работает одинаково локально и на сервере.
+    # Имя СЕРВИСА (backend) при этом не меняется — на него ссылаются
+    # frontend/nginx.conf и depends_on, оно же остаётся DNS-именем в сети.
+    container_name: tutor-backend
     build:
       context: .
       dockerfile: backend/Dockerfile
+    # Привязка к loopback, а не ко всем интерфейсам: на боевом хосте API иначе
+    # торчал бы в интернет напрямую, в обход HTTPS. Локально localhost:8000
+    # работает как прежде, а прокси ходит сюда по внутренней сети Docker.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - tutor_data:/app/data
-      - .:/app
+      # Монтируем исходники пакета — вместе с --reload даёт живую перезагрузку
+      - ./backend/src:/app/src
+    command: uvicorn elou_tutor.api.main:app --host 0.0.0.0 --port 8000 --reload
+    # Секреты берутся из backend/.env (файл в .gitignore, создаётся `make init`
+    # из backend/.env.example). Если файла нет — compose откажется стартовать.
+    env_file:
+      - ./backend/.env
     environment:
       - DATABASE_PATH=/app/data/tutor.db
-    restart: always
+      # Смонтированные исходники должны выигрывать у копии в site-packages,
+      # иначе --reload перезапускает сервер, но код остаётся из образа
+      - PYTHONPATH=/app/src
+      # Переопределяет значение из backend/.env: внутри контейнера 127.0.0.1
+      # указывает на сам контейнер, а LM Studio слушает на хосте
+      - LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
 
   frontend:
+    container_name: tutor-frontend
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    # 8080 на loopback: порты 80/443 на боевом хосте занимает фронт-прокси
+    # (docker-compose.prod.yml), он терминирует TLS и проксирует сюда по имени
+    # сервиса внутри сети Docker — публикация наружу для этого не нужна.
     ports:
-      - "80:80"
+      - "127.0.0.1:8080:80"
     depends_on:
-      - backend
-    restart: always
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   tutor_data:

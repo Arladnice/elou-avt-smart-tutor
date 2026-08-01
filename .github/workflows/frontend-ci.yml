@@ -1,0 +1,68 @@
+name: Frontend CI
+
+# Два способа запуска:
+#   pull_request  — обычная проверка ветки. На промежуточных коммитах не гоняется,
+#                   но перезапускается на каждый новый пуш в ветку PR, поэтому
+#                   состояние проверки всегда соответствует голове ветки.
+#   workflow_call — вызов из deploy.yml как обязательного шлюза перед раскаткой.
+#                   Фильтр paths при таком вызове не действует, и это правильно:
+#                   перед деплоем проверки обязаны пройти целиком.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+      - 'docs/architecture.md'
+  workflow_call:
+
+# Новый пуш в ту же ветку отменяет ещё не завершившийся прогон.
+# github.workflow в ключе — страховка: при вызове из другого workflow он равен
+# имени ВЫЗЫВАЮЩЕГО, поэтому прогон-шлюз и обычный прогон по PR гарантированно
+# попадают в разные группы, даже если однажды совпадут по ref. Без него при
+# cancel-in-progress они отменяли бы друг друга.
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-build:
+    name: Lint & Build (frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (oxlint)
+        run: npm run lint
+
+      - name: Typecheck & build (tsc + vite)
+        run: npm run build
+
+  architecture:
+    name: Architecture (FSD)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Зависимости не ставим: скрипт использует только стандартную библиотеку Node
+      - name: Check FSD layer rules
+        run: npm run check:fsd

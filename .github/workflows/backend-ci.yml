@@ -1,0 +1,91 @@
+name: Backend CI
+
+# Два способа запуска:
+#   pull_request  — обычная проверка ветки. На промежуточных коммитах не гоняется,
+#                   но перезапускается на каждый новый пуш в ветку PR, поэтому
+#                   состояние проверки всегда соответствует голове ветки.
+#   workflow_call — вызов из deploy.yml как обязательного шлюза перед раскаткой.
+#                   Фильтр paths при таком вызове не действует, и это правильно:
+#                   перед деплоем проверки обязаны пройти целиком.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+      - 'docs/architecture.md'
+  workflow_call:
+
+# Новый пуш в ту же ветку отменяет ещё не завершившийся прогон.
+# github.workflow в ключе — страховка: при вызове из другого workflow он равен
+# имени ВЫЗЫВАЮЩЕГО, поэтому прогон-шлюз и обычный прогон по PR гарантированно
+# попадают в разные группы, даже если однажды совпадут по ref. Без него при
+# cancel-in-progress они отменяли бы друг друга.
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    name: Lint & Test (backend)
+    runs-on: ubuntu-latest
+    # Конфигурация проекта живёт в backend/pyproject.toml, поэтому ruff,
+    # pytest и pip запускаются из каталога backend.
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # Секреты обязательны: api/security.py и domain/integrity.py падают
+      # на импорте без них. Значения тестовые, только внутри прогона CI.
+      INTEGRITY_SALT: ci-integrity-salt
+      SECRET_KEY: ci-secret-key-for-tests-only-32b
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Совпадает с базовым образом Dockerfile (python:3.12-slim)
+          python-version: '3.12'
+          cache: pip
+          # Пути кэша отсчитываются от корня репозитория, а не от working-directory
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Tests (pytest)
+        run: pytest tests -q
+
+  architecture:
+    name: Architecture (layers)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # lint-imports строит граф импортов и падает без секретов
+      # на api/security.py и domain/integrity.py.
+      INTEGRITY_SALT: ci-integrity-salt
+      SECRET_KEY: ci-secret-key-for-tests-only-32b
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      # Контракты слоёв заданы в [tool.importlinter] в backend/pyproject.toml
+      - name: Check layer contracts
+        run: lint-imports

@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "elou-tutor"
+version = "0.1.0"
+description = "Компьютерный тренажерный комплекс ЭЛОУ-АВТ Smart Tutor"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Неисполняемые файлы обязаны попасть в установленный пакет: без этого
+# dev-режим работает, а Docker-сборка падает на чтении сценариев или модели
+[tool.setuptools.package-data]
+elou_tutor = [
+    "data/*.json",
+    "knowledge_base/*.md",
+    "ml/artifacts/*",
+]
+
+[tool.ruff]
+exclude = [".venv", "training"]
+line-length = 120
+
+[tool.ruff.lint]
+# Набор по умолчанию (E4 — импорты, E7 — синтаксические конструкции,
+# E9 — ошибки разбора, F — pyflakes: реальные ошибки и мёртвый код).
+select = ["E4", "E7", "E9", "F"]
+# E402: тестовые модули дополняют sys.path до импортов, чтобы набор запускался
+# и без установленного пакета (прямым pytest из корня репозитория).
+ignore = ["E402"]
+
+# ============================================================
+# Контроль архитектуры: контракты слоёв проверяются lint-imports.
+# Описание слоёв — docs/architecture.md.
+# ============================================================
+[tool.importlinter]
+root_packages = ["elou_tutor"]
+
+[[tool.importlinter.contracts]]
+name = "Слои пакета: api → services → db → domain"
+type = "layers"
+layers = [
+    "elou_tutor.api",
+    "elou_tutor.services",
+    "elou_tutor.db",
+    "elou_tutor.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "Домен автономен"
+type = "forbidden"
+source_modules = ["elou_tutor.domain"]
+forbidden_modules = [
+    "elou_tutor.api", "elou_tutor.services", "elou_tutor.db",
+    "elou_tutor.simulation", "elou_tutor.tutor", "elou_tutor.ml",
+]
+
+# Симуляция — самый нижний слой над доменом: она не знает ни о ком, кроме домена.
+# Обратное направление (tutor → simulation) легитимно и разрешено ниже, поэтому
+# запрет на simulation → tutor обязателен: без него пара образует молчаливый цикл.
+[[tool.importlinter.contracts]]
+name = "Симуляция зависит только от домена"
+type = "forbidden"
+source_modules = ["elou_tutor.simulation"]
+forbidden_modules = [
+    "elou_tutor.api", "elou_tutor.services", "elou_tutor.db",
+    "elou_tutor.tutor", "elou_tutor.ml",
+]
+
+# Тьютору нужен реестр сценариев (эталонные последовательности), поэтому
+# simulation ему разрешена. Инференс — нет: оценка действий и прогноз риска
+# считаются независимо и сходятся только в services.
+[[tool.importlinter.contracts]]
+name = "Тьютор зависит от домена и симуляции"
+type = "forbidden"
+source_modules = ["elou_tutor.tutor"]
+forbidden_modules = [
+    "elou_tutor.api", "elou_tutor.services", "elou_tutor.db", "elou_tutor.ml",
+]
+
+[[tool.importlinter.contracts]]
+name = "Инференс зависит только от домена"
+type = "forbidden"
+source_modules = ["elou_tutor.ml"]
+forbidden_modules = [
+    "elou_tutor.api", "elou_tutor.services", "elou_tutor.db",
+    "elou_tutor.tutor", "elou_tutor.simulation",
+]
+
+# db — инфраструктурный слой: хранение и аудит. Бизнес-слои ему не нужны,
+# иначе слоение размывается (обратное направление уже запрещено выше).
+[[tool.importlinter.contracts]]
+name = "Слой данных не знает о бизнес-слоях"
+type = "forbidden"
+source_modules = ["elou_tutor.db"]
+forbidden_modules = [
+    "elou_tutor.simulation", "elou_tutor.tutor", "elou_tutor.ml",
+]

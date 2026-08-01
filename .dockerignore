@@ -1,0 +1,14 @@
+.git
+.claude
+.agents
+# Шаблон со звёздочками обязателен: без него правило прикреплено к корню
+# контекста и не поймает backend/.env, где теперь лежат секреты.
+**/.env
+**/node_modules
+frontend/dist
+**/__pycache__
+*.pyc
+*.db
+docs
+Исходные данные
+backend/training

@@ -9,9 +9,9 @@ os.environ["DATABASE_PATH"] = TEST_DB_PATH
 # Добавляем корневой путь в sys.path для импорта модулей
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from simulator.elou_avt_model import ELOUAVTSimulator
-from ai_core.predictive_engine import RiskPredictor
-from ai_core.error_analyzer import ErrorAnalyzer
+from elou_tutor.simulation.model import ELOUAVTSimulator
+from elou_tutor.ml.predictor import RiskPredictor
+from elou_tutor.tutor.analyzer import ErrorAnalyzer
 
 class TestKTKComponents(unittest.TestCase):
     def setUp(self):
@@ -326,20 +326,20 @@ class TestKTKComponents(unittest.TestCase):
 
 class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def setUp(self):
-        from backend.db.database import init_db
+        from elou_tutor.db.database import init_db
         init_db()
 
     def test_health_endpoint(self):
         """Тест эндпоинта /api/health для проверки работоспособности (health check)."""
-        from backend.routes.health import health_check
+        from elou_tutor.api.routes.health import health_check
         res = health_check()
         self.assertEqual(res, {"status": "ok"})
 
     def test_scenario_1_authorization_and_roles(self):
         """Тест сценария 1: Авторизация и разделение ролей"""
         from fastapi import HTTPException
-        from backend.routes.auth import login
-        from backend.models.schemas import LoginRequest
+        from elou_tutor.api.routes.auth import login
+        from elou_tutor.api.schemas import LoginRequest
         
         # Успешный вход под оператором
         req = LoginRequest(username="operator_1", password="Ktk_2026!", role="operator")
@@ -363,35 +363,43 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
             login(LoginRequest(username="operator_1", password="wrong", role="operator"))
         self.assertEqual(ctx.exception.status_code, 401)
 
-    def test_simulation_time_and_speed_control(self):
-        """Проверяет логику паузы и изменения скорости в SimulationSession."""
-        from backend.services.connection_manager import manager
-        
-        session = manager.get_session("test_session")
-        
-        # По умолчанию симуляция идет с нормальной скоростью и не на паузе
-        self.assertEqual(session.speed_multiplier, 1.0)
-        self.assertFalse(session.is_paused)
-        
-        # Меняем параметры
+    def test_pause_stops_the_process(self):
+        """
+        Пауза должна останавливать ход техпроцесса, а не только менять флаг.
+
+        Проверка скорости симуляции вынесена в test_scoring_and_speed.py:
+        прежний вариант этого теста лишь присваивал и читал то же поле,
+        поэтому не замечал, что множитель скорости ни на что не влияет.
+        """
+        import asyncio
+        from elou_tutor.services.connection_manager import SimulationSession
+        from elou_tutor.services.simulation_loop import step_session
+
+        class FakeWS:
+            async def send_json(self, data):
+                pass
+
+        session = SimulationSession("pause_probe")
+        session.operator_sockets.add(FakeWS())
         session.is_paused = True
-        session.speed_multiplier = 2.0
-        self.assertEqual(session.speed_multiplier, 2.0)
-        self.assertTrue(session.is_paused)
-        
-        # Сбрасываем назад
+
+        asyncio.run(step_session(session))
+        self.assertEqual(session.simulator.time_elapsed, 0, "Пауза не остановила процесс")
+
         session.is_paused = False
-        session.speed_multiplier = 1.0
+        asyncio.run(step_session(session))
+        self.assertEqual(session.simulator.time_elapsed, 1, "Снятие паузы не возобновило процесс")
 
     def test_scenario_6_security_integrity_sha256(self):
         """Тест сценария 6: Проверка ИБ-контроля целостности логов по SHA-256"""
-        from backend.routes.sessions import get_sessions, clear_sessions
-        from backend.utils.security import calculate_integrity_hash
-        from backend.db.database import DB_PATH
+        from elou_tutor.api.routes.sessions import get_sessions, clear_sessions
+        from elou_tutor.api.security import calculate_integrity_hash
+        from elou_tutor.db.database import DB_PATH
         import sqlite3
         
-        # Сначала очистим историю
-        clear_sessions()
+        # Сначала очистим историю (эндпоинты требуют авторизованного пользователя)
+        instructor = {"sub": "instructor_1", "role": "instructor"}
+        clear_sessions(user=instructor)
 
         # Создаем тестовую запись напрямую в БД с корректным хэшем
         conn = sqlite3.connect(DB_PATH)
@@ -416,7 +424,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         conn.commit()
         
         # Запрашиваем сессии и проверяем валидность
-        sessions = get_sessions()
+        sessions = get_sessions(user=instructor)
         self.assertGreater(len(sessions), 0)
         self.assertTrue(sessions[0]["integrity_valid"])
 
@@ -426,7 +434,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         conn.close()
 
         # Запрашиваем снова и проверяем, что статус целостности изменился на False (нарушено!)
-        sessions = get_sessions()
+        sessions = get_sessions(user=instructor)
         self.assertFalse(sessions[0]["integrity_valid"])
 
     def test_defect_power_fail(self):
@@ -499,7 +507,6 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def test_risk_predictor_aligned_thresholds(self):
         """Тест-05: Проверка согласованности порогов риска предиктора с конфигом (COLUMN_PRES_WARNING = 0.40 МПа)."""
         import numpy as np
-        from ai_core.config import COLUMN_PRES_WARNING, COLUMN_PRES_ESD
         predictor = RiskPredictor()
         
         # Окно со стабильным давлением 0.35 МПа (ниже предупреждения 0.40 МПа)
@@ -514,7 +521,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
 
     def test_escalation_flag_reset(self):
         """Тест-06: Проверка сброса флагов и сессии через session.reset_session()."""
-        from backend.services.connection_manager import manager
+        from elou_tutor.services.connection_manager import manager
         
         session = manager.get_session("test_session")
         session.escalation_warning_sent = True
@@ -531,7 +538,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def test_http_integration_endpoints(self):
         """Тест-07: Настоящий HTTP-интеграционный тест эндпоинтов /api/health/metrics и /api/auth/login."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+        from elou_tutor.api.main import app
         
         client = TestClient(app)
         
@@ -552,7 +559,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def test_websocket_integration_and_rbac(self):
         """Тест-08: Интеграционный тест WebSocket-протокола с проверкой RBAC и управления клапанами."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+        from elou_tutor.api.main import app
         
         client = TestClient(app)
         
@@ -593,7 +600,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def test_parallel_isolated_sessions(self):
         """Тест-09: Проверка полной изоляции двух параллельных сессий операторов."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+        from elou_tutor.api.main import app
         
         client = TestClient(app)
         
@@ -607,7 +614,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         with client.websocket_connect(f"/ws?role=operator&username=operator_1&token={op1_token}&session_id=session_A") as ws1:
             with client.websocket_connect(f"/ws?role=operator&username=operator_1&token={op1_token}&session_id=session_B") as ws2:
                 # Читаем стартовые данные
-                state1 = ws1.receive_json()
+                ws1.receive_json()
                 state2 = ws2.receive_json()
 
                 # Изменяем уставку в сессии A
@@ -621,7 +628,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # Удаляем тестовую БД после завершения тестов
-        from backend.db.database import DB_PATH
+        from elou_tutor.db.database import DB_PATH
         if os.path.exists(DB_PATH) and "tutor_test.db" in DB_PATH:
             try:
                 os.remove(DB_PATH)
