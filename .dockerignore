@@ -9,3 +9,4 @@ frontend/dist
 *.db
 docs
 Исходные данные
+backend/training

@@ -25,10 +25,10 @@ WORKDIR /app
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Код проекта
-COPY backend/ ./backend/
-COPY simulator/ ./simulator/
-COPY ai_core/ ./ai_core/
+# Код проекта: ставим пакет; офлайн-пайплайн (backend/training) не копируем
+COPY backend/pyproject.toml ./
+COPY backend/src ./src
+RUN pip install --no-cache-dir --no-deps .
 
 # Собранный фронтенд из Stage 1
 COPY --from=frontend-build /build/dist ./frontend/dist
@@ -41,9 +41,10 @@ RUN mkdir -p /app/data
 # Render прокидывает свой $PORT через окружение и переопределяет это значение.
 ENV PORT=7860
 ENV DATABASE_PATH=/app/data/tutor.db
+ENV STATIC_DIR=/app/frontend/dist
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE ${PORT}
 
 # Render передаёт $PORT динамически — используем shell-форму CMD
-CMD uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+CMD uvicorn elou_tutor.api.main:app --host 0.0.0.0 --port $PORT

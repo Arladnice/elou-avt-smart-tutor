@@ -7,14 +7,15 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - tutor_data:/app/data
-      # Монтируем только код бэкенда (а не весь репозиторий) — вместе с --reload
-      # это даёт живую перезагрузку при правке файлов
-      - ./backend:/app/backend
-      - ./simulator:/app/simulator
-      - ./ai_core:/app/ai_core
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+      # Монтируем исходники пакета — вместе с --reload даёт живую перезагрузку
+      - ./backend/src:/app/src
+    command: uvicorn elou_tutor.api.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - DATABASE_PATH=/app/data/tutor.db
+      # Смонтированные исходники должны выигрывать у копии в site-packages,
+      # иначе --reload перезапускает сервер, но код остаётся из образа
+      - PYTHONPATH=/app/src
+      - LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234}
       # Секреты обязательны — задайте их в .env (файл в .gitignore)
       - INTEGRITY_SALT=${INTEGRITY_SALT:?INTEGRITY_SALT не задан — создайте .env с dev-значениями}
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY не задан — создайте .env с dev-значениями}

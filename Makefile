@@ -26,7 +26,9 @@ init: check-node ## Подготовить проект: создать .env и 
 		cp $(ENV_EXAMPLE) $(ENV_FILE); \
 		echo "✓ $(ENV_FILE) создан из $(ENV_EXAMPLE) (dev-значения секретов)"; \
 	fi
-	$(PYTHON) -m pip install --user -r $(PY_REQUIREMENTS)
+	@# Ставим из каталога с файлом требований: строка `-e .` внутри него
+	@# разрешается относительно текущего каталога, а не каталога файла.
+	cd $(dir $(PY_REQUIREMENTS)) && $(PYTHON) -m pip install --user -r $(notdir $(PY_REQUIREMENTS))
 	$(NPM) install --prefix $(FRONTEND_DIR)
 	@echo ""
 	@echo "✓ Проект готов к работе. Запуск — make start"
