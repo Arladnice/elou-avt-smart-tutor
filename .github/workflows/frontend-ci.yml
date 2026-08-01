@@ -9,6 +9,7 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
+      - 'docs/architecture.md'
 
 # Новый пуш в ту же ветку отменяет ещё не завершившийся прогон
 concurrency:
@@ -39,3 +40,20 @@ jobs:
 
       - name: Typecheck & build (tsc + vite)
         run: npm run build
+
+  architecture:
+    name: Architecture (FSD)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Зависимости не ставим: скрипт использует только стандартную библиотеку Node
+      - name: Check FSD layer rules
+        run: npm run check:fsd

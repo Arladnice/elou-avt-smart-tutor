@@ -12,6 +12,7 @@ on:
       - 'ai_core/**'
       - 'pyproject.toml'
       - '.github/workflows/backend-ci.yml'
+      - 'docs/architecture.md'
 
 # Новый пуш в ту же ветку отменяет ещё не завершившийся прогон
 concurrency:
@@ -47,3 +48,29 @@ jobs:
 
       - name: Tests (pytest)
         run: pytest backend/tests -q
+
+  architecture:
+    name: Architecture (layers)
+    runs-on: ubuntu-latest
+    env:
+      # lint-imports импортирует модули для построения графа,
+      # а backend/utils/security.py падает без секретов.
+      INTEGRITY_SALT: ci-integrity-salt
+      SECRET_KEY: ci-secret-key-for-tests-only-32b
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements-dev.txt
+
+      # Контракты слоёв заданы в [tool.importlinter] в pyproject.toml
+      - name: Check layer contracts
+        run: lint-imports

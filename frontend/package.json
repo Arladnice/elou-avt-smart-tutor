@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint --deny-warnings",
+    "check:fsd": "node scripts/check-fsd.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
