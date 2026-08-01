@@ -1,6 +1,6 @@
 import json
 from backend.db.database import get_db_connection
-from backend.utils.security import calculate_integrity_hash
+from backend.utils.security import verify_integrity_hash
 
 def get_all_sessions():
     """Возвращает историю тренировок и проверяет целостность данных."""
@@ -20,10 +20,12 @@ def get_all_sessions():
         if not session_logs_json:
             session_logs_json = "[]"
             
-        # Проверка ИБ-целостности (двойная проверка хэша для совместимости со старыми записями)
-        hash_with_logs = calculate_integrity_hash(op_name, role, scen_id, start_time, duration, score, status, viol_json, session_logs_json)
-        hash_without_logs = calculate_integrity_hash(op_name, role, scen_id, start_time, duration, score, status, viol_json)
-        is_valid = (db_hash == hash_with_logs or db_hash == hash_without_logs)
+        # Проверка ИБ-целостности. Двойная проверка нужна для записей, сделанных
+        # до появления колонки session_logs_json; сам хэш допускает и устаревший формат.
+        is_valid = (
+            verify_integrity_hash(db_hash, op_name, role, scen_id, start_time, duration, score, status, viol_json, session_logs_json)
+            or verify_integrity_hash(db_hash, op_name, role, scen_id, start_time, duration, score, status, viol_json)
+        )
         
         try:
             parsed_logs = json.loads(session_logs_json)

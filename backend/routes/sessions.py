@@ -1,11 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from backend.db.queries import get_all_sessions, clear_all_sessions
+from backend.utils.deps import get_current_user, require_instructor
 from backend.utils.security import log_audit_event
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 @router.get("")
-def get_sessions():
+def get_sessions(user: dict = Depends(get_current_user)):
     """
     Возвращает историю тренировочных сессий.
     Выполняет проверку ИБ-целостности (SHA-256) для каждой записи.
@@ -13,7 +14,7 @@ def get_sessions():
     return get_all_sessions()
 
 @router.get("/active")
-def get_active_sessions():
+def get_active_sessions(user: dict = Depends(get_current_user)):
     """
     Возвращает список текущих активных сессий операторов в реальном времени.
     Используется инструктором для выбора отслеживаемой сессии.
@@ -41,11 +42,11 @@ def get_active_sessions():
     return result
 
 @router.post("/clear")
-def clear_sessions():
+def clear_sessions(user: dict = Depends(require_instructor)):
     """
     Очищает всю историю сессий в БД.
     Записывает аудит-лог о сбросе БД администратором.
     """
     clear_all_sessions()
-    log_audit_event("ADMIN", "DB_CLEAR", "Очищена история учебных сессий")
+    log_audit_event(user["sub"], "DB_CLEAR", "Очищена история учебных сессий")
     return {"message": "История очищена"}

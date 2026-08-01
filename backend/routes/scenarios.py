@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field, ValidationError
 from typing import List, Dict, Any, Optional
+
+from backend.models.schemas import ImportScenarioModel
 
 from backend.services.scenario_manager import (
     load_scenarios, add_custom_scenario, delete_scenario, get_scenario_by_id
 )
+from backend.utils.deps import get_current_user, require_instructor
 from backend.utils.security import log_audit_event
 
 router = APIRouter(prefix="/api/scenarios", tags=["Scenarios"])
@@ -46,13 +49,13 @@ class CreateScenarioModel(BaseModel):
 
 
 @router.get("", response_model=List[Dict[str, Any]])
-async def get_all_scenarios():
+async def get_all_scenarios(user: dict = Depends(get_current_user)):
     """Возвращает полный список всех доступных учебных сценариев."""
     return load_scenarios()
 
 
 @router.get("/{scenario_id}", response_model=Dict[str, Any])
-async def get_scenario(scenario_id: str):
+async def get_scenario(scenario_id: str, user: dict = Depends(get_current_user)):
     """Возвращает информацию о конкретном сценарии по его ID."""
     sc = get_scenario_by_id(scenario_id)
     if not sc:
@@ -61,34 +64,45 @@ async def get_scenario(scenario_id: str):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_scenario(payload: CreateScenarioModel):
+async def create_scenario(payload: CreateScenarioModel, user: dict = Depends(require_instructor)):
     """Создаёт новый пользовательский сценарий инструктора."""
     success, message = add_custom_scenario(payload.model_dump())
     if not success:
         raise HTTPException(status_code=400, detail=message)
-    log_audit_event("INSTRUCTOR", "CREATE_SCENARIO", f"Создан новый сценарий '{payload.id}': {payload.title}")
+    log_audit_event(user["sub"], "CREATE_SCENARIO", f"Создан новый сценарий '{payload.id}': {payload.title}")
     return {"status": "success", "message": message, "scenario_id": payload.id}
 
 
 @router.post("/import", status_code=status.HTTP_201_CREATED)
-async def import_scenario(payload: Dict[str, Any]):
+async def import_scenario(payload: Dict[str, Any], user: dict = Depends(require_instructor)):
     """Импортирует сценарий из загруженного JSON-файла."""
-    scenario_data = payload.get("scenario") or payload
-    if not isinstance(scenario_data, dict) or "id" not in scenario_data or "title" not in scenario_data:
-        raise HTTPException(status_code=400, detail="Неверный формат JSON. Требуются поля 'id' и 'title'.")
+    raw = payload.get("scenario") or payload
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=400, detail="Неверный формат JSON: ожидается объект сценария.")
 
+    try:
+        scenario = ImportScenarioModel(**raw)
+    except ValidationError as e:
+        # ctx ошибок Pydantic содержит объект исключения и не сериализуется в JSON
+        detail = [
+            {"field": ".".join(str(p) for p in err["loc"]), "message": err["msg"]}
+            for err in e.errors(include_url=False)
+        ]
+        raise HTTPException(status_code=422, detail=detail)
+
+    scenario_data = scenario.model_dump()
     success, message = add_custom_scenario(scenario_data)
     if not success:
         raise HTTPException(status_code=400, detail=message)
-    log_audit_event("INSTRUCTOR", "IMPORT_SCENARIO", f"Импортирован сценарий '{scenario_data['id']}' из JSON")
+    log_audit_event(user["sub"], "IMPORT_SCENARIO", f"Импортирован сценарий '{scenario_data['id']}' из JSON")
     return {"status": "success", "message": message, "scenario_id": scenario_data["id"]}
 
 
 @router.delete("/{scenario_id}")
-async def remove_scenario(scenario_id: str):
+async def remove_scenario(scenario_id: str, user: dict = Depends(require_instructor)):
     """Удаляет пользовательский сценарий инструктора."""
     success, message = delete_scenario(scenario_id)
     if not success:
         raise HTTPException(status_code=400, detail=message)
-    log_audit_event("INSTRUCTOR", "DELETE_SCENARIO", f"Удален сценарий '{scenario_id}'")
+    log_audit_event(user["sub"], "DELETE_SCENARIO", f"Удален сценарий '{scenario_id}'")
     return {"status": "success", "message": message}

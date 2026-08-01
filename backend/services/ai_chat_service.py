@@ -148,6 +148,12 @@ def get_telemetry_summary(telemetry: Dict[str, Any]) -> str:
         f"ВАЖНО ДЛЯ ИИ-ТЬЮТОРА: Если оператор спрашивает, что делать дальше, ориентируйся ТОЛЬКО на строку '[-->] ТЕКУЩИЙ АКТИВНЫЙ ШАГ' и подсказывай действие именно по нему."
     )
 
+# Таймаут запроса к локальной LLM. Прежние 300 с в синхронном эндпоинте
+# означали, что несколько десятков запросов занимали весь пул потоков FastAPI
+# и подвешивали всё API, а не только чат.
+LLM_TIMEOUT_SEC = float(os.environ.get("LLM_TIMEOUT_SEC", "30"))
+
+
 def query_local_llm(messages: List[Dict[str, str]], model: str = "local-model") -> str:
     """Выполняет запрос к локальной LLM через LM Studio (OpenAI API format)."""
     url = "http://127.0.0.1:1234/v1/chat/completions"
@@ -166,8 +172,7 @@ def query_local_llm(messages: List[Dict[str, str]], model: str = "local-model") 
     )
     
     try:
-        # Устанавливаем таймаут 300 секунд (5 минут) для гарантии того, что модель успеет сгенерировать ответ
-        with urllib.request.urlopen(req, timeout=300) as response:
+        with urllib.request.urlopen(req, timeout=LLM_TIMEOUT_SEC) as response:
             res_data = json.loads(response.read().decode("utf-8"))
             choice = res_data.get("choices", [{}])[0]
             message = choice.get("message", {})

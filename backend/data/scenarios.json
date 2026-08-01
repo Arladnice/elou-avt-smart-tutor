@@ -239,7 +239,7 @@
           "condition": { "type": "valve_is", "target": "V_2", "expected": true }
         }
       ],
-      "golden_sequence": ["V_ELOU_OPEN", "V2_OPEN_RELIEF"]
+      "golden_sequence": ["V_ELOU_OPEN", "V2_OPEN"]
     },
     {
       "id": "vt_vacuum_failure",
@@ -275,7 +275,7 @@
           "condition": { "type": "sensor_lte", "target": "T_1", "expected": 255.0 }
         }
       ],
-      "golden_sequence": ["V_VT_OPEN", "SP_DOWN_HEAT"]
+      "golden_sequence": ["V_VT_OPEN", "SP_DOWN"]
     }
   ]
 }

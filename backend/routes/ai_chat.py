@@ -1,14 +1,15 @@
 import logging
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from backend.models.schemas import ChatRequest, ChatResponse
 from backend.services.ai_chat_service import process_ai_chat
+from backend.utils.deps import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ai", tags=["ai_chat"])
 
 @router.post("/chat", response_model=ChatResponse)
-def ai_chat_endpoint(req: ChatRequest):
+def ai_chat_endpoint(req: ChatRequest, user: dict = Depends(get_current_user)):
     """
     Эндпоинт для ведения интерактивного диалога с ИИ-ассистентом.
     Принимает историю диалога и текущую телеметрию, возвращает ответ ИИ.

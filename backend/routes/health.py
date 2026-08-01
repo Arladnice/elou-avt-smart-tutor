@@ -9,17 +9,36 @@ try:
 except ImportError:
     HAS_PSUTIL = False
 
+# cpu_percent(interval=None) возвращает загрузку за время с предыдущего вызова,
+# поэтому самый первый замер всегда нулевой. Первый раз меряем с коротким
+# интервалом, дальше — без блокировки.
+_cpu_measured_once = False
+
+
+def _read_cpu_percent() -> float:
+    global _cpu_measured_once
+    if not _cpu_measured_once:
+        _cpu_measured_once = True
+        return psutil.cpu_percent(interval=0.1)
+    return psutil.cpu_percent(interval=None)
+
 from backend.models.schemas import HealthResponse, SystemMetrics
-from backend.services.connection_manager import manager
+from backend.services.connection_manager import manager, average_broadcast_latency_ms
 from backend.db.database import DB_PATH
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/health", tags=["health"])
 
-def check_ollama_status() -> bool:
-    """Проверяет доступность локального сервера Ollama."""
+# Чат-ассистент обращается к LM Studio (OpenAI-совместимый API на порту 1234),
+# поэтому и проверять надо именно его: прежняя проверка Ollama на 11434
+# показывала недоступность сервиса, который в работе не участвует.
+LLM_HEALTH_URL = os.environ.get("LLM_HEALTH_URL", "http://127.0.0.1:1234/v1/models")
+
+
+def check_llm_status() -> bool:
+    """Проверяет доступность локального сервера LLM, используемого чатом."""
     try:
-        with urllib.request.urlopen("http://localhost:11434", timeout=0.2) as response:
+        with urllib.request.urlopen(LLM_HEALTH_URL, timeout=0.2) as response:
             return response.status == 200
     except Exception:
         return False
@@ -43,20 +62,23 @@ def health_metrics():
     cpu = 0.0
     mem_used = 0.0
     mem_percent = 0.0
-    
+    metrics_available = False
+
     if HAS_PSUTIL:
         try:
-            cpu = psutil.cpu_percent(interval=None)
+            cpu = _read_cpu_percent()
             mem = psutil.virtual_memory()
             mem_used = mem.used / (1024 * 1024)
             mem_percent = mem.percent
+            metrics_available = True
         except Exception as e:
             logger.error("Ошибка сбора метрик через psutil: %s", e)
     else:
-        cpu = 12.4
-        mem_used = 284.5
-        mem_percent = 14.2
-        
+        # Ранее здесь возвращались выдуманные значения, из-за чего панель
+        # мониторинга показывала правдоподобную, но несуществующую нагрузку.
+        logger.warning("psutil недоступен: метрики ресурсов не собираются")
+
+
     db_size = 0.0
     if os.path.exists(DB_PATH):
         try:
@@ -66,8 +88,7 @@ def health_metrics():
             
     ws_connections = sum(len(s.operator_sockets) + len(s.instructor_sockets) for s in manager.sessions.values())
     total_events = sum(s.processed_events_total for s in manager.sessions.values())
-    ollama_ok = check_ollama_status()
-    
+
     return SystemMetrics(
         cpu_percent=cpu,
         memory_used_mb=round(mem_used, 1),
@@ -75,6 +96,7 @@ def health_metrics():
         db_size_kb=round(db_size, 1),
         active_ws_connections=ws_connections,
         processed_events_total=total_events,
-        avg_ping_latency_ms=15.0,
-        is_ollama_available=ollama_ok
+        avg_ping_latency_ms=round(average_broadcast_latency_ms(), 1),
+        is_ollama_available=check_llm_status(),
+        is_metrics_available=metrics_available
     )
