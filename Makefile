@@ -8,12 +8,12 @@ include config.mk
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init start stop lint check-node
+.PHONY: help init start-dev start stop lint check-node
 
 help: ## Показать список команд
 	@echo ""
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / \
-		{printf "  \033[36m%-8s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+		{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 
 check-node:
@@ -32,6 +32,15 @@ init: check-node ## Подготовить проект: создать .env и 
 	$(NPM) install --prefix $(FRONTEND_DIR)
 	@echo ""
 	@echo "✓ Проект готов к работе. Запуск — make start"
+
+start-dev: check-node ## Запустить бэкенд и фронтенд локально, без Docker
+	@test -f $(ENV_FILE) || { echo "✗ Нет $(ENV_FILE) — сначала выполните make init"; exit 1; }
+	@echo "Фронтенд: http://localhost:5173   API: http://127.0.0.1:$(BACKEND_PORT)"
+	@# concurrently даёт --kill-others: Ctrl+C гасит оба процесса разом.
+	@# На голом shell это потребовало бы возни с trap и группами процессов.
+	npx -y concurrently --kill-others \
+		"$(PYTHON) -m uvicorn elou_tutor.api.main:app --host 127.0.0.1 --port $(BACKEND_PORT) --reload" \
+		"$(NPM) run dev --prefix $(FRONTEND_DIR)"
 
 start: ## Собрать и запустить стек в Docker, дождаться готовности
 	@test -f $(ENV_FILE) || { echo "✗ Нет $(ENV_FILE) — сначала выполните make init"; exit 1; }

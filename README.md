@@ -73,27 +73,30 @@ pip install --user -e backend
 # 2. Установите npm-зависимости во фронтенде (если еще не установлены)
 cd frontend && npm install && cd ..
 
-# 3. Запустите единую команду в корне проекта
-npm run dev
+# 3. Создайте backend/.env с секретами (если ещё не создан)
+cp backend/.env.example backend/.env
+
+# 4. Запустите обе части одной командой
+make start-dev
 ```
 Интерфейс откроется по адресу: http://localhost:5173/ (или http://127.0.0.1:5173/)
 API бэкенда будет работать на: http://127.0.0.1:8000/
 
+Ctrl+C останавливает сразу оба процесса.
+
 ### Вариант 2: Раздельный локальный запуск
 
-Все команды выполняются из корня проекта:
+Если нужно поднять только одну часть — запускайте её напрямую.
 
 #### 1. Запуск только бэкенда (API и Симулятор)
 ```bash
-npm run backend
+python -m uvicorn elou_tutor.api.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-*(Или напрямую: `python -m uvicorn elou_tutor.api.main:app --host 127.0.0.1 --port 8000`)*
 
 #### 2. Запуск только фронтенда (Интерфейс)
 ```bash
-npm run frontend
+npm run dev --prefix frontend
 ```
-*(Или напрямую: `cd frontend && npm run dev`)*
 
 ---
 
