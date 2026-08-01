@@ -11,7 +11,7 @@ import unittest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from ai_core.error_analyzer import ErrorAnalyzer
+from elou_tutor.tutor.analyzer import ErrorAnalyzer
 from elou_tutor.domain.regulations import TECH_REGULATIONS
 
 

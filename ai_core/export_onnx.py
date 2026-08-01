@@ -15,7 +15,8 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
-from ai_core.predictive_engine import RiskLSTM, MODEL_PATH
+from ai_core.config import MODEL_PATH
+from ai_core.train import RiskLSTM
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)

@@ -5,24 +5,17 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # Импортируем конфигурационные параметры
-from ai_core.config import (
-    MODEL_PATH, ONNX_PATH, INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM, DROPOUT,
+from elou_tutor.ml.settings import (
+    ONNX_PATH, INPUT_DIM, SEQUENCE_LENGTH,
     SCALER_MIN, SCALER_MAX, OUT_MIN, OUT_MAX,
-    RISK_WEIGHT_TEMP, RISK_WEIGHT_PRES, RISK_WEIGHT_LEVEL, RISK_PENALTY_NO_FEED
+    RISK_WEIGHT_TEMP, RISK_WEIGHT_PRES, RISK_WEIGHT_LEVEL, RISK_PENALTY_NO_FEED,
 )
 from elou_tutor.domain.process_limits import (
-    FURNACE_TEMP_CRITICAL, FURNACE_TEMP_WARNING, COLUMN_PRES_WARNING,
-    COLUMN_PRES_ESD, COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_LOW_INTERLOCK, COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
+    FURNACE_TEMP_CRITICAL, FURNACE_TEMP_WARNING, COLUMN_PRES_WARNING, COLUMN_PRES_ESD,
+    COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_LOW_INTERLOCK,
+    COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
     STARTUP_HEATING_THRESHOLD_TEMP, STARTUP_FILLING_TIME_LIMIT_SEC, VALVE_ACTION_TIMEOUT_SEC,
 )
-
-# Пытаемся импортировать torch для инференса нейросети
-try:
-    import torch
-    import torch.nn as nn
-    HAS_TORCH = True
-except ImportError:
-    HAS_TORCH = False
 
 # Пытаемся импортировать onnxruntime для легкого инференса
 try:
@@ -40,58 +33,19 @@ def denormalize_output(data_norm):
     return data_norm * (OUT_MAX - OUT_MIN) + OUT_MIN
 
 # -------------------------------------------------------------
-# Архитектура модели LSTM в PyTorch
-# -------------------------------------------------------------
-if HAS_TORCH:
-    class RiskLSTM(nn.Module):
-        """
-        Двухслойная LSTM для прогнозирования телеметрии ЭЛОУ-АВТ.
-        Вход: 7 фичей (клапаны + уставка + temp/pres/level).
-        Выход: 3 параметра через 15 секунд (temp, pres, level).
-        """
-        def __init__(self, input_dim=INPUT_DIM, hidden_dim=HIDDEN_DIM, seq_len=30, output_dim=OUTPUT_DIM, num_layers=NUM_LAYERS, dropout=DROPOUT):
-            super(RiskLSTM, self).__init__()
-            self.hidden_dim = hidden_dim
-            self.seq_len = seq_len
-            
-            # 2-слойный LSTM с Dropout для регуляризации
-            self.lstm = nn.LSTM(
-                input_dim, hidden_dim,
-                batch_first=True,
-                num_layers=num_layers,
-                dropout=dropout if num_layers > 1 else 0.0
-            )
-            self.dropout = nn.Dropout(dropout)
-            # Полносвязный слой: прогноз [temp, pres, level] на t+15с
-            self.fc = nn.Linear(hidden_dim, output_dim)
-            
-        def forward(self, x):
-            # x shape: (batch, seq_len, input_dim)
-            lstm_out, _ = self.lstm(x)
-            # Берем последний временной шаг
-            last_out = lstm_out[:, -1, :]
-            last_out = self.dropout(last_out)
-            out = self.fc(last_out)
-            return out
-else:
-    class RiskLSTM:
-        def __init__(self, *args, **kwargs):
-            pass
-
 # Класс инференса (Прогнозирование рисков на лету)
 # -------------------------------------------------------------
 class RiskPredictor:
     """
     Класс инференса для расчета уровня рисков на основе 30-секундного окна телеметрии.
-    Использует ONNX Runtime или PyTorch с математическим fallback.
+    Использует ONNX Runtime с математическим fallback.
     """
     def __init__(self):
-        self.model = None
         self.ort_session = None
         self.use_onnx = False
         self.use_fallback = True
-        
-        # 1. Проверяем наличие ONNX (предпочтительный легкий инференс)
+
+        # Проверяем наличие ONNX (единственный поддерживаемый рантайм-инференс)
         if HAS_ONNX and os.path.exists(ONNX_PATH):
             try:
                 self.ort_session = ort.InferenceSession(ONNX_PATH, providers=['CPUExecutionProvider'])
@@ -99,29 +53,8 @@ class RiskPredictor:
                 self.use_fallback = False
                 logger.info("Модель LSTM успешно загружена через ONNX Runtime (7 фичей).")
             except Exception as e:
-                logger.warning("Ошибка загрузки ONNX модели: %s. Пробуем PyTorch.", e)
-                
-        # 2. Если ONNX не загружен, но есть PyTorch и веса
-        if self.use_fallback and HAS_TORCH:
-            try:
-                self.model = RiskLSTM(
-                    input_dim=INPUT_DIM,
-                    hidden_dim=HIDDEN_DIM,
-                    seq_len=30,
-                    output_dim=OUTPUT_DIM,
-                    num_layers=NUM_LAYERS,
-                    dropout=DROPOUT
-                )
-                if os.path.exists(MODEL_PATH):
-                    self.model.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
-                    self.model.eval()
-                    self.use_fallback = False
-                    logger.info("Модель RiskLSTM успешно загружена через PyTorch.")
-                else:
-                    logger.warning("Файл lstm_model.pth не найден. Включается математический fallback.")
-            except Exception as e:
-                logger.warning("Ошибка загрузки PyTorch модели: %s. Переход на fallback.", e)
-                
+                logger.warning("Ошибка загрузки ONNX модели: %s. Переход на fallback.", e)
+
         if self.use_fallback:
             logger.info("Нейросети недоступны. Исполняется резервный математический экстраполятор (polyfit).")
 
@@ -138,13 +71,13 @@ class RiskPredictor:
         # Превращаем вход в numpy array
         window = np.array(window_data, dtype=np.float32)
         n_features = INPUT_DIM
-        if window.shape != (30, n_features):
+        if window.shape != (SEQUENCE_LENGTH, n_features):
             # Если окно неполное, дополняем последними значениями
             if len(window) > 0:
                 last_row = window[-1]
-                padded = np.zeros((30, n_features), dtype=np.float32)
-                padded[30 - len(window):] = window
-                padded[:30 - len(window)] = last_row
+                padded = np.zeros((SEQUENCE_LENGTH, n_features), dtype=np.float32)
+                padded[SEQUENCE_LENGTH - len(window):] = window
+                padded[:SEQUENCE_LENGTH - len(window)] = last_row
                 window = padded
             else:
                 return [280.0, 0.25, 50.0], 5.0
@@ -153,24 +86,18 @@ class RiskPredictor:
         pred_temp_math, pred_pres_math, pred_level_math = self._run_mathematical_fallback(window)
 
         # -------------------------------------------------------------
-        # А. Использование нейросети (ONNX или PyTorch)
+        # А. Использование нейросети (ONNX Runtime)
         # -------------------------------------------------------------
         if not self.use_fallback:
             try:
                 # Нормализуем окно
                 window_norm = normalize(window)
-                
-                if self.use_onnx:
-                    # Инференс через ONNX Runtime
-                    x_input = window_norm.astype(np.float32)[np.newaxis, :, :]
-                    ort_outs = self.ort_session.run(None, {"input": x_input})
-                    pred_norm = ort_outs[0][0]
-                else:
-                    # Инференс через PyTorch
-                    with torch.no_grad():
-                        x_tensor = torch.tensor(window_norm, dtype=torch.float32).unsqueeze(0)
-                        pred_norm = self.model(x_tensor).squeeze(0).numpy()
-                        
+
+                # Инференс через ONNX Runtime
+                x_input = window_norm.astype(np.float32)[np.newaxis, :, :]
+                ort_outs = self.ort_session.run(None, {"input": x_input})
+                pred_norm = ort_outs[0][0]
+
                 # Денормируем предсказанные значения на t + 15 с (только 3 выходных)
                 pred = denormalize_output(pred_norm)
                 pred_temp_nn, pred_pres_nn, pred_level_nn = float(pred[0]), float(pred[1]), float(pred[2])

@@ -27,7 +27,7 @@ from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_CRITICAL, COLUMN_PRES_CRITICAL, COLUMN_PRES_WARNING,
     COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
 )
-from ai_core.predictive_engine import RiskPredictor
+from elou_tutor.ml.predictor import RiskPredictor
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("evaluate")

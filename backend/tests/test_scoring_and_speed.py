@@ -18,7 +18,7 @@ os.environ["DATABASE_PATH"] = TEST_DB_PATH
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from ai_core.error_analyzer import ErrorAnalyzer
+from elou_tutor.tutor.analyzer import ErrorAnalyzer
 from elou_tutor.simulation.scenarios import load_scenarios
 
 # Имена действий, которые реально порождает обработчик команд (backend/routes/ws.py)

@@ -17,11 +17,46 @@ from ai_core.config import (
     TRAIN_SPLIT, VAL_SPLIT, DATASET_PATH, MODEL_PATH,
     SCALER_MIN, SCALER_MAX, OUT_MIN, OUT_MAX, BASE_DIR
 )
-from ai_core.predictive_engine import RiskLSTM
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+
+# -------------------------------------------------------------
+# Архитектура модели LSTM в PyTorch.
+# Живёт в офлайн-пайплайне: рантайм исполняет только ONNX-граф,
+# torch в зависимости прод-образа не входит.
+# -------------------------------------------------------------
+class RiskLSTM(nn.Module):
+    """
+    Двухслойная LSTM для прогнозирования телеметрии ЭЛОУ-АВТ.
+    Вход: 7 фичей (клапаны + уставка + temp/pres/level).
+    Выход: 3 параметра через 15 секунд (temp, pres, level).
+    """
+    def __init__(self, input_dim=INPUT_DIM, hidden_dim=HIDDEN_DIM, seq_len=30, output_dim=OUTPUT_DIM, num_layers=NUM_LAYERS, dropout=DROPOUT):
+        super(RiskLSTM, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.seq_len = seq_len
+
+        # 2-слойный LSTM с Dropout для регуляризации
+        self.lstm = nn.LSTM(
+            input_dim, hidden_dim,
+            batch_first=True,
+            num_layers=num_layers,
+            dropout=dropout if num_layers > 1 else 0.0
+        )
+        self.dropout = nn.Dropout(dropout)
+        # Полносвязный слой: прогноз [temp, pres, level] на t+15с
+        self.fc = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x):
+        # x shape: (batch, seq_len, input_dim)
+        lstm_out, _ = self.lstm(x)
+        # Берем последний временной шаг
+        last_out = lstm_out[:, -1, :]
+        last_out = self.dropout(last_out)
+        out = self.fc(last_out)
+        return out
 
 def set_seeds(seed: int = RANDOM_SEED):
     """Фиксирует все генераторы для воспроизводимости обучения."""

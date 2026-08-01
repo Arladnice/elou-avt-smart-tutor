@@ -16,7 +16,7 @@ from elou_tutor.domain.process_limits import (
 )
 from elou_tutor.domain.regulations import TECH_REGULATIONS
 from elou_tutor.simulation.scenarios import get_scenario_by_id
-from ai_core.sequence_alignment import calculate_lcs_alignment
+from elou_tutor.tutor.alignment import calculate_lcs_alignment
 
 
 class ErrorAnalyzer:

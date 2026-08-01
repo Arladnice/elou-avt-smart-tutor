@@ -10,8 +10,8 @@ os.environ["DATABASE_PATH"] = TEST_DB_PATH
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from elou_tutor.simulation.model import ELOUAVTSimulator
-from ai_core.predictive_engine import RiskPredictor
-from ai_core.error_analyzer import ErrorAnalyzer
+from elou_tutor.ml.predictor import RiskPredictor
+from elou_tutor.tutor.analyzer import ErrorAnalyzer
 
 class TestKTKComponents(unittest.TestCase):
     def setUp(self):
