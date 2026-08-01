@@ -1,6 +1,7 @@
 import json
-from backend.db.database import get_db_connection
-from backend.utils.security import verify_integrity_hash
+
+from elou_tutor.db.database import get_db_connection
+from elou_tutor.domain.integrity import verify_integrity_hash
 
 def get_all_sessions():
     """Возвращает историю тренировок и проверяет целостность данных."""

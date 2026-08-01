@@ -11,9 +11,9 @@ from dotenv import load_dotenv
 # Загружаем переменные окружения
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-from backend.db.database import init_db
+from elou_tutor.db.audit import log_audit_event
+from elou_tutor.db.database import init_db
 from backend.services.simulation_loop import simulation_loop
-from backend.utils.security import log_audit_event
 from backend.routes import auth, sessions, ws, health, ai_chat, alarm_feedback, scenarios
 
 # Setup logger

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
-from backend.db.queries import get_all_sessions, clear_all_sessions
+from elou_tutor.db.queries import get_all_sessions, clear_all_sessions
 from backend.utils.deps import get_current_user, require_instructor
-from backend.utils.security import log_audit_event
+from elou_tutor.db.audit import log_audit_event
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 

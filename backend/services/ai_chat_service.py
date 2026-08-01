@@ -376,7 +376,7 @@ def process_ai_chat(messages: List[Dict[str, str]], telemetry: Dict[str, Any], m
     
     # 1. ЗАЩИТА ОТ PROMPT INJECTION (SEC-05)
     import re
-    from backend.utils.security import log_audit_event
+    from elou_tutor.db.audit import log_audit_event
     
     prompt_injection_patterns = [
         r"(?i)ignore\s+previous",

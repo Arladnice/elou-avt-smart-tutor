@@ -8,7 +8,7 @@ from elou_tutor.simulation.scenarios import (
     load_scenarios, add_custom_scenario, delete_scenario, get_scenario_by_id
 )
 from backend.utils.deps import get_current_user, require_instructor
-from backend.utils.security import log_audit_event
+from elou_tutor.db.audit import log_audit_event
 
 router = APIRouter(prefix="/api/scenarios", tags=["Scenarios"])
 

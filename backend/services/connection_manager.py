@@ -10,9 +10,10 @@ from fastapi import WebSocket
 from elou_tutor.simulation.model import ELOUAVTSimulator
 from elou_tutor.ml.predictor import RiskPredictor
 from elou_tutor.tutor.analyzer import ErrorAnalyzer
-from backend.db.queries import save_session_db
+from elou_tutor.db.audit import log_audit_event
+from elou_tutor.db.queries import save_session_db
 from backend.utils.net import is_webhook_url_allowed
-from backend.utils.security import calculate_integrity_hash, log_audit_event
+from backend.utils.security import calculate_integrity_hash
 from backend.utils.helpers import random_id
 
 logger = logging.getLogger(__name__)

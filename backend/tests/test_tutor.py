@@ -326,7 +326,7 @@ class TestKTKComponents(unittest.TestCase):
 
 class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def setUp(self):
-        from backend.db.database import init_db
+        from elou_tutor.db.database import init_db
         init_db()
 
     def test_health_endpoint(self):
@@ -394,7 +394,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         """Тест сценария 6: Проверка ИБ-контроля целостности логов по SHA-256"""
         from backend.routes.sessions import get_sessions, clear_sessions
         from backend.utils.security import calculate_integrity_hash
-        from backend.db.database import DB_PATH
+        from elou_tutor.db.database import DB_PATH
         import sqlite3
         
         # Сначала очистим историю (эндпоинты требуют авторизованного пользователя)
@@ -628,7 +628,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # Удаляем тестовую БД после завершения тестов
-        from backend.db.database import DB_PATH
+        from elou_tutor.db.database import DB_PATH
         if os.path.exists(DB_PATH) and "tutor_test.db" in DB_PATH:
             try:
                 os.remove(DB_PATH)

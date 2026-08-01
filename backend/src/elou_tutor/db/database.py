@@ -2,7 +2,13 @@ import os
 import sqlite3
 from contextlib import contextmanager
 
-DB_PATH = os.environ.get("DATABASE_PATH", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "tutor.db")))
+from elou_tutor.domain.credentials import get_password_hash
+
+# Каталог backend/ лежит на четыре уровня выше файла (db → elou_tutor → src → backend).
+# Путь по умолчанию тот же, что и до переезда пакета в src-layout: backend/tutor.db.
+_BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+DB_PATH = os.environ.get("DATABASE_PATH", os.path.join(_BACKEND_DIR, "tutor.db"))
 
 # Сколько ждать освобождения блокировки БД, прежде чем вернуть ошибку
 DB_TIMEOUT_SEC = 5.0
@@ -94,7 +100,6 @@ def init_db():
 
 def seed_users():
     """Создает базовых пользователей, если БД пуста."""
-    from backend.utils.security import get_password_hash
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM users")

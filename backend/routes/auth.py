@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException
 from backend.models.schemas import LoginRequest
 from backend.utils.security import (
-    log_audit_event, 
-    create_jwt_token, 
-    check_fail_to_ban, 
-    record_failed_login, 
-    reset_failed_login, 
+    create_jwt_token,
+    check_fail_to_ban,
+    record_failed_login,
+    reset_failed_login,
     verify_password
 )
-from backend.db.database import get_db_connection
+from elou_tutor.db.audit import log_audit_event
+from elou_tutor.db.database import get_db_connection
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

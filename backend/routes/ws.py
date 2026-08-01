@@ -9,7 +9,8 @@ from backend.services.connection_manager import (
 )
 from elou_tutor.domain.process_limits import FURNACE_TEMP_MIN_LIMIT, FURNACE_TEMP_MAX_LIMIT
 from backend.utils.net import is_webhook_url_allowed
-from backend.utils.security import log_audit_event_async, verify_jwt_token
+from backend.utils.security import verify_jwt_token
+from elou_tutor.db.audit import log_audit_event_async
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["websocket"])

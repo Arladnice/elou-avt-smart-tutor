@@ -19,7 +19,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 
 from fastapi.testclient import TestClient
 
-from backend.db.database import init_db, DB_PATH
+from elou_tutor.db.database import init_db, DB_PATH
 from backend.main import app
 
 
@@ -87,7 +87,7 @@ class TestDatabaseConfiguration(unittest.TestCase):
 
     def test_wal_mode_is_enabled(self):
         """WAL позволяет читать во время записи и снимает часть блокировок."""
-        from backend.db.database import get_db_connection
+        from elou_tutor.db.database import get_db_connection
 
         with get_db_connection() as conn:
             mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
@@ -95,7 +95,7 @@ class TestDatabaseConfiguration(unittest.TestCase):
 
     def test_connection_has_busy_timeout(self):
         """Без таймаута конкурентная запись сразу падает с 'database is locked'."""
-        from backend.db.database import get_db_connection
+        from elou_tutor.db.database import get_db_connection
 
         with get_db_connection() as conn:
             timeout_ms = conn.execute("PRAGMA busy_timeout").fetchone()[0]
@@ -109,7 +109,7 @@ class TestAsyncAuditLogging(unittest.TestCase):
         init_db()
 
     def test_async_audit_event_is_persisted(self):
-        from backend.utils.security import log_audit_event_async
+        from elou_tutor.db.audit import log_audit_event_async
 
         async def scenario():
             await log_audit_event_async("operator_1", "ASYNC_PROBE", "проверка записи")
@@ -125,7 +125,7 @@ class TestAsyncAuditLogging(unittest.TestCase):
         self.assertEqual(row[0], "operator_1")
 
     def test_async_audit_keeps_loop_responsive(self):
-        from backend.utils.security import log_audit_event_async
+        from elou_tutor.db.audit import log_audit_event_async
 
         async def scenario():
             ticks = 0

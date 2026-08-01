@@ -24,7 +24,7 @@ def _read_cpu_percent() -> float:
 
 from backend.models.schemas import HealthResponse, SystemMetrics
 from backend.services.connection_manager import manager, average_broadcast_latency_ms
-from backend.db.database import DB_PATH
+from elou_tutor.db.database import DB_PATH
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/health", tags=["health"])

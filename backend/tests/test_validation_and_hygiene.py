@@ -17,7 +17,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 
 from fastapi.testclient import TestClient
 
-from backend.db.database import init_db
+from elou_tutor.db.database import init_db
 from backend.main import app
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))

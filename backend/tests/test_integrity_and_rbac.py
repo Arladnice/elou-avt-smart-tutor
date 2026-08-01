@@ -20,7 +20,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 
 from fastapi.testclient import TestClient
 
-from backend.db.database import init_db, DB_PATH
+from elou_tutor.db.database import init_db, DB_PATH
 from backend.main import app
 
 
@@ -57,7 +57,7 @@ class TestSessionIntegrityVerification(unittest.TestCase):
 
     def setUp(self):
         init_db()
-        from backend.db.queries import clear_all_sessions
+        from elou_tutor.db.queries import clear_all_sessions
         clear_all_sessions()
 
     def _insert_raw(self, integrity_hash, op_name="Legacy_Op"):
@@ -83,14 +83,14 @@ class TestSessionIntegrityVerification(unittest.TestCase):
         ).hexdigest()
         self._insert_raw(legacy)
 
-        from backend.db.queries import get_all_sessions
+        from elou_tutor.db.queries import get_all_sessions
         record = next(s for s in get_all_sessions() if s["operator_name"] == "Legacy_Op")
         self.assertTrue(record["integrity_valid"])
 
     def test_tampered_record_is_flagged(self):
         self._insert_raw("0" * 64, op_name="Tampered_Op")
 
-        from backend.db.queries import get_all_sessions
+        from elou_tutor.db.queries import get_all_sessions
         record = next(s for s in get_all_sessions() if s["operator_name"] == "Tampered_Op")
         self.assertFalse(record["integrity_valid"])
 
@@ -106,7 +106,7 @@ class TestAuditChain(unittest.TestCase):
         conn.close()
 
     def test_intact_chain_verifies(self):
-        from backend.utils.security import log_audit_event, verify_audit_chain
+        from elou_tutor.db.audit import log_audit_event, verify_audit_chain
 
         for i in range(5):
             log_audit_event("operator_1", "PROBE", f"событие {i}")
@@ -115,7 +115,7 @@ class TestAuditChain(unittest.TestCase):
         self.assertTrue(ok, f"Целая цепочка признана нарушенной на записи {broken_at}")
 
     def test_deleted_row_breaks_chain(self):
-        from backend.utils.security import log_audit_event, verify_audit_chain
+        from elou_tutor.db.audit import log_audit_event, verify_audit_chain
 
         for i in range(5):
             log_audit_event("operator_1", "PROBE", f"событие {i}")
@@ -132,7 +132,7 @@ class TestAuditChain(unittest.TestCase):
         self.assertFalse(ok, "Удаление строки журнала осталось незамеченным")
 
     def test_edited_row_breaks_chain(self):
-        from backend.utils.security import log_audit_event, verify_audit_chain
+        from elou_tutor.db.audit import log_audit_event, verify_audit_chain
 
         for i in range(3):
             log_audit_event("operator_1", "PROBE", f"событие {i}")
