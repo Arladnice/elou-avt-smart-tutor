@@ -56,13 +56,19 @@ elou-avt-smart-tutor/
 **Зависимости между пакетами Python:**
 
 ```
-backend  →  simulator, ai_core        (backend оркеструет)
-simulator →  ai_core.config           (только константы)
-simulator →  backend.services.scenario_manager   (ленивый импорт в try/except — мягкая зависимость)
-ai_core   →  ничего из backend
+backend    →  simulator, ai_core                 (backend оркеструет)
+simulator  →  ai_core.config                     (только константы)
+simulator  →  backend.services.scenario_manager  (ленивый импорт в try/except)
+ai_core    →  backend.services.scenario_manager  (ленивый импорт в try/except)
+ai_core    →  simulator                          (только офлайн-генератор датасета)
 ```
 
-`ai_core` не знает про веб-слой — это позволяет обучать и оценивать модели офлайн (`train.py`, `evaluate.py`).
+Три последние стрелки — **единственные допущенные исключения**, и они намеренные:
+
+- `simulator.reset()` и `ErrorAnalyzer` берут из реестра сценариев начальное состояние и эталонную последовательность. Импорт ленивый (внутри функции) и обёрнут в `try/except`, поэтому офлайн-скрипты `train.py` и `evaluate.py` работают без запущенного бэкенда.
+- `ai_core/data_generator.py` специально крутит симулятор, чтобы получить синтетическую телеметрию для обучения.
+
+> Эти правила **проверяются автоматически** — см. §8.3. Любая новая связь между пакетами уронит CI, пока не будет осознанно добавлена в контракт.
 
 ---
 
@@ -398,8 +404,10 @@ make lint    # oxlint по фронту + проверка синтаксиса 
 
 ```bash
 ruff check .                                   # линт Python
+lint-imports                                   # контракты слоёв бэкенда
 pytest backend/tests -q                        # 128 тестов
 cd frontend && npm run lint && npm run build   # oxlint + tsc + vite
+cd frontend && npm run check:fsd               # правила слоёв FSD
 ```
 
 Тестам нужны переменные окружения:
