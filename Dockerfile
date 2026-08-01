@@ -37,8 +37,8 @@ COPY --from=frontend-build /build/dist ./frontend/dist
 RUN mkdir -p /app/data
 
 # Переменные окружения.
-# PORT по умолчанию = 7860 (app_port из README_HF.md — HF Spaces сам $PORT не задаёт);
-# Render прокидывает свой $PORT через окружение и переопределяет это значение.
+# PORT по умолчанию = 7860 (app_port из docs/deploy/README_HF.md — HF Spaces
+# сам $PORT не задаёт); Render прокидывает свой $PORT и переопределяет значение.
 ENV PORT=7860
 ENV DATABASE_PATH=/app/data/tutor.db
 ENV STATIC_DIR=/app/frontend/dist

@@ -2,8 +2,8 @@ import os
 from datetime import datetime
 
 def main():
-    # Корень репозитория — на уровень выше каталога scripts/ (работает на любой машине)
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Корень репозитория — на два уровня выше каталога docs/tools/
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     docs_dir = os.path.join(base_dir, "docs")
     output_file = os.path.join(docs_dir, "Сводная_пояснительная_записка.md")
     
