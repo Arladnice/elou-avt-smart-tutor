@@ -15,7 +15,7 @@ COPY ai_core/ ./ai_core/
 ENV INTEGRITY_SALT="" \
     SECRET_KEY="" \
     DATABASE_PATH=/app/data/tutor.db \
-    CORS_ORIGINS=http://localhost:5173
+    ALLOWED_ORIGINS=http://localhost:5173
 
 # Непривилегированный пользователь; каталог данных отдаём ему во владение
 RUN useradd --create-home --uid 10001 appuser \

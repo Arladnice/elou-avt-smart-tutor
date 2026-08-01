@@ -57,10 +57,17 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Подключение CORS. Список источников задаётся переменной CORS_ORIGINS
-# (через запятую); wildcard несовместим с allow_credentials по спецификации CORS.
-_origins_env = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-ALLOWED_ORIGINS = [o.strip() for o in _origins_env.split(",") if o.strip()]
+# Подключение CORS.
+# В Docker и на PaaS (Render/HF Spaces) фронтенд и API живут на одном origin,
+# CORS нужен только для дев-режима Vite; дополнительные origins — через ALLOWED_ORIGINS.
+# Wildcard несовместим с allow_credentials по спецификации CORS, поэтому список явный.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if origin.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,
