@@ -72,8 +72,14 @@ class RiskPredictor:
         window = np.array(window_data, dtype=np.float32)
         n_features = INPUT_DIM
         if window.shape != (SEQUENCE_LENGTH, n_features):
-            # Если окно неполное, дополняем последними значениями
-            if len(window) > 0:
+            if len(window) > SEQUENCE_LENGTH:
+                # Окно длиннее нужного: оставляем последние точки. Прогноз строится
+                # по самой свежей телеметрии, устаревший хвост только шумит.
+                # Обрезка обязана быть здесь: раньше защита держалась на том, что
+                # simulation_loop режет историю, и любой другой вызывающий ронял предиктор.
+                window = window[-SEQUENCE_LENGTH:]
+            elif len(window) > 0:
+                # Если окно неполное, дополняем последними значениями
                 last_row = window[-1]
                 padded = np.zeros((SEQUENCE_LENGTH, n_features), dtype=np.float32)
                 padded[SEQUENCE_LENGTH - len(window):] = window

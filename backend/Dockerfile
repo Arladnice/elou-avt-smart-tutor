@@ -8,9 +8,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Пакет ставится из исходников: pyproject объявляет package data
 # (scenarios.json, knowledge_base, model.onnx) — без установки их не будет в образе.
 # Каталог backend/training намеренно не копируется: обучение в прод-образе не нужно.
+# rm -rf build в том же слое: setuptools оставляет каталог сборки с копией
+# исходников, и без уборки он остаётся в финальном образе мёртвым грузом.
 COPY backend/pyproject.toml ./
 COPY backend/src ./src
-RUN pip install --no-cache-dir --no-deps .
+RUN pip install --no-cache-dir --no-deps . && rm -rf build
 
 # Обязательные секреты. Значений по умолчанию нет намеренно: приложение падает
 # на импорте, если INTEGRITY_SALT или SECRET_KEY не переданы при запуске

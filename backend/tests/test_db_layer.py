@@ -12,6 +12,14 @@ def test_db_modules_importable():
 
 def test_audit_chain_valid_after_writes():
     from elou_tutor.db.audit import log_audit_event, verify_audit_chain
+    from elou_tutor.db.database import get_db_connection, init_db
+
+    # Тест обязан быть самодостаточным: другие модули набора намеренно рвут
+    # цепочку, и без очистки результат зависел бы от порядка выполнения.
+    init_db()
+    with get_db_connection() as conn:
+        conn.execute("DELETE FROM audit_logs")
+        conn.commit()
 
     log_audit_event("tester", "MIGRATION_PROBE", "проверка цепочки аудита")
     is_valid, broken_id = verify_audit_chain()

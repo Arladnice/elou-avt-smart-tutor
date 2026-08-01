@@ -99,6 +99,16 @@ class TestAuditChain(unittest.TestCase):
     """Журнал аудита сцеплен в цепочку: удаление строки обнаруживается."""
 
     def setUp(self):
+        self._clear_audit_log()
+
+    def tearDown(self):
+        # Два теста этого класса намеренно рвут цепочку. Без уборки за собой
+        # они оставляли бы битый журнал следующим модулям набора, и те падали бы
+        # в зависимости от порядка выполнения.
+        self._clear_audit_log()
+
+    @staticmethod
+    def _clear_audit_log():
         init_db()
         conn = sqlite3.connect(DB_PATH)
         conn.execute("DELETE FROM audit_logs")

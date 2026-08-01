@@ -220,6 +220,14 @@ cython_debug/
 *.pkl
 *.joblib
 
+# Исключения: два артефакта версионируются намеренно и лежат в репозитории.
+# Правила выше на них не действуют (файлы уже отслеживаются), но без явной
+# записи это выглядит как недосмотр, а новый artifact после переобучения
+# молча не попал бы в коммит.
+!backend/src/elou_tutor/ml/artifacts/model.onnx
+!backend/src/elou_tutor/ml/artifacts/model.onnx.data
+!backend/training/checkpoints/lstm_model.pth
+
 # Claude worktrees (изолированные рабочие копии)
 .claude/
 .import_linter_cache/

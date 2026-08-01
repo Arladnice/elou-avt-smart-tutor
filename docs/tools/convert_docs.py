@@ -29,8 +29,11 @@ def main():
         print(f"Ошибка инициализации MarkItDown: {e}")
         return
 
-    base_dir = r"e:\Git-Projects\elou-avt-smart-tutor"
-    
+    # Корень репозитория — на два уровня выше каталога docs/tools/.
+    # Раньше здесь был абсолютный путь к машине автора, из-за чего скрипт
+    # не работал больше нигде.
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
     # Источники файлов
     source_dirs = [
         os.path.join(base_dir, "docs", "presentations"),

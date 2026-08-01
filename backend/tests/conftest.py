@@ -13,7 +13,19 @@ _TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 _BACKEND_DIR = os.path.dirname(_TESTS_DIR)
 
 # Тестовая БД отдельно от рабочей базы разработчика
-os.environ.setdefault("DATABASE_PATH", os.path.join(_TESTS_DIR, "tutor_test.db"))
+_test_db = os.path.join(_TESTS_DIR, "tutor_test.db")
+os.environ.setdefault("DATABASE_PATH", _test_db)
+
+# База удаляется перед прогоном, а не переиспользуется. Причина конкретная:
+# хэши цепочки аудита считаются с INTEGRITY_SALT, поэтому база, оставшаяся от
+# прогона с другой солью, роняет проверку целостности — прогон падал бы из-за
+# мусора от предыдущего запуска, а не из-за кода. Заодно это снимает зависимость
+# результатов от порядка выполнения тестов, ломающих цепочку намеренно.
+for _suffix in ("", "-wal", "-shm"):
+    try:
+        os.remove(_test_db + _suffix)
+    except FileNotFoundError:
+        pass
 
 # Реестр сценариев — копия во временном каталоге: эндпоинты создания и удаления
 # сценариев пишут на диск, и без этого прогон менял бы боевой реестр внутри пакета

@@ -25,10 +25,12 @@ WORKDIR /app
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Код проекта: ставим пакет; офлайн-пайплайн (backend/training) не копируем
+# Код проекта: ставим пакет; офлайн-пайплайн (backend/training) не копируем.
+# rm -rf build в том же слое: setuptools оставляет каталог сборки с копией
+# исходников, и без уборки он остаётся в финальном образе мёртвым грузом.
 COPY backend/pyproject.toml ./
 COPY backend/src ./src
-RUN pip install --no-cache-dir --no-deps .
+RUN pip install --no-cache-dir --no-deps . && rm -rf build
 
 # Собранный фронтенд из Stage 1
 COPY --from=frontend-build /build/dist ./frontend/dist
@@ -43,6 +45,12 @@ ENV PORT=7860
 ENV DATABASE_PATH=/app/data/tutor.db
 ENV STATIC_DIR=/app/frontend/dist
 ENV PYTHONUNBUFFERED=1
+# Адрес LLM объявлен явно, чтобы его было видно в docker inspect и можно было
+# переопределить переменной окружения площадки. Значение по умолчанию указывает
+# внутрь контейнера, то есть в облаке LLM заведомо недоступна: ИИ-чат корректно
+# деградирует до RAG-ответов по базе знаний. Нужен полноценный чат — задайте
+# адрес доступного OpenAI-совместимого сервера.
+ENV LLM_BASE_URL=http://127.0.0.1:1234
 
 EXPOSE ${PORT}
 
