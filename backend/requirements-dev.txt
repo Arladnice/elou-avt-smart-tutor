@@ -1,0 +1,5 @@
+# Зависимости только для запуска тестов — в production-образ не входят.
+-r requirements.txt
+
+# Нужен starlette.testclient (TestClient) в backend/tests/test_tutor.py
+httpx>=0.27.0

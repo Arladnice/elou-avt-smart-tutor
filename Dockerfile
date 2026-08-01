@@ -17,7 +17,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # === Stage 2: Python-сервер + собранная статика ===
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -36,8 +36,10 @@ COPY --from=frontend-build /build/dist ./frontend/dist
 # Директория для SQLite БД
 RUN mkdir -p /app/data
 
-# Переменные окружения
-ENV PORT=10000
+# Переменные окружения.
+# PORT по умолчанию = 7860 (app_port из README_HF.md — HF Spaces сам $PORT не задаёт);
+# Render прокидывает свой $PORT через окружение и переопределяет это значение.
+ENV PORT=7860
 ENV DATABASE_PATH=/app/data/tutor.db
 ENV PYTHONUNBUFFERED=1
 
