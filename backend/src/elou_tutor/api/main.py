@@ -8,14 +8,17 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
 from dotenv import load_dotenv
 
-# Модуль лежит в backend/src/elou_tutor/api/, корень репозитория — четырьмя
-# уровнями выше; от него отсчитываются .env и каталог собранного фронтенда.
-_REPO_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..")
+# Модуль лежит в backend/src/elou_tutor/api/: каталог backend — тремя уровнями
+# выше, корень репозитория — четырьмя. От первого отсчитывается .env,
+# от второго — каталог собранного фронтенда.
+_BACKEND_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")
 )
+_REPO_ROOT = os.path.dirname(_BACKEND_DIR)
 
-# Загружаем переменные окружения
-load_dotenv(os.path.join(_REPO_ROOT, '.env'))
+# Загружаем переменные окружения. В Docker их передаёт compose, здесь важен
+# локальный запуск без контейнера.
+load_dotenv(os.path.join(_BACKEND_DIR, '.env'))
 
 from elou_tutor.db.audit import log_audit_event
 from elou_tutor.db.database import init_db

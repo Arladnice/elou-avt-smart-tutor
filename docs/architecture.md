@@ -400,7 +400,9 @@ widgets/<kebab-case>/
 
 Фронтенд: `VITE_API_URL`, `VITE_WS_URL` (в дев-режиме заданы в `frontend/.env.development`).
 
-Шаблон корневого `.env` — в `.env.example`; сам `.env` в `.gitignore`.
+Секреты бэкенда лежат в `backend/.env` — рядом с тем, кому они нужны; шаблон с dev-значениями — `backend/.env.example`, сам `.env` в `.gitignore`. Этот же файл подключает `docker-compose.yml` через `env_file`, поэтому копии в корне репозитория нет. Docker-специфичные значения (`DATABASE_PATH`, `PYTHONPATH`, `LLM_BASE_URL`) задаются в секции `environment` compose и перекрывают файл.
+
+Порты стека (`8000`, `8080`) зашиты в `docker-compose.yml`, а не берутся из переменных: подстановка `${...}` в compose-файле работает только с `.env` из каталога самого compose-файла, и ради двух чисел держать его в корне не стоило.
 
 ### Makefile
 

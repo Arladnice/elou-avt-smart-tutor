@@ -12,20 +12,23 @@ COMPOSE ?= docker compose
 PYTHON  ?= python3
 NPM     ?= npm
 
-# --- Файл с секретами и портами ---
-ENV_FILE    ?= .env
-ENV_EXAMPLE ?= .env.example
+# --- Файл с секретами ---
+# Живёт рядом с бэкендом: секреты нужны только ему. Compose подключает этот
+# же файл через env_file, поэтому копия в корне не нужна.
+ENV_FILE    ?= backend/.env
+ENV_EXAMPLE ?= backend/.env.example
 
-# Подхватываем .env: переменные нужны локальному запуску и тестам.
-# Docker Compose читает этот файл самостоятельно.
+# Подхватываем секреты: они нужны локальному запуску и тестам.
 ifneq (,$(wildcard $(ENV_FILE)))
 include $(ENV_FILE)
 export
 endif
 
-# --- Порты (используются, если не заданы в .env) ---
+# --- Порты ---
+# Значения зашиты в docker-compose.yml; здесь они нужны только чтобы
+# make start напечатал верные адреса. Меняете там — поправьте и тут.
 BACKEND_PORT  ?= 8000
-FRONTEND_PORT ?= 80
+FRONTEND_PORT ?= 8080
 
 # --- Исходники ---
 FRONTEND_DIR ?= frontend

@@ -9,7 +9,12 @@ from elou_tutor.db.database import get_db_connection
 from elou_tutor.domain.credentials import get_password_hash, verify_password  # noqa: F401
 from elou_tutor.domain.integrity import calculate_integrity_hash, verify_integrity_hash  # noqa: F401
 
-load_dotenv()
+# Явный путь, а не поиск от текущего каталога: модуль импортируется и тестами,
+# и офлайн-скриптами из разных cwd, а секреты лежат ровно в backend/.env.
+_BACKEND_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")
+)
+load_dotenv(os.path.join(_BACKEND_DIR, ".env"))
 
 JWT_SECRET_KEY = os.environ.get("SECRET_KEY")
 if not JWT_SECRET_KEY:

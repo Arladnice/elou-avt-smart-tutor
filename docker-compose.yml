@@ -4,21 +4,24 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "8000:8000"
     volumes:
       - tutor_data:/app/data
       # Монтируем исходники пакета — вместе с --reload даёт живую перезагрузку
       - ./backend/src:/app/src
     command: uvicorn elou_tutor.api.main:app --host 0.0.0.0 --port 8000 --reload
+    # Секреты берутся из backend/.env (файл в .gitignore, создаётся `make init`
+    # из backend/.env.example). Если файла нет — compose откажется стартовать.
+    env_file:
+      - ./backend/.env
     environment:
       - DATABASE_PATH=/app/data/tutor.db
       # Смонтированные исходники должны выигрывать у копии в site-packages,
       # иначе --reload перезапускает сервер, но код остаётся из образа
       - PYTHONPATH=/app/src
+      # Переопределяет значение из backend/.env: внутри контейнера 127.0.0.1
+      # указывает на сам контейнер, а LM Studio слушает на хосте
       - LLM_BASE_URL=${LLM_BASE_URL:-http://host.docker.internal:1234}
-      # Секреты обязательны — задайте их в .env (файл в .gitignore)
-      - INTEGRITY_SALT=${INTEGRITY_SALT:?INTEGRITY_SALT не задан — создайте .env с dev-значениями}
-      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY не задан — создайте .env с dev-значениями}
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)\" || exit 1"]
       interval: 10s
@@ -31,8 +34,9 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    # 8080, а не 80: стандартный порт часто занят (Docker Desktop, OrbStack, nginx)
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "8080:80"
     depends_on:
       backend:
         condition: service_healthy
