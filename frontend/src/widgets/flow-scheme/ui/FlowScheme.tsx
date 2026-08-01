@@ -19,8 +19,8 @@ const generateSparklineD = (history: number[], x: number, y: number, w: number, 
 };
 
 const FlowScheme: React.FC = () => {
-  const { sensors, valves, status, defects, telemetryHistory } = useTelemetry();
-  const { isOnline, wsLatency } = useSession();
+  const { sensors, valves, status, defects, telemetryHistory, wsLatency } = useTelemetry();
+  const { isOnline } = useSession();
   const { toggleValve } = useSimulatorActions();
 
   // Спарклайны берут те же точки, что и предиктивный график (SimulatorContext)

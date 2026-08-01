@@ -68,6 +68,8 @@ export interface TelemetryState {
   telemetryHistory: TelemetryPoint[];
   logs: LogEntry[];
   accidentReason: string;
+  /** Задержка WebSocket в мс — Критерий 1 (производительность). Метрика потока, а не сессии */
+  wsLatency: number;
 }
 
 export const INITIAL_VALVES: Valves = { V_1: true, V_2: false, V_3: true, V_ELOU: true, V_VT: true };

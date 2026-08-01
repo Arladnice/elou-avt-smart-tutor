@@ -13,7 +13,6 @@ import {
   type ActiveSession,
 } from '@/entities/training-record';
 
-import { FeedbackWrapper, FeedbackActionBtn, FeedbackBadge } from '@/widgets/alarm-log';
 import { getTableColumns, SCENARIO_NAMES, SCENARIO_SHORT_NAMES } from '../model/tableColumns';
 
 /**
@@ -35,10 +34,9 @@ const getStatusBadge = (s: string) => {
 const InstructorPage: React.FC = () => {
   const { message, modal } = App.useApp();
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
-  const { sensors, valves, status, defects, logs, riskLevel, accidentReason } = useTelemetry();
+  const { sensors, valves, status, defects, logs, riskLevel, accidentReason, wsLatency } = useTelemetry();
   const {
     isOnline,
-    wsLatency,
     username,
     scenarioId,
     scenarios,
@@ -462,26 +460,26 @@ const InstructorPage: React.FC = () => {
                       {log.message}
                       {isAlarm && (
                         fb ? (
-                          <FeedbackBadge $fbType={fb}>
+                          <S.FeedbackBadge $fbType={fb}>
                             {fb === 'confirmed' ? '✅ Подтверждён' : '❌ Ложная тревога'}
-                          </FeedbackBadge>
+                          </S.FeedbackBadge>
                         ) : (
-                          <FeedbackWrapper>
-                            <FeedbackActionBtn
+                          <S.FeedbackWrapper>
+                            <S.FeedbackActionBtn
                               $fbType="confirm"
                               title="Подтвердить корректность сработки ИИ"
                               onClick={() => handleAlarmFeedback(String(log.id), 'confirmed')}
                             >
                               ✅
-                            </FeedbackActionBtn>
-                            <FeedbackActionBtn
+                            </S.FeedbackActionBtn>
+                            <S.FeedbackActionBtn
                               $fbType="reject"
                               title="Отметить как ложную тревогу"
                               onClick={() => handleAlarmFeedback(String(log.id), 'false_alarm')}
                             >
                               ❌
-                            </FeedbackActionBtn>
-                          </FeedbackWrapper>
+                            </S.FeedbackActionBtn>
+                          </S.FeedbackWrapper>
                         )
                       )}
                     </span>

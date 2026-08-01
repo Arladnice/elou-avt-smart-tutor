@@ -34,12 +34,24 @@ import { SimulatorActionsContext, type SimulatorActions } from '@/entities/simul
 /** Сценарии, которые на самом деле являются инъекцией неисправности поверх базового сценария */
 const DEFECT_SCENARIOS: DefectId[] = ['pump_fail', 'coil_overheat', 'valve_jam', 'power_fail', 'air_fail', 'steam_fail'];
 
+let logSequence = 0;
+
+/** Уникальный id записи журнала: одной метки времени мало — в одну миллисекунду попадает несколько логов */
 const makeLog = (type: LogEntry['type'], message: string, time = '00:00'): LogEntry => ({
-  id: Date.now().toString(),
+  id: `local_${Date.now()}_${++logSequence}`,
   time,
   type,
   message,
 });
+
+/**
+ * Пакет телеметрии приходит через JSON.parse, поэтому каждое поле-объект в нём
+ * ссылочно новое, даже когда содержимое не изменилось. Без сравнения по значению
+ * setState срабатывает вхолостую и контекст сессии обновляется раз в секунду —
+ * ровно то, ради устранения чего он и отделён от телеметрии.
+ */
+const sameStringList = (a: string[], b: string[] | undefined): boolean =>
+  Array.isArray(b) && a.length === b.length && a.every((item, i) => item === b[i]);
 
 /**
  * Владеет WebSocket-соединением, резервной физикой и всем состоянием тренажёра,
@@ -394,14 +406,20 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setRiskLevel(data.riskLevel);
         setPredictions(data.predictions);
         setLogs(data.logs);
-        setScoreCard(data.scoreCard);
         setAccidentReason(data.accidentReason);
+        // Карточка оценки приходит в каждом пакете после завершения сессии и не
+        // меняется — обновляем только при реальном изменении содержимого
+        setScoreCard(prev =>
+          JSON.stringify(prev) === JSON.stringify(data.scoreCard ?? null) ? prev : data.scoreCard,
+        );
         if (data.speedMultiplier !== undefined) setSpeedMultiplier(data.speedMultiplier);
         if (data.isPaused !== undefined) setIsPaused(data.isPaused);
         if (data.hasSnapshot !== undefined) setHasSnapshot(data.hasSnapshot);
         if (data.webhookUrl !== undefined) setWebhookUrl(data.webhookUrl);
         if (data.webhookActive !== undefined) setWebhookActive(data.webhookActive);
-        if (data.mutes !== undefined) setMutes(data.mutes);
+        if (data.mutes !== undefined) {
+          setMutes(prev => (sameStringList(prev, data.mutes) ? prev : data.mutes));
+        }
         if (data.mode) setMode(data.mode);
         if (data.operatorName) setOperatorName(data.operatorName);
         if (data.scenarioId) setScenarioId(data.scenarioId);
@@ -523,7 +541,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     telemetryHistory,
     logs,
     accidentReason,
-  }), [status, timeElapsed, valves, sensors, setpoints, defects, riskLevel, predictions, telemetryHistory, logs, accidentReason]);
+    wsLatency,
+  }), [status, timeElapsed, valves, sensors, setpoints, defects, riskLevel, predictions, telemetryHistory, logs, accidentReason, wsLatency]);
 
   const sessionValue = useMemo<SessionState>(() => ({
     username,
@@ -533,7 +552,6 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     activeSessionId,
     isOnline,
     isDemoMode,
-    wsLatency,
     mode,
     speedMultiplier,
     isPaused,
@@ -543,7 +561,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     webhookActive,
     mutes,
     scenarios,
-  }), [username, role, operatorName, scenarioId, activeSessionId, isOnline, isDemoMode, wsLatency, mode, speedMultiplier, isPaused, hasSnapshot, scoreCard, webhookUrl, webhookActive, mutes, scenarios]);
+  }), [username, role, operatorName, scenarioId, activeSessionId, isOnline, isDemoMode, mode, speedMultiplier, isPaused, hasSnapshot, scoreCard, webhookUrl, webhookActive, mutes, scenarios]);
 
   // Все команды стабильны, поэтому объект действий создаётся один раз
   const actionsValue = useMemo<SimulatorActions>(() => ({

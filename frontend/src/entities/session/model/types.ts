@@ -53,8 +53,6 @@ export interface SessionState {
   isOnline: boolean;
   /** Вход выполнен без проверки пароля на сервере (сервер был недоступен) */
   isDemoMode: boolean;
-  /** Задержка WebSocket в мс — Критерий 1 (производительность) */
-  wsLatency: number;
   mode: TrainingMode;
   speedMultiplier: number;
   isPaused: boolean;
