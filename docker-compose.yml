@@ -1,5 +1,10 @@
 services:
   backend:
+    # Имя контейнера закреплено, чтобы не зависеть от имени compose-проекта:
+    # так `docker logs tutor-backend` работает одинаково локально и на сервере.
+    # Имя СЕРВИСА (backend) при этом не меняется — на него ссылаются
+    # frontend/nginx.conf и depends_on, оно же остаётся DNS-именем в сети.
+    container_name: tutor-backend
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -31,11 +36,15 @@ services:
     restart: unless-stopped
 
   frontend:
+    container_name: tutor-frontend
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    # 8080, а не 80: на боевом хосте порты 80/443 занимает фронт-прокси (Caddy),
+    # который терминирует TLS и проксирует сюда по домену. Занять 80 напрямую
+    # означало бы конфликт с ним и потерю HTTPS.
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
       backend:
         condition: service_healthy

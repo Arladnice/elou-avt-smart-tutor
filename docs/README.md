@@ -10,6 +10,7 @@
 *   **[architecture.md](architecture.md)** — Архитектура проекта: слои пакета `elou_tutor`, FSD-фронтенд, контракт WS/REST, конвенции кода и инструкция «куда класть новый функционал». **Начните отсюда, если дорабатываете проект.**
 *   **[../backend/training/README.md](../backend/training/README.md)** — Офлайн-пайплайн обучения LSTM: генерация датасета, обучение, экспорт в ONNX, честная оценка.
 *   **[deploy/README_HF.md](deploy/README_HF.md)** — Развёртывание одноконтейнерного образа на Hugging Face Spaces и Render.
+*   **[deploy/caddy.md](deploy/caddy.md)** — Публикация стека на боевом хосте за фронт-прокси Caddy: HTTPS, домен, WebSocket.
 
 ### 📄 Основные проектные документы (Разделы для сдачи)
 *   **[main_strategic_plan.md](main_strategic_plan.md)** — Главный стратегический план команды. Содержит GAP-анализ по 8 критериям оценки, план спринтов и чек-лист готовности проекта.
