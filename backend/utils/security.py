@@ -1,57 +1,23 @@
 import asyncio
 import os
 import time
-import hashlib
 import hmac
 import jwt
 from fastapi import HTTPException
 from dotenv import load_dotenv
-from passlib.context import CryptContext
 
 from backend.db.database import get_db_connection
 
+from elou_tutor.domain.credentials import get_password_hash, verify_password  # noqa: F401
+from elou_tutor.domain.integrity import calculate_integrity_hash, verify_integrity_hash  # noqa: F401
+
 load_dotenv()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-SECRET_SALT = os.environ.get("INTEGRITY_SALT")
-if not SECRET_SALT:
-    raise ValueError("Критическая ошибка: переменная окружения INTEGRITY_SALT не задана!")
 
 JWT_SECRET_KEY = os.environ.get("SECRET_KEY")
 if not JWT_SECRET_KEY:
     raise ValueError("Критическая ошибка: переменная окружения SECRET_KEY не задана!")
 JWT_ALGORITHM = "HS256"
 
-# Разделитель полей: без него ("ab","c") и ("a","bc") давали одинаковый хэш,
-# то есть подмену границ полей было невозможно обнаружить.
-_FIELD_SEPARATOR = "\x1f"
-
-
-def calculate_integrity_hash(*args) -> str:
-    """Вычисляет HMAC-SHA256 переданных полей на секретной соли."""
-    payload = _FIELD_SEPARATOR.join(str(arg) for arg in args)
-    return hmac.new(
-        SECRET_SALT.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
-    ).hexdigest()
-
-
-def _legacy_integrity_hash(*args) -> str:
-    """Прежний алгоритм (SHA-256 от конкатенации с солью-суффиксом).
-
-    Нужен только для проверки записей, созданных до перехода на HMAC.
-    """
-    payload = "".join(str(arg) for arg in args) + SECRET_SALT
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-def verify_integrity_hash(stored_hash: str, *args) -> bool:
-    """Проверяет хэш записи, принимая как новый (HMAC), так и устаревший формат."""
-    if not stored_hash:
-        return False
-    if hmac.compare_digest(stored_hash, calculate_integrity_hash(*args)):
-        return True
-    return hmac.compare_digest(stored_hash, _legacy_integrity_hash(*args))
 
 def create_jwt_token(data: dict) -> str:
     """Создает JWT токен для пользователя."""
@@ -135,12 +101,6 @@ def verify_audit_chain():
         expected_prev = stored_hash
 
     return True, None
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
 
 def check_fail_to_ban(username: str):
     """Проверяет не заблокирован ли пользователь по механизму Fail-to-Ban."""

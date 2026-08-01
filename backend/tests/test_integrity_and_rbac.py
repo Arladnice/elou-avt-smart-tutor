@@ -75,7 +75,7 @@ class TestSessionIntegrityVerification(unittest.TestCase):
     def test_legacy_sha256_records_stay_valid(self):
         """Записи, созданные до перехода на HMAC, не должны помечаться подделкой."""
         import hashlib
-        from backend.utils.security import SECRET_SALT
+        from elou_tutor.domain.integrity import SECRET_SALT
 
         fields = ("Legacy_Op", "operator", "startup", "2026-07-09 12:00:00", 120, 90, "success", "[]", "[]")
         legacy = hashlib.sha256(
