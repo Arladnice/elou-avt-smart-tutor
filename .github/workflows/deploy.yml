@@ -11,6 +11,8 @@ name: Deploy
 #   DEPLOY_PASSWORD   — его пароль
 #   INTEGRITY_SALT    — соль хэша целостности сессий
 #   SECRET_KEY        — ключ подписи JWT
+#   TUTOR_DOMAIN      — домен, на который Caddy выпускает сертификат
+#                       (должен резолвиться на DEPLOY_HOST до первой раскатки)
 # Необязательная:
 #   LLM_BASE_URL      — адрес OpenAI-совместимого сервера; без него ИИ-чат
 #                       корректно деградирует до ответов по базе знаний
@@ -55,6 +57,8 @@ jobs:
       # Имя compose-проекта закреплено явно. По умолчанию оно берётся из имени
       # каталога, и переезд каталога отвязал бы стек от тома с базой.
       COMPOSE_PROJECT: elou-avt-smart-tutor
+      # Домен для автоматического сертификата: подставляется в docker-compose.prod.yml
+      TUTOR_DOMAIN: ${{ vars.TUTOR_DOMAIN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -114,8 +118,9 @@ jobs:
         run: |
           set -euo pipefail
           SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+          : "${TUTOR_DOMAIN:?не задана переменная TUTOR_DOMAIN}"
           sshpass -e ssh $SSH_OPTS "$LOGIN@$HOST" \
-            "APP_DIR='$APP_DIR' COMPOSE_PROJECT='$COMPOSE_PROJECT' bash -s" <<'REMOTE'
+            "APP_DIR='$APP_DIR' COMPOSE_PROJECT='$COMPOSE_PROJECT' TUTOR_DOMAIN='$TUTOR_DOMAIN' bash -s" <<'REMOTE'
           set -euo pipefail
 
           command -v docker >/dev/null || { echo "✗ На сервере нет docker"; exit 1; }
@@ -131,12 +136,18 @@ jobs:
           install -m 600 /tmp/deploy.env "$APP_DIR/backend/.env"
           rm -f /tmp/deploy.tar.gz /tmp/deploy.env
 
-          docker compose -p "$COMPOSE_PROJECT" up -d --build --wait --remove-orphans
+          # Два файла: базовый стек плюс прод-слой с фронт-прокси и HTTPS.
+          # TUTOR_DOMAIN подставляется в docker-compose.prod.yml на этапе разбора.
+          export TUTOR_DOMAIN
+          docker compose -p "$COMPOSE_PROJECT" \
+            -f docker-compose.yml -f docker-compose.prod.yml \
+            up -d --build --wait --remove-orphans
 
           # Освобождаем место: без этого слои от прошлых сборок копятся до отказа диска
           docker image prune -f >/dev/null
 
-          docker compose -p "$COMPOSE_PROJECT" ps
+          docker compose -p "$COMPOSE_PROJECT" \
+            -f docker-compose.yml -f docker-compose.prod.yml ps
           REMOTE
 
       - name: Проверить, что сервис отвечает
@@ -145,8 +156,8 @@ jobs:
           HOST: ${{ vars.DEPLOY_HOST }}
           # Не USER: на раннере это стандартная переменная, затенять её не стоит
           LOGIN: ${{ vars.DEPLOY_USER }}
-        # Проверяем изнутри сервера: наружу порт может быть закрыт файрволом,
-        # и это не повод считать раскатку неудачной.
+        # Сам стек проверяем изнутри сервера: порты привязаны к loopback и наружу
+        # намеренно не смотрят.
         run: |
           set -euo pipefail
           SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
@@ -165,6 +176,29 @@ jobs:
           docker compose -p "$COMPOSE_PROJECT" logs --tail=50 backend
           exit 1
           REMOTE
+
+      - name: Проверить HTTPS через домен
+        env:
+          DOMAIN: ${{ vars.TUTOR_DOMAIN }}
+        # Снаружи и с проверкой сертификата: только так видно, что Caddy получил
+        # его от Let's Encrypt. Первый выпуск занимает несколько секунд, поэтому
+        # даём несколько попыток.
+        run: |
+          set -euo pipefail
+          : "${DOMAIN:?не задана переменная TUTOR_DOMAIN}"
+          for i in $(seq 1 10); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "https://$DOMAIN/" || true)
+            if [ "$code" = "200" ]; then
+              echo "✓ https://$DOMAIN/ отвечает 200, сертификат валиден"
+              curl -fsS --max-time 15 "https://$DOMAIN/api/health"
+              exit 0
+            fi
+            echo "  попытка $i: код '$code', ждём выпуск сертификата..."
+            sleep 10
+          done
+          echo "✗ HTTPS не поднялся. Проверьте, что домен резолвится на этот хост"
+          echo "  и что порт 80 открыт наружу — через него идёт ACME-проверка."
+          exit 1
 
       - name: Удалить временные файлы с раннера
         # Раннер одноразовый, но шаг дешёвый и снимает вопрос при разборе сбоя

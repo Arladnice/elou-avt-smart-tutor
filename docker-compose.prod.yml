@@ -1,0 +1,36 @@
+# Слой для боевого хоста: добавляет фронт-прокси с автоматическим HTTPS.
+# Локальная разработка его не использует — там стек поднимается одним
+# docker-compose.yml, без 80/443 и без сертификатов.
+#
+# Запуск:
+#   TUTOR_DOMAIN=example.com \
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Это же делает .github/workflows/deploy.yml при пуше в main.
+
+services:
+  caddy:
+    container_name: tutor-caddy
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    # Отдельный Caddyfile ради одного маршрута не нужен: подкоманда reverse-proxy
+    # сама включает автоматический HTTPS для публичного домена — выпускает
+    # сертификат Let's Encrypt и продлевает его без вмешательства.
+    # Порт 80 при этом обязан быть свободен: через него идёт ACME-проверка.
+    command: caddy reverse-proxy --from ${TUTOR_DOMAIN:?не задан TUTOR_DOMAIN — домен, на который выпускается сертификат} --to frontend:80
+    volumes:
+      # Сертификаты обязаны пережить пересоздание контейнера. Без тома Caddy
+      # запрашивал бы их заново при каждой раскатке и быстро упёрся бы в
+      # недельный лимит Let's Encrypt на выпуск для одного домена.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_started
+
+volumes:
+  caddy_data:
+  caddy_config:
