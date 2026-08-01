@@ -407,11 +407,14 @@ widgets/<kebab-case>/
 ### Makefile
 
 ```bash
-make init    # создать .env, поставить зависимости Python и npm
-make start   # docker compose up -d --build --wait
-make stop    # docker compose down (том с БД сохраняется)
-make lint    # oxlint по фронту + проверка синтаксиса Python
+make init       # создать backend/.env, поставить зависимости Python и npm
+make start-dev  # локальный запуск без Docker: uvicorn + vite одной командой
+make start      # docker compose up -d --build --wait
+make stop       # docker compose down (том с БД сохраняется)
+make lint       # oxlint по фронту + проверка синтаксиса Python
 ```
+
+`Makefile` — единственная точка входа для запуска: корневого `package.json` с npm-скриптами больше нет, чтобы не держать два конкурирующих способа сделать одно и то же.
 
 Настройки (порты, команды) — в `config.mk`, не в самом `Makefile`. Проверка версии Node встроена: нужен `^20.19 || >=22.12`, под Node 16 линтер падает с невнятной ошибкой.
 
