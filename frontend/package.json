@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "lint": "oxlint --deny-warnings",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -15,7 +15,7 @@
     "lucide-react": "^1.23.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "recharts": "^3.9.1",
+    "recharts": "^3.10.1",
     "styled-components": "^6.4.3"
   },
   "devDependencies": {
