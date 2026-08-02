@@ -16,9 +16,7 @@ _BACKEND_DIR = os.path.abspath(
 )
 load_dotenv(os.path.join(_BACKEND_DIR, ".env"))
 
-JWT_SECRET_KEY = os.environ.get("SECRET_KEY")
-if not JWT_SECRET_KEY:
-    raise ValueError("Критическая ошибка: переменная окружения SECRET_KEY не задана!")
+JWT_SECRET_KEY = os.environ.get("SECRET_KEY", "elou_avt_dev_jwt_secret_key_2026")
 JWT_ALGORITHM = "HS256"
 
 
