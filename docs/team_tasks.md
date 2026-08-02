@@ -23,18 +23,18 @@
 **Роль:** XL Frontend, L PM, M Backend, M AI Lead, M АСУ ТП  
 
 ### Файлы и исходники для работы:
-- Панель инструктора: [`frontend/src/pages/instructor/ui/InstructorPage.tsx`](file:///e:/Git-Projects/elou-avt-smart-tutor/frontend/src/pages/instructor/ui/InstructorPage.tsx)
-- Готовый виджет оценки: [`frontend/src/widgets/score-card/ui/ScoreCard.tsx`](file:///e:/Git-Projects/elou-avt-smart-tutor/frontend/src/widgets/score-card/ui/ScoreCard.tsx)
-- Отчёт ML: [`backend/training/reports/evaluation_report.md`](file:///e:/Git-Projects/elou-avt-smart-tutor/backend/training/reports/evaluation_report.md)
-- Презентация: [`docs/presentations/ELOU_AVT_Smart_Tutor.pptx`](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/presentations/ELOU_AVT_Smart_Tutor.pptx)
-- Контейнер: [`backend/Dockerfile`](file:///e:/Git-Projects/elou-avt-smart-tutor/backend/Dockerfile)
+- Панель инструктора: `frontend/src/pages/instructor/ui/InstructorPage.tsx`
+- Готовый виджет оценки: `frontend/src/widgets/score-card/ui/ScoreCard.tsx`
+- Отчёт ML: `backend/training/reports/evaluation_report.md`
+- Презентация: `docs/presentations/ELOU_AVT_Smart_Tutor.pptx`
+- Контейнер: `backend/Dockerfile`
 
 ### Задачи
-- ✅ **ScoreCard & Дебрифинг для инструктора (вкл. SessionTimeline)** — **ГОТОВО (100%)**. В UI реализована таблица сессий с таймлайном действий и проверкой HMAC.
+- ✅ **ScoreCard & Дебрифинг для инструктора (вкл. SessionTimeline)** — В UI реализована таблица сессий с таймлайном действий. (Проверка HMAC реализуется на сервере, требуется валидация интеграции).
 - 🔴 **Слайд «3 гипотезы кейса»** — добавить в PPTX явное подтверждение всех 3 гипотез из кейса. (Срок: 05.08)
 - 🟠 **Аудит Docker-контейнера** — совместно с Екатериной (ИБ) проверить `appuser`, env и конфигурацию секретов в Dockerfile. (Срок: 07.08)
-- 🟠 **Замер WS-задержки** — зафиксировать реальную цифру ping, создать файл `docs/performance.md`. (Срок: 07.08)
-- 🟡 **Интеграция контента в PPTX** — после того как Фёдор и Александра сдадут тексты по TCO/ROI и сравнению подходов.
+- 🟠 **Замер WS-задержки** — зафиксировать реальную цифру ping, явно создать файл `docs/performance.md`. (Срок: 07.08)
+- 🟡 **Интеграция контента в PPTX** — внести тексты по TCO/ROI и сравнению подходов после сдачи Фёдором и Александрой. (Срок: 11.08)
 - 🟢 **Сборка, TypeScript build и видео (3–5 мин)** — 13.08.
 
 ---
@@ -44,9 +44,9 @@
 **Роль:** XL PM, XL Экономист/Бизнес-аналитик, M AI Lead, M ИБ  
 
 ### Файлы и исходники для работы:
-- Презентация с экономикой (слайд 9): [`docs/presentations/ELOU_AVT_Smart_Tutor.pptx`](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/presentations/ELOU_AVT_Smart_Tutor.pptx)
-- Сводная пояснительная записка: [`docs/Сводная_пояснительная_записка.md`](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/Сводная_пояснительная_записка.md)
-- Требования к решению: [`Исходные данные/Кейс.pdf`](file:///e:/Git-Projects/elou-avt-smart-tutor/Исходные%20данные/Кейс.pdf)
+- Презентация с экономикой (слайд 9): `docs/presentations/ELOU_AVT_Smart_Tutor.pptx`
+- Сводная пояснительная записка: `docs/Сводная_пояснительная_записка.md`
+- Требования к решению: `Исходные данные/Кейс.pdf`
 
 ### Задачи
 - 🔴 **Проверить расчёты экономики в PPTX** — (Слайд 9: NPV=5.66 млн руб, PI=1.91, DPP=3.71 года, IRR=45%). Сформировать единый набор цифр для текста и слайдов (Фёдор готовит вводные). (Срок: 05.08)
@@ -60,15 +60,15 @@
 **Роль:** XL Инженер АСУ ТП, M ИБ, M Экономика, M PM  
 
 ### Файлы и исходники для работы:
-- Физика и пороги ПАЗ: [`backend/src/elou_tutor/domain/process_limits.py`](file:///e:/Git-Projects/elou-avt-smart-tutor/backend/src/elou_tutor/domain/process_limits.py)
-- Техпроцесс: [`Исходные данные/3. Описание технологического процесса.pdf`](file:///e:/Git-Projects/elou-avt-smart-tutor/Исходные%20данные/3.%20Описание%20технологического%20процесса.pdf)
-- Сценарии и чек-лист демо: [`docs/demo_scenario.md`](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/demo_scenario.md)
+- Физика и пороги ПАЗ: `backend/src/elou_tutor/domain/process_limits.py`
+- Техпроцесс: `Исходные данные/3. Описание технологического процесса.pdf`
+- Сценарии и чек-лист демо: `docs/demo_scenario.md`
 
 ### Задачи
 - 🔴 **Валидация параметров симулятора и аварийных порогов** — сопоставить константы с регламентом (Екатерина проверяет ИБ-последствия). Подготовить перечень расхождений/правок. (Срок: 05.08)
 - 🟠 **Описание 5 учебных сценариев и 3 аварий** — задокументировать физику прогара, заклинивания клапана и потери уровня. (Срок: 08.08 - 11.08)
-- 🟠 **Мини-HAZOP ключевого сценария** — выявление уязвимых узлов. 
-- 🟢 **Ревью КИПиА на SCADA** — проверить корректность названий (Денис вносит UI-исправления). 
+- 🟠 **Мини-HAZOP ключевого сценария** — выявление уязвимых узлов. Подготовить таблицу. (Срок: 08.08)
+- 🟢 **Ревью КИПиА на SCADA** — проверить корректность названий и передать Денису список правок для UI. (Срок: 11.08)
 
 ---
 
@@ -77,15 +77,15 @@
 **Роль:** XL Специалист по ИБ  
 
 ### Файлы и исходники для работы:
-- Актуальная модель угроз: [`docs/security_threat_model.md`](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/security_threat_model.md)
-- Аудит БД: [`backend/src/elou_tutor/db/audit.py`](file:///e:/Git-Projects/elou-avt-smart-tutor/backend/src/elou_tutor/db/audit.py)
-- RAG и SSRF: [`backend/src/elou_tutor/services/`](file:///e:/Git-Projects/elou-avt-smart-tutor/backend/src/elou_tutor/services/)
+- Актуальная модель угроз: `docs/security_threat_model.md`
+- Аудит БД: `backend/src/elou_tutor/db/audit.py`
+- RAG и SSRF: `backend/src/elou_tutor/services/`
 
 ### Задачи
 - 🔴 **Актуализация модели угроз (К8)** — в `docs/security_threat_model.md`: HMAC-SHA-256, JWT/RBAC, защита от НСД. Написать раздел ИБ в пояснительной записке. (Срок: 05.08 - 08.08)
-- 🔴 **Реестр аудит-событий** — описать 20 типов логируемых событий.
+- 🔴 **Реестр аудит-событий** — составить таблицу минимум из 20 логируемых событий и внести её в `docs/security_threat_model.md`. (Срок: 08.08)
 - 🟠 **Безопасность контейнера** — проверить `appuser` и секреты (совместно с Денисом). (Срок: 07.08)
-- 🟠 **Проверка SSRF в RAG** — проверить защиту от SSRF-атак в векторном поиске. (Екатерина — модель угроз, Саломе — валидация URL). (Срок: 08.08)
+- 🟠 **Проверить защиту URL вебхука от SSRF** — проверить localhost, private/link-local IP, DNS-резолвинг, запрещённые схемы; приложить результаты тестов (тех. поддержка: Денис/Саломе). (Срок: 08.08)
 
 ---
 
@@ -94,14 +94,14 @@
 **Роль:** M AI Lead, M Backend, M Frontend, M Экономика  
 
 ### Файлы и исходники для работы:
-- Отчёты ML: [`backend/training/reports/evaluation_report.md`](file:///e:/Git-Projects/elou-avt-smart-tutor/backend/training/reports/evaluation_report.md)
+- Отчёты ML: `backend/training/reports/evaluation_report.md`
 
 ### Задачи
 - 🔴 **Обоснование Precision = 2,7% / Recall = 100%** — написать, почему Recall в АСУ ТП критичнее. (Срок: 04.08 - 05.08)
-- 🟠 **Раздел К5: RiskLSTM и ИИ-прогноз** — описать входные сигналы и прогноз на 15 сек.
-- 🟠 **RAG и отсечка галлюцинаций** — логика векторного поиска по регламенту и защиты SSRF (в паре с Екатериной). (Срок: 08.08)
+- 🟠 **Раздел К5: RiskLSTM и ИИ-прогноз** — описать входные сигналы и прогноз на 15 сек. Подготовить артефакт/раздел текста. (Срок: 08.08)
+- 🟠 **RAG и отсечка галлюцинаций** — логика векторного поиска по регламенту. (Срок: 08.08)
 - 🟡 **LCS vs DTW** — аргументировать преимущество LCS над DTW для дискретных шагов (Денис интегрирует в отчет). (Срок: 11.08)
-- 🟡 **HR/LMS-концепт** — интеграция метрик в корпоративное обучение.
+- 🟡 **HR/LMS-концепт** — описать интеграцию метрик в корпоративное обучение (текстовый раздел). (Срок: 11.08)
 
 ---
 
