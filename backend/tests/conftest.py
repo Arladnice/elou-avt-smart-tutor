@@ -14,9 +14,15 @@ _BACKEND_DIR = os.path.dirname(_TESTS_DIR)
 
 # Тестовая БД отдельно от рабочей базы разработчика
 _test_db = os.path.join(_TESTS_DIR, "tutor_test.db")
-os.environ.setdefault("DATABASE_PATH", _test_db)
-os.environ.setdefault("INTEGRITY_SALT", "test_integrity_salt_2026_default_32")
-os.environ.setdefault("SECRET_KEY", "test_jwt_secret_key_2026_default_32")
+if not os.environ.get("DATABASE_PATH"):
+    os.environ["DATABASE_PATH"] = _test_db
+
+if len(os.environ.get("INTEGRITY_SALT", "")) < 32:
+    os.environ["INTEGRITY_SALT"] = "test_integrity_salt_2026_default_32"
+
+if len(os.environ.get("SECRET_KEY", "")) < 32:
+    os.environ["SECRET_KEY"] = "test_jwt_secret_key_2026_default_32"
+
 
 # База удаляется перед прогоном, а не переиспользуется. Причина конкретная:
 # хэши цепочки аудита считаются с INTEGRITY_SALT, поэтому база, оставшаяся от
