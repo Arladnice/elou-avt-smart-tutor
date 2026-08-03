@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **v4 (03.08.2026)** — пересмотрен после честной ревизии кода и анализа всех лекций IT CAMP 2026. Баллы скорректированы по реальному состоянию реализации. Добавлен 2-недельный финальный план.
-> **Презентация:** [ELOU_AVT_Smart_Tutor.pptx](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/presentations/ELOU_AVT_Smart_Tutor.pptx) — **10 слайдов**, Live-демо: `elou-avt-smart-tutor.onrender.com`
+> **Презентация:** [ELOU_AVT_Smart_Tutor.pptx](docs/presentations/ELOU_AVT_Smart_Tutor.pptx) — **10 слайдов**, Live-демо: `elou-avt-smart-tutor.onrender.com`
 
 ---
 
@@ -15,7 +15,7 @@
 | 3 | Архитектура и технологии (проект) | **0.10** | **0.50** | **5.0** ✅ | **5** |
 | 4 | Конкурентоспособность и внедрение (проект) | **0.10** | **0.50** | **4.5** 🟡 | **5** |
 | 5 | Использование ИИ (прототип + проект) | **0.10** | **0.50** | **4.0** 🟡 | **5** |
-| 6 | Презентация и оценка требований (прототип + проект) | **0.10** | **0.50** | **3.5** 🔴 | **5** |
+| 6 | Презентация и оценка требований (прототип + проект) | **0.10** | **0.50** | **2.0** 🔴 | **5** |
 | 7 | Инфраструктура решения (проект) | **0.10** | **0.50** | **4.5** 🟡 | **5** |
 | 8 | Информационная безопасность (прототип + проект) | **0.10** | **0.50** | **4.5** 🟡 | **5** |
 | | **ИТОГО** | **1.00** | **5.00** | **~3.70** | **5.00** |
@@ -90,7 +90,7 @@
 | Обоснование выбора компонентов | ✅ Есть | Таблица сравнения 3 альтернативных вариантов и обоснование стека |
 | Масштабирование | ✅ Есть | Описана топология развертывания в K8s и изоляция сессий |
 
-**Артефакты:** [solution_architecture.md](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/solution_architecture.md) (Архитектурное описание решения по модели 4+1, диаграммы интеграции, процесса, логики и развертывания)
+**Артефакты:** [solution_architecture.md](docs/solution_architecture.md) (Архитектурное описание решения по модели 4+1, диаграммы интеграции, процесса, логики и развертывания)
 
 ---
 
@@ -110,16 +110,16 @@
 | Юридические и регуляторные аспекты | ✅ Есть | Соответствие Ростехнадзору, ФЗ-152, ГОСТ, лицензии в legal_compliance.md |
 
 **Артефакты:**
-- [market_analysis.md](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/market_analysis.md) — обзор рынка КТК и бенчмаркинг
-- [economics.md](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/economics.md) — расчёт TCO, NPV, PI, IRR, DPP и дерево КПЭ
-- [legal_compliance.md](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/legal_compliance.md) — юридическая чистота, импортозамещение, соответствие ГОСТам и ФЗ-152
+- [market_analysis.md](docs/market_analysis.md) — обзор рынка КТК и бенчмаркинг
+- [economics.md](docs/economics.md) — расчёт TCO, NPV, PI, IRR, DPP и дерево КПЭ
+- [legal_compliance.md](docs/legal_compliance.md) — юридическая чистота, импортозамещение, соответствие ГОСТам и ФЗ-152
 
 ---
 
 ### Критерий 5: Использование ИИ (вес 0.10) — СТУПЕНЧАТАЯ ШКАЛА
 
 > [!IMPORTANT]
-> На основе вебинаров Евгения Вылегжанина ([07_ml_digital_twins.md](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/reference/lecture_insights/07_ml_digital_twins.md) и [08_ai_consultation_it_camp.md](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/reference/lecture_insights/08_ai_consultation_it_camp.md)) тренажёр чётко разделен на 3 Уровня (Физика $\rightarrow$ Дефекты $\rightarrow$ Зона ИИ), а оценка ИИ строится по **ступенчатой шкале**:
+> На основе вебинаров Евгения Вылегжанина ([07_ml_digital_twins.md](docs/reference/lecture_insights/07_ml_digital_twins.md) и [08_ai_consultation_it_camp.md](docs/reference/lecture_insights/08_ai_consultation_it_camp.md)) тренажёр чётко разделен на 3 Уровня (Физика $\rightarrow$ Дефекты $\rightarrow$ Зона ИИ), а оценка ИИ строится по **ступенчатой шкале**:
 
 | Балл | Что нужно по спецификации | Реализация в проекте |
 |---|---|---|
@@ -151,7 +151,7 @@
 | БТ/ФТТ/НФТ | ✅ Есть | **Денис + Александра** (Реструктурировано в requirements.md по BABOK/Вигерсу) |
 | Экономический расчёт | ❌ Нет | **Александра** |
 
-**Артефакт:** [requirements.md](file:///e:/Git-Projects/elou-avt-smart-tutor/docs/requirements.md) — формализованные требования по BABOK/Вигерсу
+**Артефакт:** [requirements.md](docs/requirements.md) — формализованные требования по BABOK/Вигерсу
 
 ---
 

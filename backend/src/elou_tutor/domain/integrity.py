@@ -10,7 +10,11 @@ import hashlib
 import hmac
 import os
 
-SECRET_SALT = os.environ.get("INTEGRITY_SALT", "elou_avt_default_dev_salt_2026")
+SECRET_SALT = os.environ.get("INTEGRITY_SALT")
+if not SECRET_SALT:
+    raise ValueError("INTEGRITY_SALT is required in environment variables.")
+if len(SECRET_SALT) < 32:
+    raise ValueError("INTEGRITY_SALT must be at least 32 bytes long for security.")
 
 # Разделитель полей: без него ("ab", "c") и ("a", "bc") дали бы одинаковый хэш
 _FIELD_SEPARATOR = "\x1f"

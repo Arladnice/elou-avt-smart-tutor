@@ -16,7 +16,12 @@ _BACKEND_DIR = os.path.abspath(
 )
 load_dotenv(os.path.join(_BACKEND_DIR, ".env"))
 
-JWT_SECRET_KEY = os.environ.get("SECRET_KEY", "elou_avt_dev_jwt_secret_key_2026")
+JWT_SECRET_KEY = os.environ.get("SECRET_KEY")
+if not JWT_SECRET_KEY:
+    raise ValueError("SECRET_KEY is required in environment variables.")
+if len(JWT_SECRET_KEY) < 32:
+    raise ValueError("SECRET_KEY must be at least 32 bytes long for security.")
+
 JWT_ALGORITHM = "HS256"
 
 
