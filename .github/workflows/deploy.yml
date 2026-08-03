@@ -9,8 +9,8 @@ name: Deploy
 # и только потом выполняется deploy. Проверки не скопированы сюда, а вызваны
 # из backend-ci.yml и frontend-ci.yml — источник правды один.
 #
-# Значения берутся из Variables репозитория
-# (Settings → Secrets and variables → Actions → вкладка Variables):
+# Секретные значения хранятся в GitHub Actions Secrets; адреса и домен — в Variables
+# (Settings → Secrets and variables → Actions):
 #   DEPLOY_HOST       — IP или домен сервера
 #   DEPLOY_USER       — пользователь SSH
 #   DEPLOY_PASSWORD   — его пароль
@@ -21,11 +21,6 @@ name: Deploy
 # Необязательная:
 #   LLM_BASE_URL      — адрес OpenAI-совместимого сервера; без него ИИ-чат
 #                       корректно деградирует до ответов по базе знаний
-#
-# TODO(deploy, безопасность): ПЕРЕД боевым использованием перенести DEPLOY_PASSWORD,
-# INTEGRITY_SALT и SECRET_KEY из Variables в Secrets. Variables не маскируются в
-# логах прогона и видны открытым текстом в интерфейсе репозитория — сейчас это
-# допустимо только потому, что хост и данные тестовые.
 #
 # TODO(deploy, безопасность): перейти с пароля на SSH-ключ и завести отдельного
 # пользователя вместо root. Пароль root даёт полный доступ к машине любому, кто
@@ -91,8 +86,8 @@ jobs:
         # передаём значения в командной строке ssh — иначе они были бы видны
         # в списке процессов сервера.
         env:
-          INTEGRITY_SALT: ${{ vars.INTEGRITY_SALT }}
-          SECRET_KEY: ${{ vars.SECRET_KEY }}
+          INTEGRITY_SALT: ${{ secrets.INTEGRITY_SALT }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
           LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
         run: |
           set -euo pipefail
@@ -110,7 +105,7 @@ jobs:
 
       - name: Скопировать на сервер
         env:
-          SSHPASS: ${{ vars.DEPLOY_PASSWORD }}
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
           HOST: ${{ vars.DEPLOY_HOST }}
           # Не USER: на раннере это стандартная переменная, затенять её не стоит
           LOGIN: ${{ vars.DEPLOY_USER }}
@@ -128,7 +123,7 @@ jobs:
 
       - name: Развернуть стек
         env:
-          SSHPASS: ${{ vars.DEPLOY_PASSWORD }}
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
           HOST: ${{ vars.DEPLOY_HOST }}
           # Не USER: на раннере это стандартная переменная, затенять её не стоит
           LOGIN: ${{ vars.DEPLOY_USER }}
@@ -169,7 +164,7 @@ jobs:
 
       - name: Проверить, что сервис отвечает
         env:
-          SSHPASS: ${{ vars.DEPLOY_PASSWORD }}
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
           HOST: ${{ vars.DEPLOY_HOST }}
           # Не USER: на раннере это стандартная переменная, затенять её не стоит
           LOGIN: ${{ vars.DEPLOY_USER }}

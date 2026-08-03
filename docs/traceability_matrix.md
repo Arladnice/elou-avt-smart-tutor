@@ -1,17 +1,16 @@
-# Матрица трассируемости требований (Traceability Matrix)
+# Матрица трассировки конкурсных критериев
 
-> [!NOTE]
-> Матрица связывает исходные требования бизнеса и пользователей с конкретными модулями реализации, тестами и шагами демонстрации.
+| Критерий | Реализация | Проверка / доказательство | Статус |
+|---|---|---|---|
+| К1. Техническая реализация | роли, симулятор, журнал, ScoreCard | backend tests, REST/WS smoke, live demo | Частично подтверждено: нужен frontend/browser smoke |
+| К2. Демонстрация | `elou_salt_breakthrough` | `docs/demo_scenario.md`, три прогона, MP4 | Открыто |
+| К3. Архитектура | backend layers, FSD frontend, API/WS contracts | 6 import-contracts, `architecture.md` | Подтверждено для MVP |
+| К4. Конкурентоспособность | web-MVP, экономика и roadmap | первичные источники, пилотные KPI | Гипотеза |
+| К5. AI | ONNX LSTM, hybrid risk, LCS, retrieval | ONNX smoke, evaluation report | Работает на синтетике; не валидировано на реальных данных |
+| К6. Презентация и требования | PPTX, README, требования | render/overflow, claim review | Требует обновления PPTX |
+| К7. Инфраструктура | Docker, Caddy, CI | clean compose, restart, load/restore logs | Открыто |
+| К8. ИБ | JWT, RBAC, rate limit, HMAC, audit, SSRF | automated tests и WS RBAC smoke | Подтверждено для demo-контура |
 
-| ID | Описание требования | Модуль реализации (Код) | Покрытие тестами | Шаг Демонстрации | Статус |
-|---|---|---|---|---|---|
-| БТ-01 | Сокращение времени адаптации на 25% | `ScoreCard.tsx` (Оценка квалификации), `RiskLSTM` | `test_tutor.py` (Сборка метрик) | Шаг 3: Экран дебрифинга с результатами прохождения | ✅ Реализовано |
-| БТ-02 | Объективность аттестации (LCS) | `backend/src/elou_tutor/tutor/analyzer.py` (LCS алгоритм) | `test_analyzer.py` (Проверка выравнивания) | Шаг 3: Разбор нарушений хронологии | ✅ Реализовано |
-| БТ-03 | Достоверность результатов (HMAC) | `backend/src/elou_tutor/domain/integrity.py` | `test_integrity.py`, `test_audit.py` | Шаг 3: Окно "Целостность данных подтверждена" | ✅ Реализовано |
-| ФТ-СИМ-01 | Расчет параметров с шагом 1 сек | `backend/src/elou_tutor/simulation/` | `test_physics.py` (Проверка шагов) | Шаг 2: Графики SCADA обновляются ежесекундно | ✅ Реализовано |
-| ФТ-ИНС-03 | Инжекция неисправностей в сессию | `frontend/src/pages/instructor/ui/InstructorPage.tsx` | `test_websocket.py` (WS-команды) | Шаг 2: Инструктор активирует "Сбой насоса" | ✅ Реализовано |
-| ФТ-ИИ-01 | Прогноз риска LSTM на 15 секунд | `backend/src/elou_tutor/ml/predictor.py` | `test_predictor.py` (Инференс ONNX) | Шаг 2: ИИ-индикатор загорается до аварии | ✅ Реализовано |
-| ФТ-ИИ-03 | Локализация ошибки оператора | `backend/src/elou_tutor/tutor/analyzer.py` | `test_analyzer.py` | Шаг 3: Дебрифинг "Действие совершено не вовремя" | ✅ Реализовано |
-| НФ-ПРО-04 | Сетевая задержка WS < 50 мс | `backend/src/elou_tutor/api/routes/ws.py` | (Запланировано) | Шаг 2: Отклик клапана на мнемосхеме | 🟠 В работе (К7) |
-| НФ-БЕЗ-01 | JWT / RBAC Авторизация | `backend/src/elou_tutor/api/security.py` | `test_security.py` | Шаг 1: Запрет входа без роли | ✅ Реализовано |
-| НФ-БЕЗ-02 | Хэширование логов (SHA-256) | `backend/src/elou_tutor/db/audit.py` | `test_audit.py` | Шаг 3: Проверка зеленой метки в UI | ✅ Реализовано |
+## Правило доказательства
+
+Статус «Подтверждено» означает, что есть воспроизводимый тест, лог, снимок экрана или первичный источник. Наличие пункта в плане или target-архитектуре не считается реализацией.
