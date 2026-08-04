@@ -14,16 +14,16 @@ COPY backend/pyproject.toml ./
 COPY backend/src ./src
 RUN pip install --no-cache-dir --no-deps . && rm -rf build
 
-# Обязательные секреты. Значений по умолчанию нет намеренно: приложение падает
-# на импорте, если INTEGRITY_SALT или SECRET_KEY не переданы при запуске
-# (docker run -e INTEGRITY_SALT=... -e SECRET_KEY=...).
-ENV INTEGRITY_SALT="" \
-    SECRET_KEY="" \
-    DATABASE_PATH=/app/data/tutor.db \
-    ALLOWED_ORIGINS=http://localhost:5173
+# INTEGRITY_SALT и SECRET_KEY намеренно не объявляются в образе: их передают
+# только во время запуска через env_file / оркестратор. Приложение прекращает
+# запуск, если секрет отсутствует или короче 32 байт.
+ENV DATABASE_PATH=/app/data/tutor.db \
+    ALLOWED_ORIGINS=http://localhost:5173 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 # Непривилегированный пользователь; каталог данных отдаём ему во владение
-RUN useradd --create-home --uid 10001 appuser \
+RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin appuser \
     && mkdir -p /app/data \
     && chown -R appuser:appuser /app/data
 USER appuser
