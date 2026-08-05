@@ -10,6 +10,35 @@ def test_db_modules_importable():
     assert isinstance(get_all_sessions(), list)
 
 
+def test_seed_users_adds_seven_operators_to_existing_database():
+    from elou_tutor.db.database import get_db_connection, init_db, seed_users
+    from elou_tutor.domain.credentials import verify_password
+
+    init_db()
+    with get_db_connection() as conn:
+        conn.execute("DELETE FROM users WHERE username IN ('operator_4', 'operator_5', 'operator_6', 'operator_7')")
+        conn.execute(
+            "INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+            ("local_user", "custom_hash", "operator"),
+        )
+        conn.commit()
+
+    seed_users()
+
+    with get_db_connection() as conn:
+        operators = conn.execute(
+            "SELECT username, password_hash FROM users "
+            "WHERE role = 'operator' AND username LIKE 'operator_%' ORDER BY username"
+        ).fetchall()
+        local_user = conn.execute(
+            "SELECT password_hash FROM users WHERE username = 'local_user'"
+        ).fetchone()
+
+    assert [username for username, _ in operators] == [f"operator_{number}" for number in range(1, 8)]
+    assert all(verify_password("Ktk_2026!", password_hash) for _, password_hash in operators)
+    assert local_user == ("custom_hash",)
+
+
 def test_audit_chain_valid_after_writes():
     from elou_tutor.db.audit import log_audit_event, verify_audit_chain
     from elou_tutor.db.database import get_db_connection, init_db
