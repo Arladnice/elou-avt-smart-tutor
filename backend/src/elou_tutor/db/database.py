@@ -13,6 +13,17 @@ DB_PATH = os.environ.get("DATABASE_PATH", os.path.join(_BACKEND_DIR, "tutor.db")
 # Сколько ждать освобождения блокировки БД, прежде чем вернуть ошибку
 DB_TIMEOUT_SEC = 5.0
 
+DEFAULT_USERS = (
+    ("operator_1", "operator"),
+    ("operator_2", "operator"),
+    ("operator_3", "operator"),
+    ("operator_4", "operator"),
+    ("operator_5", "operator"),
+    ("operator_6", "operator"),
+    ("operator_7", "operator"),
+    ("instructor_1", "instructor"),
+)
+
 
 @contextmanager
 def get_db_connection():
@@ -99,21 +110,17 @@ def init_db():
     seed_users()
 
 def seed_users():
-    """Создает базовых пользователей, если БД пуста."""
+    """Добавляет недостающие демо-учётные записи, не изменяя существующие."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
-        if cursor.fetchone()[0] == 0:
-            # Создаем тестовые УЗ без админских прав
+        cursor.execute("SELECT username FROM users")
+        existing_usernames = {row[0] for row in cursor.fetchall()}
+        missing_users = [user for user in DEFAULT_USERS if user[0] not in existing_usernames]
+
+        if missing_users:
             hashed_password = get_password_hash("Ktk_2026!")
-            users = [
-                ("operator_1", hashed_password, "operator"),
-                ("operator_2", hashed_password, "operator"),
-                ("operator_3", hashed_password, "operator"),
-                ("instructor_1", hashed_password, "instructor")
-            ]
             cursor.executemany(
                 "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-                users
+                [(username, hashed_password, role) for username, role in missing_users],
             )
             conn.commit()
