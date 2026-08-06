@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTelemetry } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { Activity, Flame, TrendingUp } from 'lucide-react';
+import type { EquipmentId } from '../model/equipmentCatalog';
+import EquipmentDrawer from './EquipmentDrawer';
 import * as S from './FlowScheme.styles';
 
 const generateSparklineD = (history: number[], x: number, y: number, w: number, h: number, minVal: number, maxVal: number) => {
@@ -22,6 +24,7 @@ const FlowScheme: React.FC = () => {
   const { sensors, valves, status, defects, telemetryHistory, wsLatency } = useTelemetry();
   const { isOnline } = useSession();
   const { toggleValve } = useSimulatorActions();
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<EquipmentId | null>(null);
 
   // Спарклайны берут те же точки, что и предиктивный график (SimulatorContext)
   const sparklineWindow = telemetryHistory.slice(-15);
@@ -34,8 +37,15 @@ const FlowScheme: React.FC = () => {
     toggleValve(valveId);
   };
 
+  const handleEquipmentKeyDown = (event: React.KeyboardEvent<SVGGElement>, equipmentId: EquipmentId) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    setSelectedEquipmentId(equipmentId);
+  };
+
   return (
-    <S.SchemeContainer>
+    <>
+      <S.SchemeContainer>
       <S.SchemeHeader>
         <S.HeaderTitleContainer>
           <Activity size={14} />
@@ -138,14 +148,34 @@ const FlowScheme: React.FC = () => {
 
         {/* ОБОРУДОВАНИЕ БЛОКА 1: ЭЛОУ */}
         {/* Сырьевой насос Н-1 */}
-        <g transform="translate(45, 200)">
+        <S.EquipmentGroup
+          transform="translate(45, 200)"
+          role="button"
+          tabIndex={0}
+          aria-label="Открыть карточку сырьевого насоса Н-1"
+          $isAlert={Boolean(defects?.pump_fail || defects?.power_fail)}
+          onClick={() => setSelectedEquipmentId('N_1')}
+          onKeyDown={event => handleEquipmentKeyDown(event, 'N_1')}
+        >
+          <title>Н-1 · Открыть карточку оборудования</title>
+          <circle className="equipment-hitbox" cx="0" cy="0" r="19" />
           <circle cx="0" cy="0" r="11" fill="#131924" stroke={(defects?.pump_fail || defects?.power_fail) ? "#ff4d4f" : "#e1e7f0"} strokeWidth="1.5" />
           <polygon points="-4,-5 -4,5 5,0" fill={(defects?.pump_fail || defects?.power_fail) ? "#ff4d4f" : "#e1e7f0"} />
           <text x="0" y="-16" fill="#e1e7f0" fontSize="8" textAnchor="middle" fontWeight="bold">Н-1</text>
-        </g>
+        </S.EquipmentGroup>
 
         {/* Электродегидратор Э-1 */}
-        <g transform="translate(75, 120)">
+        <S.EquipmentGroup
+          transform="translate(75, 120)"
+          role="button"
+          tabIndex={0}
+          aria-label="Открыть карточку электродегидратора Э-1"
+          $isAlert={Boolean(defects?.elou_desalt_fail || defects?.power_fail)}
+          onClick={() => setSelectedEquipmentId('E_1')}
+          onKeyDown={event => handleEquipmentKeyDown(event, 'E_1')}
+        >
+          <title>Э-1 · Открыть карточку оборудования</title>
+          <rect className="equipment-hitbox" x="-5" y="-5" width="110" height="140" rx="18" />
           <rect x="0" y="0" width="100" height="130" rx="15" fill="url(#elouGrad)" stroke={defects?.elou_desalt_fail ? "#ffcc00" : "#00e5ff"} strokeWidth={defects?.elou_desalt_fail ? "2.5" : "1.5"} />
           <text x="50" y="24" fill={defects?.elou_desalt_fail ? "#ffcc00" : "#00e5ff"} fontSize="10" fontWeight="700" textAnchor="middle">
             {defects?.elou_desalt_fail ? "Э-1 (СБОЙ)" : "ЭЛОУ Э-1"}
@@ -154,7 +184,7 @@ const FlowScheme: React.FC = () => {
           <line x1="20" y1="50" x2="80" y2="50" stroke="#00e5ff" strokeWidth="2" strokeDasharray="4 2" />
           <line x1="20" y1="68" x2="80" y2="68" stroke="#00e5ff" strokeWidth="2" strokeDasharray="4 2" />
           <text x="50" y="96" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">Электродегидратор</text>
-        </g>
+        </S.EquipmentGroup>
 
         {/* Клапан V_ELOU (Деэмульгатор) */}
         <S.ValveGroup $isOpen={valves.V_ELOU} transform="translate(125, 80)" onClick={() => handleValveClick('V_ELOU')}>
@@ -189,13 +219,23 @@ const FlowScheme: React.FC = () => {
         </S.ValveGroup>
 
         {/* Печь П-1 */}
-        <g transform="translate(320, 130)">
+        <S.EquipmentGroup
+          transform="translate(320, 130)"
+          role="button"
+          tabIndex={0}
+          aria-label="Открыть карточку печи П-1"
+          $isAlert={Boolean(defects?.coil_overheat || defects?.power_fail)}
+          onClick={() => setSelectedEquipmentId('P_1')}
+          onKeyDown={event => handleEquipmentKeyDown(event, 'P_1')}
+        >
+          <title>П-1 · Открыть карточку оборудования</title>
+          <rect className="equipment-hitbox" x="-5" y="-5" width="120" height="150" rx="10" />
           <rect x="0" y="0" width="110" height="140" rx="8" fill="url(#furnaceGrad)" stroke={(defects?.coil_overheat || defects?.power_fail) ? "#ff4444" : "#ff4444"} strokeWidth={(defects?.coil_overheat || defects?.power_fail) ? "2.5" : "1.5"} />
           <text x="55" y="24" fill="#ff4444" fontSize="10" fontWeight="700" textAnchor="middle">ПЕЧЬ П-1</text>
           <S.FlameWrapper $isActive={valves.V_1 && !defects?.power_fail} transform="translate(41, 95)">
             <Flame size={28} color={(valves.V_1 && !defects?.power_fail) ? "#ff6600" : "#ff3333"} />
           </S.FlameWrapper>
-        </g>
+        </S.EquipmentGroup>
 
         {/* Датчик T-1 печи + sparkline ниже печи */}
         <g transform="translate(375, 310)">
@@ -209,7 +249,17 @@ const FlowScheme: React.FC = () => {
         </g>
 
         {/* Колонна К-1 */}
-        <g transform="translate(530, 80)">
+        <S.EquipmentGroup
+          transform="translate(530, 80)"
+          role="button"
+          tabIndex={0}
+          aria-label="Открыть карточку атмосферной колонны К-1"
+          $isAlert={Boolean(defects?.steam_fail || defects?.power_fail)}
+          onClick={() => setSelectedEquipmentId('K_1')}
+          onKeyDown={event => handleEquipmentKeyDown(event, 'K_1')}
+        >
+          <title>К-1 · Открыть карточку оборудования</title>
+          <rect className="equipment-hitbox" x="-5" y="-5" width="120" height="280" rx="21" />
           <rect x="0" y="0" width="110" height="270" rx="18" fill="url(#columnGrad)" stroke={defects?.steam_fail ? "#ff4d4f" : "#3e537a"} strokeWidth={defects?.steam_fail ? "2.5" : "2"} />
           <text x="55" y="22" fill={defects?.steam_fail ? "#ff4d4f" : "#e1e7f0"} fontSize="10" fontWeight="700" textAnchor="middle">
             {defects?.steam_fail ? "К-1 (СРЫВ ПАРА)" : "КОЛОННА К-1"}
@@ -217,7 +267,7 @@ const FlowScheme: React.FC = () => {
           {/* Индикатор уровня */}
           <rect x="15" y="45" width="80" height="200" fill="#131924" rx="4" stroke="#222c3e" />
           <rect x="15" y={45 + (200 - (sensors.L_1 / 100) * 200)} width="80" height={(sensors.L_1 / 100) * 200} fill="rgba(0, 229, 255, 0.15)" rx="4" />
-        </g>
+        </S.EquipmentGroup>
 
         {/* Датчик L-1 уровня ниже колонны */}
         <g transform="translate(585, 390)">
@@ -293,8 +343,13 @@ const FlowScheme: React.FC = () => {
             <text className="label" x="0" y="-13" textAnchor="middle">T-2 (КУБ К-2)</text>
           </S.SensorBox>
         </g>
-      </S.SVGCanvas>
-    </S.SchemeContainer>
+        </S.SVGCanvas>
+      </S.SchemeContainer>
+      <EquipmentDrawer
+        equipmentId={selectedEquipmentId}
+        onClose={() => setSelectedEquipmentId(null)}
+      />
+    </>
   );
 };
 

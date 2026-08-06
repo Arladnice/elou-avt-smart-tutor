@@ -90,6 +90,26 @@ export const ValveGroup = styled.g<{ $isOpen: boolean }>`
   }
 `;
 
+// Интерактивные зоны оборудования: открывают фотореференс и инструкцию осмотра.
+export const EquipmentGroup = styled.g<{ $isAlert: boolean }>`
+  cursor: pointer;
+  outline: none;
+
+  .equipment-hitbox {
+    fill: transparent;
+    stroke: transparent;
+    stroke-width: 2;
+    transition: ${props => props.theme.transitions.default};
+  }
+
+  &:hover .equipment-hitbox,
+  &:focus-visible .equipment-hitbox {
+    fill: rgba(0, 229, 255, 0.05);
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.accent};
+    filter: drop-shadow(0 0 5px ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.accent});
+  }
+`;
+
 // Потоки трубопроводов
 export const PipeLine = styled.path<{ $isActive?: boolean }>`
   stroke: ${props => (isActivePipe(props.$isActive) ? '#1a365d' : '#222c3e')};
