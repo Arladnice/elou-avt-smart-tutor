@@ -232,3 +232,9 @@ cython_debug/
 .claude/
 .import_linter_cache/
 .superpowers/
+
+# Temporary working files
+/tmp/
+
+# DB snapshots from `make snapshot`
+/backups/
