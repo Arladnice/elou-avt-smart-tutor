@@ -3,10 +3,24 @@ import styled from 'styled-components';
 export const LogContent = styled.div`
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 190px;
+  max-height: 190px;
+  flex: 0 0 190px;
   min-height: 0;
   overflow: hidden;
   color: ${props => props.theme.colors.text};
+
+  @media (max-height: 950px) {
+    height: 160px;
+    max-height: 160px;
+    flex-basis: 160px;
+  }
+
+  @media (max-height: 700px) {
+    height: 130px;
+    max-height: 130px;
+    flex-basis: 130px;
+  }
 `;
 
 export const FilterWrapper = styled.div`
@@ -40,6 +54,7 @@ export const FilterButton = styled.button<{ $active: boolean; $sevColor?: string
 
 export const LogConsole = styled.div`
   flex: 1;
+  min-height: 0;
   padding: 10px 16px;
   overflow-y: auto;
   font-family: ${props => props.theme.fonts.mono};

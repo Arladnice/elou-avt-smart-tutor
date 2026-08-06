@@ -365,6 +365,8 @@ class ErrorAnalyzer:
             "V3_DRAIN_BLOCK": 20,
             "FORCED_HEATING": 15,
             "UNNECESSARY_VENT": 10,
+            "PUMP_RUNNING_CUT": 100,
+            "SETPOINT_OVERLIMIT": 40,
         }
         for key, penalty in penalty_map.items():
             if violations.get(key, False):
@@ -403,8 +405,18 @@ class ErrorAnalyzer:
             "V3_DRAIN_BLOCK": False,
             "FORCED_HEATING": False,
             "UNNECESSARY_VENT": False,
+            "PUMP_RUNNING_CUT": False,
+            "SETPOINT_OVERLIMIT": False,
         }
         positions = {}
+
+        if "PUMP_RUNNING_CUT" in actions:
+            violations["PUMP_RUNNING_CUT"] = True
+            positions["PUMP_RUNNING_CUT"] = actions.index("PUMP_RUNNING_CUT")
+
+        if "SETPOINT_OVERLIMIT" in actions:
+            violations["SETPOINT_OVERLIMIT"] = True
+            positions["SETPOINT_OVERLIMIT"] = actions.index("SETPOINT_OVERLIMIT")
 
         # а) Нагрев всухую
         if "SP_UP" in actions:
@@ -468,6 +480,10 @@ class ErrorAnalyzer:
                               "времени для стабилизации теплообмена.",
             "UNNECESSARY_VENT": "Держите клапан сброса V-2 закрытым при давлении в пределах нормы "
                                 "(0.1 - 0.3 МПа). Открывайте сброс только при угрозе превышения давления.",
+            "PUMP_RUNNING_CUT": "Перед закрытием V-1 остановите насос Н-20 и получите подтверждение "
+                                "отсутствия расхода. Работа насоса на закрытую задвижку запрещена.",
+            "SETPOINT_OVERLIMIT": "Не задавайте температуру выше 340°C. Повышайте уставку плавно и "
+                                  "контролируйте фактическую температуру с допуском ±2°C.",
         }
         for key, detected in violations.items():
             if detected and key in msg_map:

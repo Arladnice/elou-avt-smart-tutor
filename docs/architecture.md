@@ -167,20 +167,21 @@ Handshake отклоняет соединение кодом `4003` при: не
 
 Ограничение: **30 сообщений в секунду** на сокет; превышение логируется и пишется в аудит, соединение не рвётся.
 
-**Команды от клиента** (поле `type`), всего 15:
+**Команды от клиента** (поле `type`), всего 18:
 
 | Доступно всем | Только инструктору |
 |---|---|
-| `toggle_valve`, `change_setpoint`, `trigger_esd`, `call_dispatcher`, `complete`, `ping`, `change_scenario`, `reset` | `trigger_defect`, `change_speed`, `toggle_pause`, `save_state`, `load_state`, `configure_webhook`, `toggle_mute`, `change_mode` |
+| `toggle_valve`, `change_setpoint`, `trigger_esd`, `call_dispatcher`, `call_duty_engineer`, `toggle_interlock_bypass`, `complete`, `ping`, `change_scenario`, `reset` | `trigger_defect`, `change_speed`, `toggle_pause`, `save_state`, `load_state`, `configure_webhook`, `toggle_mute`, `change_mode` |
 
 Список прав — константа в `elou_tutor/api/routes/ws.py`; попытка оператора выполнить команду инструктора даёт ошибку в сокет и запись `UNAUTHORIZED_COMMAND` в аудит.
 
-**Пакет телеметрии** (раз в секунду, формируется в `SimulationSession.get_full_state()`), 21 поле:
+**Пакет телеметрии** (раз в секунду, формируется в `SimulationSession.get_full_state()`), 24 поля:
 
 ```
 status, timeElapsed, valves, sensors, setpoints, defects, accidentReason,
 operatorName, scenarioId, riskLevel, predictions, actions, logs, scoreCard,
-speedMultiplier, isPaused, hasSnapshot, mode, webhookUrl, webhookActive, mutes
+speedMultiplier, isPaused, hasSnapshot, mode, webhookUrl, webhookActive, mutes,
+interlocks, dutyEngineerPhone, interlockOperationAuthorized
 ```
 
 `scoreCard` — `null`, пока сессия идёт; заполняется при завершении (авария, ESD, успех или лимит 300 с).

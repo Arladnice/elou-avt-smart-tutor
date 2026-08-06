@@ -22,10 +22,10 @@ const evalCondition = (cond: ScenarioCondition | undefined, valves: Valves, sens
     return valve === cond.expected;
   }
   if (cond.type === 'sensor_gte') {
-    return (sensor ?? 0) >= Number(cond.expected);
+    return (sensor ?? 0) >= Number(cond.expected) - (cond.tolerance ?? 0);
   }
   if (cond.type === 'sensor_lte') {
-    return (sensor ?? 999) <= Number(cond.expected);
+    return (sensor ?? 999) <= Number(cond.expected) + (cond.tolerance ?? 0);
   }
   if (cond.type === 'composite_and') {
     return (cond.conditions || []).every(c => evalCondition(c, valves, sensors));

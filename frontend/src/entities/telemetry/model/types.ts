@@ -29,6 +29,15 @@ export interface Setpoints {
   T_1_Sp: number;
 }
 
+export interface InterlockRow {
+  tag: string;
+  logic: '1oo1' | '2oo2';
+  mechanism: string;
+  primary: boolean;
+  bypassed: boolean;
+  alarm: boolean;
+}
+
 export interface LogEntry {
   id: string;
   time: string;
@@ -70,6 +79,9 @@ export interface TelemetryState {
   accidentReason: string;
   /** Задержка WebSocket в мс — Критерий 1 (производительность). Метрика потока, а не сессии */
   wsLatency: number;
+  interlocks: InterlockRow[];
+  dutyEngineerPhone: string;
+  interlockOperationAuthorized: boolean;
 }
 
 export const INITIAL_VALVES: Valves = { V_1: true, V_2: false, V_3: true, V_ELOU: true, V_VT: true };
@@ -86,3 +98,15 @@ export const INITIAL_DEFECTS: Defects = {
   elou_desalt_fail: false,
   vt_vacuum_loss: false,
 };
+
+export const INITIAL_INTERLOCKS: InterlockRow[] = [
+  { tag: 'LIRSA 1a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
+  { tag: 'LIRSA 2a', logic: '2oo2', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
+  { tag: 'LIRSA 2д', logic: '2oo2', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
+  { tag: 'LIRSA 3a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
+  { tag: 'PIRSA 9a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'TIRSA 10a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'PIRSA 11a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'TIRSA 12a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'PIRSA 13a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+];

@@ -2,6 +2,8 @@ export interface ScenarioCondition {
   type: 'valve_is' | 'sensor_gte' | 'sensor_lte' | 'composite_and';
   target?: string;
   expected?: boolean | number;
+  /** Допуск зачёта измеряемого параметра, например ±2°C для температуры */
+  tolerance?: number;
   conditions?: ScenarioCondition[];
 }
 

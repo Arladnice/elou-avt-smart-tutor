@@ -9,7 +9,7 @@
 FURNACE_TEMP_CRITICAL = 365.0     # °C (Прогар змеевика П-2, авария)
 FURNACE_TEMP_WARNING = 340.0      # °C (Максимум для П-3)
 COLUMN_TEMP_CRITICAL = 150.0      # °C (Максимум верха К-1)
-FURNACE_TEMP_MIN_STARTUP = 280.0  # °C (Минимум при пуске)
+FURNACE_TEMP_MIN_STARTUP = 298.0  # °C (Цель 300°C с допуском 2°C при пуске)
 FURNACE_TEMP_MAX_SHUTDOWN = 245.0 # °C (Максимум при останове)
 
 COLUMN_PRES_CRITICAL = 0.60       # МПа (Разгерметизация)
@@ -21,10 +21,15 @@ COLUMN_PRES_NORMAL_MIN = 0.10     # МПа
 COLUMN_LEVEL_HIGH_CRITICAL = 98.0 # % (Полное переполнение)
 COLUMN_LEVEL_HIGH = 85.0          # % (Предупреждение)
 COLUMN_LEVEL_LOW = 18.0           # % (Предупреждение по низкому уровню)
-COLUMN_LEVEL_LOW_INTERLOCK = 12.0 # % (3500 мм: Сработка ПАЗ / Блокировка насосов куба)
+COLUMN_LEVEL_LOW_INTERLOCK = 12.0 # % (240 мм по шкале К-1: ПАЗ / блокировка насосов куба)
 COLUMN_LEVEL_LOW_CRITICAL = 5.0   # % (Полное опустошение, сухой ход и авария)
 COLUMN_LEVEL_BALANCE_MIN = 20.0   # %
 COLUMN_LEVEL_BALANCE_MAX = 80.0   # %
+
+# Шкалы уровнемеров относятся к кубовой части колонн, а не к полной высоте.
+K1_LEVEL_FULL_SCALE_MM = 2000.0   # мм = 100% шкалы уровня куба К-1
+K2_LEVEL_FULL_SCALE_MM = 4000.0   # мм = 100% шкалы уровня куба К-2
+SETPOINT_ACCEPTANCE_TOLERANCE = 2.0  # °C, допуск зачёта достижения уставки
 
 # === Timeouts & Duration Thresholds ===
 STARTUP_MIN_TIME_SEC = 45         # Минимальное время сессии для стабилизации пуска
@@ -61,7 +66,7 @@ NORMAL_INITIAL_LEVEL = 50.0         # %
 NORMAL_SETPOINT_TEMP = 280.0        # °C
 
 # === Process Timing & Dynamic Thresholds ===
-STARTUP_HEATING_THRESHOLD_TEMP = 290.0   # °C (Выход печи на рабочий режим при пуске)
+STARTUP_HEATING_THRESHOLD_TEMP = 300.0   # °C (Выход печи на рабочий режим при пуске)
 STARTUP_FILLING_TIME_LIMIT_SEC = 120     # с (Первичное заполнение колонны при пуске)
 VALVE_ACTION_TIMEOUT_SEC = 15            # с (Время выдержки после открытия клапана)
 ACCIDENT_NON_STARTUP_MIN_TIME_SEC = 40   # с (Защита от ложной аварии при запуске обычных сценариев)

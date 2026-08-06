@@ -8,11 +8,14 @@ export const PRES_WARNING = 0.4;
 export const TEMP_WARNING = 310;
 export const LEVEL_HIGH = 85;
 export const LEVEL_LOW = 20;
+export const K1_LEVEL_FULL_SCALE_MM = 2000;
+export const K2_LEVEL_FULL_SCALE_MM = 4000;
+export const SETPOINT_ACCEPTANCE_TOLERANCE = 2;
 
 /** Фаза пуска: первые 2 минуты низкий уровень в кубе — норма */
 export const STARTUP_FILLING_TIME_LIMIT_SEC = 120;
 /** Ниже этой температуры печь при пуске считается ещё прогревающейся */
-export const STARTUP_HEATING_THRESHOLD_TEMP = 290;
+export const STARTUP_HEATING_THRESHOLD_TEMP = 300;
 
 /** Горизонт прогноза LSTM-модели бэкенда, секунды */
 export const FORECAST_HORIZON_SEC = 15;

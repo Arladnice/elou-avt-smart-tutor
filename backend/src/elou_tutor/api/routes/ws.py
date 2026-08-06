@@ -7,7 +7,11 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from elou_tutor.services.connection_manager import (
     manager, SessionAccessDenied, SessionCapacityError
 )
-from elou_tutor.domain.process_limits import FURNACE_TEMP_MIN_LIMIT, FURNACE_TEMP_MAX_LIMIT
+from elou_tutor.domain.process_limits import (
+    FURNACE_TEMP_MAX_LIMIT,
+    FURNACE_TEMP_MIN_LIMIT,
+    FURNACE_TEMP_WARNING,
+)
 from elou_tutor.services.net import is_webhook_url_allowed
 from elou_tutor.api.security import verify_jwt_token
 from elou_tutor.db.audit import log_audit_event_async
@@ -26,7 +30,9 @@ DEFECT_NAMES_RU = {
     "valve_jam": "Заедание клапана сброса V-2",
     "power_fail": "Отказ электроснабжения",
     "air_fail": "Отказ воздуха КИПиА",
-    "steam_fail": "Срыв подачи отпарного пара"
+    "steam_fail": "Срыв подачи отпарного пара",
+    "elou_desalt_fail": "Нарушение электрообессоливания ЭЛОУ",
+    "vt_vacuum_loss": "Срыв вакуума вакуумного блока ВТ",
 }
 
 
@@ -39,14 +45,32 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
     Некорректные параметры команды поднимают ValueError/TypeError/KeyError —
     вызывающий код превращает их в сообщение об ошибке, не разрывая соединение.
     """
-    if role == "operator" and action_type in ("toggle_valve", "change_setpoint", "trigger_esd", "call_dispatcher"):
+    if role == "operator" and action_type in (
+        "toggle_valve", "change_setpoint", "trigger_esd", "call_dispatcher",
+        "call_duty_engineer", "toggle_interlock_bypass",
+    ):
         session.operator_reacted_to_critical = True
 
     if action_type == "toggle_valve":
         valve_id = cmd.get("valve_id")
         state = bool(cmd.get("state"))
+        is_unsafe_feed_cut = (
+            valve_id == "V_1"
+            and not state
+            and session.active_scenario == "startup"
+            and session.simulator.valves.get("V_1", False)
+            and not session.simulator.defects.get("pump_fail", False)
+            and not session.simulator.defects.get("power_fail", False)
+        )
         session.simulator.set_valve(valve_id, state)
         session.record_action(f"{valve_id}_{'OPEN' if state else 'CLOSE'}")
+        if is_unsafe_feed_cut:
+            session.record_action("PUMP_RUNNING_CUT")
+            session.add_log(
+                "error",
+                "КРИТИЧЕСКОЕ НАРУШЕНИЕ: закрытие V-1 при работающем насосе Н-20. Экзамен не сдан.",
+                severity="CRITICAL",
+            )
         session.add_log("info", f"Оператор переключил клапан {valve_id} в состояние: {'ОТКРЫТ' if state else 'ЗАКРЫТ'}")
         await log_audit_event_async(session.active_operator_name, "VALVE_TOGGLE", f"Клапан {valve_id} -> {state}")
 
@@ -60,6 +84,8 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         old_temp = session.simulator.setpoints["T_1_Sp"]
         session.simulator.set_setpoint("T_1_Sp", temp)
         session.record_action("SP_UP" if temp > old_temp else "SP_DOWN")
+        if temp > FURNACE_TEMP_WARNING:
+            session.record_action("SETPOINT_OVERLIMIT")
         session.add_log("info", f"Оператор изменил уставку температуры П-1 на: {temp}°C")
         await log_audit_event_async(session.active_operator_name, "SETPOINT_CHANGE", f"Уставка T-1 -> {temp}")
 
@@ -74,6 +100,42 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         session.record_action("CALL_DISPATCHER")
         session.add_log("warning", "Звонок 'Руководитель подразделения / Диспетчер ЦУП: тел. 24-45'")
         await log_audit_event_async(session.active_operator_name, "DISPATCHER_CALL", "Регламентный звонок в Диспетчерскую ЦУП")
+
+    elif action_type == "call_duty_engineer":
+        session.interlocks.authorize_operation()
+        session.record_action("CALL_DUTY_ENGINEER")
+        session.add_log(
+            "warning",
+            "Связь с дежурным инженером установлена. Разрешена одна операция с деблокировкой ПАЗ.",
+        )
+        await log_audit_event_async(
+            session.active_operator_name,
+            "DUTY_ENGINEER_CALL",
+            "Получено учебное разрешение на одну операцию деблокировки ПАЗ",
+        )
+
+    elif action_type == "toggle_interlock_bypass":
+        tag = str(cmd.get("tag", ""))
+        state = bool(cmd.get("state", False))
+        try:
+            session.interlocks.set_bypass(tag, state)
+        except PermissionError:
+            await websocket.send_json({
+                "type": "error",
+                "message": "Перед включением или снятием деблокировки позвоните дежурному инженеру.",
+            })
+            return False
+        session.record_action(f"INTERLOCK_{tag}_{'BYPASS_ON' if state else 'BYPASS_OFF'}")
+        session.add_log(
+            "error" if state else "warning",
+            f"Деблокировка {tag}: {'ВКЛЮЧЕНА' if state else 'СНЯТА'}.",
+            severity="CRITICAL" if state else "WARNING",
+        )
+        await log_audit_event_async(
+            session.active_operator_name,
+            "INTERLOCK_BYPASS",
+            f"{tag} -> {state}",
+        )
 
     elif action_type == "trigger_defect":
         defect_id = cmd.get("defect_id")

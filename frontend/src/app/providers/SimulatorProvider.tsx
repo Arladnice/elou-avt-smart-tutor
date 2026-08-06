@@ -8,6 +8,7 @@ import {
   INITIAL_VALVES,
   INITIAL_SENSORS,
   INITIAL_DEFECTS,
+  INITIAL_INTERLOCKS,
   stepMockPhysics,
   evaluateMockRisk,
   detectMockAccident,
@@ -21,6 +22,7 @@ import {
   type Defects,
   type ValveId,
   type DefectId,
+  type InterlockRow,
 } from '@/entities/telemetry';
 import {
   SessionContext,
@@ -87,6 +89,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [webhookActive, setWebhookActive] = useState(false);
   const [mutes, setMutes] = useState<string[]>([]);
   const [scenarios, setScenarios] = useState<ScenarioItem[]>([]);
+  const [interlocks, setInterlocks] = useState<InterlockRow[]>(INITIAL_INTERLOCKS);
+  const [dutyEngineerPhone, setDutyEngineerPhone] = useState('24-45');
+  const [interlockOperationAuthorized, setInterlockOperationAuthorized] = useState(false);
 
   // --- Телеметрия ---
   const [status, setStatus] = useState<SimulatorStatus>('running');
@@ -162,6 +167,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setIsPaused(false);
     setSpeedMultiplier(1.0);
     setHasSnapshot(false);
+    setInterlocks(INITIAL_INTERLOCKS);
+    setInterlockOperationAuthorized(false);
   }, [sendWsAction]);
 
   const loginUser = useCallback((name: string, userRole: UserRole) => {
@@ -255,6 +262,31 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } else {
       appendLog('warning', "Звонок 'Руководитель подразделения / Диспетчер ЦУП: тел. 24-45'");
     }
+  }, [sendWsAction, appendLog]);
+
+  const callDutyEngineer = useCallback(() => {
+    if (stateRef.current.isOnline) {
+      sendWsAction({ type: 'call_duty_engineer' });
+    } else {
+      setInterlockOperationAuthorized(true);
+      appendLog('warning', 'Получено учебное разрешение дежурного инженера на одну операцию деблокировки ПАЗ.');
+    }
+  }, [sendWsAction, appendLog]);
+
+  const toggleInterlockBypass = useCallback((tag: string, state: boolean) => {
+    if (stateRef.current.isOnline) {
+      sendWsAction({ type: 'toggle_interlock_bypass', tag, state });
+      return;
+    }
+    setInterlockOperationAuthorized(authorized => {
+      if (!authorized) {
+        appendLog('warning', 'Сначала позвоните дежурному инженеру перед изменением деблокировки.');
+        return authorized;
+      }
+      setInterlocks(rows => rows.map(row => (row.tag === tag ? { ...row, bypassed: state } : row)));
+      appendLog(state ? 'error' : 'warning', `Деблокировка ${tag}: ${state ? 'ВКЛЮЧЕНА' : 'СНЯТА'}.`);
+      return false;
+    });
   }, [sendWsAction, appendLog]);
 
   const triggerDefect = useCallback((defectId: DefectId, state: boolean) => {
@@ -420,6 +452,11 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (data.mutes !== undefined) {
           setMutes(prev => (sameStringList(prev, data.mutes) ? prev : data.mutes));
         }
+        if (Array.isArray(data.interlocks)) setInterlocks(data.interlocks);
+        if (data.dutyEngineerPhone) setDutyEngineerPhone(data.dutyEngineerPhone);
+        if (data.interlockOperationAuthorized !== undefined) {
+          setInterlockOperationAuthorized(Boolean(data.interlockOperationAuthorized));
+        }
         if (data.mode) setMode(data.mode);
         if (data.operatorName) setOperatorName(data.operatorName);
         if (data.scenarioId) setScenarioId(data.scenarioId);
@@ -542,7 +579,10 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     logs,
     accidentReason,
     wsLatency,
-  }), [status, timeElapsed, valves, sensors, setpoints, defects, riskLevel, predictions, telemetryHistory, logs, accidentReason, wsLatency]);
+    interlocks,
+    dutyEngineerPhone,
+    interlockOperationAuthorized,
+  }), [status, timeElapsed, valves, sensors, setpoints, defects, riskLevel, predictions, telemetryHistory, logs, accidentReason, wsLatency, interlocks, dutyEngineerPhone, interlockOperationAuthorized]);
 
   const sessionValue = useMemo<SessionState>(() => ({
     username,
@@ -583,11 +623,14 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     configureWebhook,
     toggleMute,
     callDispatcher,
+    callDutyEngineer,
+    toggleInterlockBypass,
     reloadScenarios,
   }), [
     loginUser, logoutUser, selectScenario, switchSession, selectMode, toggleValve, changeSetpoint,
     triggerEsd, triggerDefect, resetSession, completeSession, changeSpeed, togglePause, saveState,
-    loadState, configureWebhook, toggleMute, callDispatcher, reloadScenarios,
+    loadState, configureWebhook, toggleMute, callDispatcher, callDutyEngineer,
+    toggleInterlockBypass, reloadScenarios,
   ]);
 
   return (

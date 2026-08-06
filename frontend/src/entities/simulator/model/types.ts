@@ -25,5 +25,7 @@ export interface SimulatorActions {
   configureWebhook: (url: string, active: boolean) => void;
   toggleMute: (fingerprint: string, state: boolean) => void;
   callDispatcher: () => void;
+  callDutyEngineer: () => void;
+  toggleInterlockBypass: (tag: string, state: boolean) => void;
   reloadScenarios: () => Promise<void>;
 }

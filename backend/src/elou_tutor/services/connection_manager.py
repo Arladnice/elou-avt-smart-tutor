@@ -14,6 +14,7 @@ from elou_tutor.tutor.analyzer import ErrorAnalyzer
 from elou_tutor.db.audit import log_audit_event
 from elou_tutor.db.queries import save_session_db
 from elou_tutor.services.net import is_webhook_url_allowed
+from elou_tutor.services.interlocks import DUTY_ENGINEER_PHONE, InterlockController
 from elou_tutor.domain.integrity import calculate_integrity_hash
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ class SimulationSession:
         self.critical_alert_start_time: float = 0.0
         self.operator_reacted_to_critical: bool = False
         self.escalation_warning_sent: bool = False
+        self.interlocks = InterlockController()
 
     async def broadcast_state(self):
         started = time.perf_counter()
@@ -198,7 +200,10 @@ class SimulationSession:
             "mode": self.mode,
             "webhookUrl": self.webhook_url,
             "webhookActive": self.webhook_active,
-            "mutes": list(self.mutes)
+            "mutes": list(self.mutes),
+            "interlocks": self.interlocks.rows(sensors),
+            "dutyEngineerPhone": DUTY_ENGINEER_PHONE,
+            "interlockOperationAuthorized": self.interlocks.operation_authorized,
         }
 
     def save_completed_session(self):
@@ -272,6 +277,7 @@ class SimulationSession:
         self.critical_alert_active = False
         self.operator_reacted_to_critical = False
         self.escalation_warning_sent = False
+        self.interlocks.reset()
 
         if scenario == "startup":
             self.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")

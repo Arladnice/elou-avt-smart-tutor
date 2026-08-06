@@ -3,6 +3,7 @@ import { useTelemetry } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { Activity, Flame, TrendingUp } from 'lucide-react';
+import { K1_LEVEL_FULL_SCALE_MM } from '@/shared/config/thresholds';
 import type { EquipmentId } from '../model/equipmentCatalog';
 import EquipmentDrawer from './EquipmentDrawer';
 import * as S from './FlowScheme.styles';
@@ -122,11 +123,11 @@ const FlowScheme: React.FC = () => {
         <S.PipeLine d="M 25,200 L 75,200" $isActive={true} />
         <S.PipeFlow d="M 25,200 L 75,200" $isActive={true} />
 
-        {/* Из ЭЛОУ в Печь П-1 */}
-        <S.PipeLine d="M 175,200 L 320,200" $isActive={valves.V_1} />
-        <S.PipeFlow d="M 175,200 L 320,200" $isActive={valves.V_1} />
+        {/* Прямая подача из ЭЛОУ через Н-20 и V-1 в К-1 */}
+        <S.PipeLine d="M 175,200 L 245,200 L 245,105 L 500,105 L 500,200 L 530,200" $isActive={valves.V_1} />
+        <S.PipeFlow d="M 175,200 L 245,200 L 245,105 L 500,105 L 500,200 L 530,200" $isActive={valves.V_1} />
 
-        {/* Из Печи П-1 в Колонну К-1 */}
+        {/* Агрегированный возврат нагретого потока из печной группы в К-1 */}
         <S.PipeLine d="M 430,200 L 530,200" $isActive={valves.V_1} />
         <S.PipeFlow d="M 430,200 L 530,200" $isActive={valves.V_1} $speed="1s" />
 
@@ -163,6 +164,13 @@ const FlowScheme: React.FC = () => {
           <polygon points="-4,-5 -4,5 5,0" fill={(defects?.pump_fail || defects?.power_fail) ? "#ff4d4f" : "#e1e7f0"} />
           <text x="0" y="-16" fill="#e1e7f0" fontSize="8" textAnchor="middle" fontWeight="bold">Н-1</text>
         </S.EquipmentGroup>
+
+        {/* Насос Н-20 после блока ЭЛОУ */}
+        <g transform="translate(215, 200)">
+          <circle cx="0" cy="0" r="10" fill="#131924" stroke="#e1e7f0" strokeWidth="1.5" />
+          <polygon points="-4,-5 -4,5 5,0" fill="#e1e7f0" />
+          <text x="0" y="-15" fill="#e1e7f0" fontSize="8" textAnchor="middle" fontWeight="bold">Н-20</text>
+        </g>
 
         {/* Электродегидратор Э-1 */}
         <S.EquipmentGroup
@@ -212,7 +220,7 @@ const FlowScheme: React.FC = () => {
 
         {/* ОБОРУДОВАНИЕ БЛОКА 2: АТМОСФЕРНЫЙ (АТ) */}
         {/* Клапан V-1 */}
-        <S.ValveGroup $isOpen={valves.V_1} transform="translate(270, 200)" onClick={() => handleValveClick('V_1')}>
+        <S.ValveGroup $isOpen={valves.V_1} transform="translate(285, 105)" onClick={() => handleValveClick('V_1')}>
           <polygon points="-10,-8 10,8 10,-8 -10,8" />
           <circle cx="0" cy="0" r="3" fill={defects?.air_fail ? "#ffcc00" : undefined} />
           <text x="0" y="-13" fill="#e1e7f0" fontSize="8" textAnchor="middle">V-1</text>
@@ -264,20 +272,23 @@ const FlowScheme: React.FC = () => {
           <text x="55" y="22" fill={defects?.steam_fail ? "#ff4d4f" : "#e1e7f0"} fontSize="10" fontWeight="700" textAnchor="middle">
             {defects?.steam_fail ? "К-1 (СРЫВ ПАРА)" : "КОЛОННА К-1"}
           </text>
-          {/* Индикатор уровня */}
-          <rect x="15" y="45" width="80" height="200" fill="#131924" rx="4" stroke="#222c3e" />
-          <rect x="15" y={45 + (200 - (sensors.L_1 / 100) * 200)} width="80" height={(sensors.L_1 / 100) * 200} fill="rgba(0, 229, 255, 0.15)" rx="4" />
+          {/* Индикатор уровня только в кубовой части колонны: 100% = 2000 мм */}
+          <rect x="15" y="195" width="80" height="50" fill="#131924" rx="4" stroke="#222c3e" />
+          <rect x="15" y={195 + (50 - (sensors.L_1 / 100) * 50)} width="80" height={(sensors.L_1 / 100) * 50} fill="rgba(0, 229, 255, 0.2)" rx="4" />
+          <text x="55" y="188" fill="#7c8ba1" fontSize="7" textAnchor="middle">Кубовая часть · 2000 мм</text>
         </S.EquipmentGroup>
 
         {/* Датчик L-1 уровня ниже колонны */}
         <g transform="translate(585, 390)">
           <S.SensorBox $isWarning={sensors.L_1 > 85 || sensors.L_1 < 15} $isDanger={sensors.L_1 > 95 || sensors.L_1 < 5}>
-            <rect className="bg" x="-35" y="-10" width="70" height="26" rx="4" />
-            <text className="value" x="0" y="7" textAnchor="middle">{sensors.L_1}%</text>
+            <rect className="bg" x="-68" y="-10" width="136" height="26" rx="4" />
+            <text className="value" x="0" y="7" textAnchor="middle">
+              {Math.round((sensors.L_1 / 100) * K1_LEVEL_FULL_SCALE_MM)} мм · {sensors.L_1}%
+            </text>
             <text className="label" x="0" y="-13" textAnchor="middle">L-1 (УРОВЕНЬ)</text>
           </S.SensorBox>
-          <rect x="-35" y="20" width="70" height="12" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
-          <S.SparklinePath d={generateSparklineD(levelHistory, -35, 20, 70, 12, 0, 100)} $strokeColor={(sensors.L_1 > 85 || sensors.L_1 < 15) ? "#ffcc00" : "#00ff66"} />
+          <rect x="-68" y="20" width="136" height="12" fill="#090d14" rx="2" stroke="#1d2635" strokeWidth="0.5" />
+          <S.SparklinePath d={generateSparklineD(levelHistory, -68, 20, 136, 12, 0, 100)} $strokeColor={(sensors.L_1 > 85 || sensors.L_1 < 15) ? "#ffcc00" : "#00ff66"} />
         </g>
 
         {/* Клапаны V-2 и V-3 */}
@@ -287,7 +298,7 @@ const FlowScheme: React.FC = () => {
           <text x="0" y="-13" fill="#e1e7f0" fontSize="8" textAnchor="middle">V-2 (Сброс)</text>
         </S.ValveGroup>
 
-        <S.ValveGroup $isOpen={valves.V_3} transform="translate(650, 415)" onClick={() => handleValveClick('V_3')}>
+        <S.ValveGroup $isOpen={valves.V_3} transform="translate(685, 415)" onClick={() => handleValveClick('V_3')}>
           <polygon points="-10,-8 10,8 10,-8 -10,8" />
           <circle cx="0" cy="0" r="3" />
           <text x="0" y="-13" fill="#e1e7f0" fontSize="8" textAnchor="middle">V-3</text>
