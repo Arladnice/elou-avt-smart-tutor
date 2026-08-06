@@ -238,3 +238,6 @@ cython_debug/
 
 # DB snapshots from `make snapshot`
 /backups/
+
+# Auto-generated inspection artefacts (e.g. *.xlsx.inspect.ndjson)
+*.inspect.ndjson
