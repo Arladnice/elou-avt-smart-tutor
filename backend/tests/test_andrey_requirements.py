@@ -63,8 +63,15 @@ def test_interlock_operation_requires_fresh_engineer_authorization():
 
 
 def test_first_four_interlocks_are_marked_primary():
-    rows = InterlockController().rows({"L_1": 50, "P_1": 0.25, "T_1": 280, "P_vac": 0.04, "T_2": 340})
+    rows = InterlockController().rows({"L_1": 50, "L_2": 50, "P_1": 0.25, "T_1": 280, "P_vac": 0.04, "T_2": 350})
 
     assert [row["tag"] for row in rows[:4]] == ["LIRSA 1a", "LIRSA 2a", "LIRSA 2д", "LIRSA 3a"]
     assert all(row["primary"] for row in rows[:4])
     assert not any(row["primary"] for row in rows[4:])
+
+
+def test_lirsa_3a_tracks_low_level_in_k2():
+    rows = InterlockController().rows({"L_1": 50, "L_2": 7, "P_1": 0.25, "T_1": 280, "P_vac": 0.04, "T_2": 350})
+
+    lirsa_3a = next(row for row in rows if row["tag"] == "LIRSA 3a")
+    assert lirsa_3a["alarm"] is True

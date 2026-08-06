@@ -22,7 +22,8 @@ type ConditionPreset =
   | 'V_2_OPEN' | 'V_2_CLOSE'
   | 'V_3_OPEN' | 'V_3_CLOSE'
   | 'T_1_LTE' | 'T_1_GTE'
-  | 'L_1_LTE' | 'L_1_GTE';
+  | 'L_1_LTE' | 'L_1_GTE'
+  | 'L_2_LTE' | 'L_2_GTE';
 
 /** Строка чек-листа в том виде, в каком её отдаёт Form.List */
 interface ChecklistFormRow {
@@ -44,6 +45,7 @@ interface ScenarioFormValues {
   T_1?: number;
   P_1?: number;
   L_1?: number;
+  L_2?: number;
   T_1_Sp?: number;
   V_1?: boolean;
   V_2?: boolean;
@@ -68,6 +70,8 @@ const SENSOR_PRESETS: Record<string, { type: 'sensor_lte' | 'sensor_gte'; target
   T_1_GTE: { type: 'sensor_gte', target: 'T_1', fallback: 285.0 },
   L_1_LTE: { type: 'sensor_lte', target: 'L_1', fallback: 25.0 },
   L_1_GTE: { type: 'sensor_gte', target: 'L_1', fallback: 20.0 },
+  L_2_LTE: { type: 'sensor_lte', target: 'L_2', fallback: 18.0 },
+  L_2_GTE: { type: 'sensor_gte', target: 'L_2', fallback: 50.0 },
 };
 
 /** Разворачивает выбранный в форме пресет в условие реестра сценариев */
@@ -106,6 +110,7 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
       T_1: 280.0,
       P_1: 0.35,
       L_1: 50.0,
+      L_2: 50.0,
       T_1_Sp: 280.0,
       V_1: true,
       V_2: false,
@@ -136,6 +141,7 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
           T_1: values.T_1 ?? 280.0,
           P_1: values.P_1 ?? 0.35,
           L_1: values.L_1 ?? 50.0,
+          L_2: values.L_2 ?? 50.0,
           T_1_Sp: values.T_1_Sp ?? 280.0,
           V_1: !!values.V_1,
           V_2: !!values.V_2,
@@ -258,6 +264,7 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                   T_1: 280,
                   P_1: 0.35,
                   L_1: 50,
+                  L_2: 50,
                   T_1_Sp: 280,
                   V_1: true,
                   V_2: false,
@@ -300,6 +307,9 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                       <InputNumber min={0.01} max={1.2} step={0.05} style={{ width: '100%' }} />
                     </Form.Item>
                     <Form.Item name="L_1" label="L-1 Уровень (%)">
+                      <InputNumber min={0} max={100} style={{ width: '100%' }} />
+                    </Form.Item>
+                    <Form.Item name="L_2" label="L-2 Уровень К-2 (%)">
                       <InputNumber min={0} max={100} style={{ width: '100%' }} />
                     </Form.Item>
                     <Form.Item name="T_1_Sp" label="Уставка T_Sp (°C)">
@@ -351,6 +361,8 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                                   { value: 'T_1_GTE', label: 'Температура Т-1 >= X °C' },
                                   { value: 'L_1_LTE', label: 'Уровень L-1 <= X %' },
                                   { value: 'L_1_GTE', label: 'Уровень L-1 >= X %' },
+                                  { value: 'L_2_LTE', label: 'Уровень L-2 <= X %' },
+                                  { value: 'L_2_GTE', label: 'Уровень L-2 >= X %' },
                                 ]} />
                               </Form.Item>
                               <Form.Item

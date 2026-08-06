@@ -32,6 +32,7 @@ class InitialStateModel(BaseModel):
     T_1: float = 280.0
     P_1: float = 0.35
     L_1: float = 50.0
+    L_2: float = 50.0
     T_1_Sp: float = 280.0
     V_1: bool = True
     V_2: bool = False

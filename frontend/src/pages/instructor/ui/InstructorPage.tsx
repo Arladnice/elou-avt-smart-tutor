@@ -439,6 +439,13 @@ const InstructorPage: React.FC = () => {
                 </S.DefectInfo>
                 <Switch size="small" checked={defects.vt_vacuum_loss} onChange={v => handleDefectChange('vt_vacuum_loss', v)} />
               </S.DefectRow>
+              <S.DefectRow>
+                <S.DefectInfo>
+                  <span className="title">Отказ насосов К-2 Н-4/Н-32 (k2_pump_fail)</span>
+                  <span className="desc">Прекращение откачки мазута. Через 45 секунд уровень L-2 начинает расти с расчётной скоростью.</span>
+                </S.DefectInfo>
+                <Switch size="small" checked={defects.k2_pump_fail} onChange={v => handleDefectChange('k2_pump_fail', v)} />
+              </S.DefectRow>
             </S.StyledCard>
           </S.TopCardsRow>
 
@@ -511,6 +518,12 @@ const InstructorPage: React.FC = () => {
                 <span className="lbl">L-1 (Уровень)</span>
                 <S.SensorValue $isAlert={false} $isWarning={sensors.L_1 > 80 || sensors.L_1 < 20}>
                   {sensors.L_1} %
+                </S.SensorValue>
+              </S.MonitorItem>
+              <S.MonitorItem>
+                <span className="lbl">L-2 (Куб К-2)</span>
+                <S.SensorValue $isAlert={false} $isWarning={sensors.L_2 > 85 || sensors.L_2 < 18}>
+                  {sensors.L_2} %
                 </S.SensorValue>
               </S.MonitorItem>
             </S.MonitorRow>

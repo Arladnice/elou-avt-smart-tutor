@@ -3,7 +3,17 @@ import { useTelemetry } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { Activity, Flame, TrendingUp } from 'lucide-react';
-import { K1_LEVEL_FULL_SCALE_MM } from '@/shared/config/thresholds';
+import {
+  K1_LEVEL_FULL_SCALE_MM,
+  K2_LEVEL_FULL_SCALE_MM,
+  K2_LEVEL_HIGH,
+  K2_LEVEL_LOW,
+  K2_LEVEL_LOW_CRITICAL,
+  K2_PRESSURE_CRITICAL,
+  K2_PRESSURE_WARNING,
+  K2_TEMP_CRITICAL,
+  K2_TEMP_WARNING,
+} from '@/shared/config/thresholds';
 import type { EquipmentId } from '../model/equipmentCatalog';
 import EquipmentDrawer from './EquipmentDrawer';
 import * as S from './FlowScheme.styles';
@@ -21,6 +31,41 @@ const generateSparklineD = (history: number[], x: number, y: number, w: number, 
   return `M ${points.join(' L ')}`;
 };
 
+interface EquipmentInfoMarkerProps {
+  equipmentId: EquipmentId;
+  transform: string;
+  onOpen: (equipmentId: EquipmentId) => void;
+}
+
+const EquipmentInfoMarker: React.FC<EquipmentInfoMarkerProps> = ({ equipmentId, transform, onOpen }) => {
+  const openCard = (event: React.MouseEvent<SVGGElement>) => {
+    event.stopPropagation();
+    onOpen(equipmentId);
+  };
+
+  const openCardFromKeyboard = (event: React.KeyboardEvent<SVGGElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    event.stopPropagation();
+    onOpen(equipmentId);
+  };
+
+  return (
+    <S.EquipmentInfoGroup
+      transform={transform}
+      role="button"
+      tabIndex={0}
+      aria-label={`Открыть карточку ${equipmentId.replace('_', '-')}`}
+      onClick={openCard}
+      onKeyDown={openCardFromKeyboard}
+    >
+      <title>Открыть карточку оборудования</title>
+      <circle cx="0" cy="0" r="5" />
+      <text x="0" y="2.5" textAnchor="middle">i</text>
+    </S.EquipmentInfoGroup>
+  );
+};
+
 const FlowScheme: React.FC = () => {
   const { sensors, valves, status, defects, telemetryHistory, wsLatency } = useTelemetry();
   const { isOnline } = useSession();
@@ -32,6 +77,7 @@ const FlowScheme: React.FC = () => {
   const tempHistory = sparklineWindow.map(p => p.T_1);
   const presHistory = sparklineWindow.map(p => p.P_1);
   const levelHistory = sparklineWindow.map(p => p.L_1);
+  const k2LevelHistory = sparklineWindow.map(p => p.L_2);
 
   const handleValveClick = (valveId: 'V_1' | 'V_2' | 'V_3' | 'V_ELOU' | 'V_VT') => {
     if (status !== 'running') return;
@@ -166,11 +212,21 @@ const FlowScheme: React.FC = () => {
         </S.EquipmentGroup>
 
         {/* Насос Н-20 после блока ЭЛОУ */}
-        <g transform="translate(215, 200)">
+        <S.EquipmentGroup
+          transform="translate(215, 200)"
+          role="button"
+          tabIndex={0}
+          aria-label="Открыть карточку насоса Н-20"
+          $isAlert={Boolean(defects?.pump_fail || defects?.power_fail)}
+          onClick={() => setSelectedEquipmentId('N_20')}
+          onKeyDown={event => handleEquipmentKeyDown(event, 'N_20')}
+        >
+          <title>Н-20 · Открыть карточку оборудования</title>
+          <circle className="equipment-hitbox" cx="0" cy="0" r="18" />
           <circle cx="0" cy="0" r="10" fill="#131924" stroke="#e1e7f0" strokeWidth="1.5" />
           <polygon points="-4,-5 -4,5 5,0" fill="#e1e7f0" />
           <text x="0" y="-15" fill="#e1e7f0" fontSize="8" textAnchor="middle" fontWeight="bold">Н-20</text>
-        </g>
+        </S.EquipmentGroup>
 
         {/* Электродегидратор Э-1 */}
         <S.EquipmentGroup
@@ -199,6 +255,7 @@ const FlowScheme: React.FC = () => {
           <polygon points="-10,-8 10,8 10,-8 -10,8" />
           <circle cx="0" cy="0" r="3" />
           <text x="22" y="3" fill="#e1e7f0" fontSize="8" textAnchor="start">V-ELOU</text>
+          <EquipmentInfoMarker equipmentId="V_ELOU" transform="translate(13, 14)" onOpen={setSelectedEquipmentId} />
         </S.ValveGroup>
 
         {/* Датчики ЭЛОУ: Sal-1 и W-1 */}
@@ -224,6 +281,7 @@ const FlowScheme: React.FC = () => {
           <polygon points="-10,-8 10,8 10,-8 -10,8" />
           <circle cx="0" cy="0" r="3" fill={defects?.air_fail ? "#ffcc00" : undefined} />
           <text x="0" y="-13" fill="#e1e7f0" fontSize="8" textAnchor="middle">V-1</text>
+          <EquipmentInfoMarker equipmentId="V_1" transform="translate(14, 14)" onOpen={setSelectedEquipmentId} />
         </S.ValveGroup>
 
         {/* Печь П-1 */}
@@ -296,12 +354,14 @@ const FlowScheme: React.FC = () => {
           <polygon points="-10,-8 10,8 10,-8 -10,8" />
           <circle cx="0" cy="0" r="3" />
           <text x="0" y="-13" fill="#e1e7f0" fontSize="8" textAnchor="middle">V-2 (Сброс)</text>
+          <EquipmentInfoMarker equipmentId="V_2" transform="translate(14, 14)" onOpen={setSelectedEquipmentId} />
         </S.ValveGroup>
 
         <S.ValveGroup $isOpen={valves.V_3} transform="translate(685, 415)" onClick={() => handleValveClick('V_3')}>
           <polygon points="-10,-8 10,8 10,-8 -10,8" />
           <circle cx="0" cy="0" r="3" />
           <text x="0" y="-13" fill="#e1e7f0" fontSize="8" textAnchor="middle">V-3</text>
+          <EquipmentInfoMarker equipmentId="V_3" transform="translate(14, 14)" onOpen={setSelectedEquipmentId} />
         </S.ValveGroup>
 
         {/* Датчик P-1 справа от колонны К-1 */}
@@ -317,13 +377,26 @@ const FlowScheme: React.FC = () => {
 
         {/* ОБОРУДОВАНИЕ БЛОКА 3: ВАКУУМНЫЙ (ВТ) */}
         {/* Колонна К-2 */}
-        <g transform="translate(800, 140)">
+        <S.EquipmentGroup
+          transform="translate(800, 140)"
+          role="button"
+          tabIndex={0}
+          aria-label="Открыть карточку вакуумной колонны К-2"
+          $isAlert={Boolean(defects?.vt_vacuum_loss || defects?.k2_pump_fail || defects?.steam_fail || defects?.power_fail)}
+          onClick={() => setSelectedEquipmentId('K_2')}
+          onKeyDown={event => handleEquipmentKeyDown(event, 'K_2')}
+        >
+          <title>К-2 · Открыть карточку оборудования</title>
+          <rect className="equipment-hitbox" x="-5" y="-5" width="100" height="190" rx="18" />
           <rect x="0" y="0" width="90" height="180" rx="14" fill="url(#vtGrad)" stroke={defects?.vt_vacuum_loss ? "#ff4d4f" : "#aa00ff"} strokeWidth={defects?.vt_vacuum_loss ? "2.5" : "1.5"} />
           <text x="45" y="22" fill={defects?.vt_vacuum_loss ? "#ff4d4f" : "#aa00ff"} fontSize="10" fontWeight="700" textAnchor="middle">
             {defects?.vt_vacuum_loss ? "К-2 (СБОЙ)" : "КОЛОННА К-2"}
           </text>
           <text x="45" y="90" fill="rgba(255,255,255,0.3)" fontSize="8" textAnchor="middle">Вакуумный блок</text>
-        </g>
+          <rect x="15" y="125" width="60" height="40" fill="#131924" rx="4" stroke="#38234f" />
+          <rect x="15" y={125 + (40 - (sensors.L_2 / 100) * 40)} width="60" height={(sensors.L_2 / 100) * 40} fill="rgba(170, 0, 255, 0.24)" rx="4" />
+          <text x="45" y="120" fill="#7c8ba1" fontSize="7" textAnchor="middle">Куб · 4000 мм</text>
+        </S.EquipmentGroup>
 
         {/* Пароэжектор ПЭУ и клапан пара V_VT */}
         <g transform="translate(900, 100)">
@@ -335,22 +408,36 @@ const FlowScheme: React.FC = () => {
           <polygon points="-10,-8 10,8 10,-8 -10,8" />
           <circle cx="0" cy="0" r="3" />
           <text x="22" y="3" fill="#e1e7f0" fontSize="8" textAnchor="start">V-VT</text>
+          <EquipmentInfoMarker equipmentId="V_VT" transform="translate(13, 14)" onOpen={setSelectedEquipmentId} />
         </S.ValveGroup>
 
         {/* Датчик остаточного вакуума P-vac справа от K-2 */}
         <g transform="translate(925, 200)">
-          <S.SensorBox $isWarning={sensors.P_vac > 0.06} $isDanger={sensors.P_vac > 0.08}>
+          <S.SensorBox $isWarning={sensors.P_vac > K2_PRESSURE_WARNING} $isDanger={sensors.P_vac >= K2_PRESSURE_CRITICAL}>
             <rect className="bg" x="-35" y="-10" width="70" height="26" rx="4" />
-            <text className="value" x="0" y="7" textAnchor="middle">{sensors.P_vac} МПа</text>
+            <text className="value" x="0" y="7" textAnchor="middle">{sensors.P_vac.toFixed(3)} МПа</text>
             <text className="label" x="0" y="-13" textAnchor="middle">P-vac (ВАКУУМ)</text>
           </S.SensorBox>
         </g>
 
+        {/* Датчик уровня куба К-2 L-2: полная шкала 4000 мм */}
+        <g transform="translate(945, 280)">
+          <S.SensorBox $isWarning={sensors.L_2 > K2_LEVEL_HIGH || sensors.L_2 < K2_LEVEL_LOW} $isDanger={sensors.L_2 < K2_LEVEL_LOW_CRITICAL}>
+            <rect className="bg" x="-68" y="-10" width="136" height="26" rx="4" />
+            <text className="value" x="0" y="7" textAnchor="middle">
+              {Math.round((sensors.L_2 / 100) * K2_LEVEL_FULL_SCALE_MM)} мм · {sensors.L_2.toFixed(1)}%
+            </text>
+            <text className="label" x="0" y="-13" textAnchor="middle">L-2 (УРОВЕНЬ К-2)</text>
+          </S.SensorBox>
+          <rect x="-68" y="20" width="136" height="12" fill="#090d14" rx="2" stroke="#38234f" strokeWidth="0.5" />
+          <S.SparklinePath d={generateSparklineD(k2LevelHistory, -68, 20, 136, 12, 0, 100)} $strokeColor={(sensors.L_2 > K2_LEVEL_HIGH || sensors.L_2 < K2_LEVEL_LOW) ? "#ffcc00" : "#aa00ff"} />
+        </g>
+
         {/* Датчик температуры куба К-2 T-2 ниже K-2 */}
         <g transform="translate(845, 360)">
-          <S.SensorBox $isWarning={sensors.T_2 > 360} $isDanger={sensors.T_2 > 375}>
+          <S.SensorBox $isWarning={sensors.T_2 > K2_TEMP_WARNING} $isDanger={sensors.T_2 >= K2_TEMP_CRITICAL}>
             <rect className="bg" x="-32" y="-10" width="64" height="26" rx="4" />
-            <text className="value" x="0" y="7" textAnchor="middle">{sensors.T_2}°C</text>
+            <text className="value" x="0" y="7" textAnchor="middle">{sensors.T_2.toFixed(1)}°C</text>
             <text className="label" x="0" y="-13" textAnchor="middle">T-2 (КУБ К-2)</text>
           </S.SensorBox>
         </g>

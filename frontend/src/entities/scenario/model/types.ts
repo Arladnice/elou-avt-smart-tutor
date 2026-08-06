@@ -19,6 +19,7 @@ export interface ScenarioInitialState {
   T_1: number;
   P_1: number;
   L_1: number;
+  L_2?: number;
   T_1_Sp: number;
   V_1: boolean;
   V_2: boolean;

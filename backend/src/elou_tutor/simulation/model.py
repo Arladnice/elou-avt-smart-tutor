@@ -2,6 +2,7 @@ import random
 import copy
 
 from elou_tutor.simulation.scenarios import get_scenario_by_id
+from elou_tutor.simulation.k2 import K2Dynamics
 from elou_tutor.domain.process_limits import (
     COLUMN_PRES_ESD, FURNACE_TEMP_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
     COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_INTERLOCK,
@@ -11,6 +12,7 @@ from elou_tutor.domain.process_limits import (
     STARTUP_INITIAL_TEMP, STARTUP_INITIAL_PRES, STARTUP_INITIAL_LEVEL, STARTUP_SETPOINT_TEMP,
     NORMAL_INITIAL_TEMP, NORMAL_INITIAL_PRES, NORMAL_INITIAL_LEVEL, NORMAL_SETPOINT_TEMP,
     ACCIDENT_NON_STARTUP_MIN_TIME_SEC, ACCIDENT_STARTUP_MAX_TIME_SEC,
+    K2_PRESSURE_NORMAL, K2_TEMP_NORMAL,
 )
 
 class ELOUAVTSimulator:
@@ -23,11 +25,13 @@ class ELOUAVTSimulator:
       - Влияние неисправностей (отказы оборудования), задаваемых инструктором.
     """
     def __init__(self):
+        self.k2_dynamics = K2Dynamics()
         self.reset()
 
     def reset(self, scenario_id: str = "shutdown"):
         self.scenario_id = scenario_id
         self._startup_filled = False
+        self.k2_dynamics.reset()
         # Активные неисправности (задаются инструктором)
         self.defects = {
             "pump_fail": False,       # Отказ сырьевого насоса (сырье не идет даже при открытом V_1)
@@ -37,7 +41,8 @@ class ELOUAVTSimulator:
             "air_fail": False,        # Отказ воздуха КИПиА (V-1 и V-3 переходят в закрытое состояние, V-2 блокируется)
             "steam_fail": False,      # Срыв подачи отпарного пара (прекращение отпарки в стриппинге, рост P-1 и L-1)
             "elou_desalt_fail": False,# Нарушение электрообессоливания в ЭЛОУ (проскок солей/воды)
-            "vt_vacuum_loss": False   # Срыв подачи пара на пароэжекторную группу ВТ (потеря вакуума)
+            "vt_vacuum_loss": False,  # Срыв подачи пара на пароэжекторную группу ВТ (потеря вакуума)
+            "k2_pump_fail": False     # Отказ насосов откачки куба К-2 Н-4/Н-32
         }
         
         self.status = "running"       # "running", "paused", "esd" (аварийный останов), "accident" (авария)
@@ -64,8 +69,9 @@ class ELOUAVTSimulator:
                 "L_1": st.get("L_1", 50.0),
                 "Sal_1": st.get("Sal_1", 4.2),
                 "W_1": st.get("W_1", 0.15),
-                "P_vac": st.get("P_vac", 0.04),
-                "T_2": st.get("T_2", 340.0)
+                "P_vac": st.get("P_vac", K2_PRESSURE_NORMAL),
+                "T_2": st.get("T_2", K2_TEMP_NORMAL),
+                "L_2": st.get("L_2", 50.0),
             }
         elif scenario_id == "startup":
             # Холодное состояние для пуска
@@ -85,8 +91,9 @@ class ELOUAVTSimulator:
                 "L_1": STARTUP_INITIAL_LEVEL,   # Пустая колонна
                 "Sal_1": 4.2,                   # Солесодержание в норме (мг/л)
                 "W_1": 0.15,                    # Обводненность в норме (%)
-                "P_vac": 0.04,                  # Нормальный вакуум в К-2 (МПа)
-                "T_2": 340.0                    # Температура куба К-2 (°C)
+                "P_vac": K2_PRESSURE_NORMAL,    # Остаточное давление в К-2 (МПа)
+                "T_2": K2_TEMP_NORMAL,          # Температура куба К-2 (°C)
+                "L_2": 50.0                     # Уровень куба К-2 (% от 4000 мм)
             }
         else:
             # Нормальное рабочее состояние для останова и прочих тестов
@@ -106,8 +113,9 @@ class ELOUAVTSimulator:
                 "L_1": NORMAL_INITIAL_LEVEL,  # L-1 (Уровень в колонне), %
                 "Sal_1": 4.2,                 # Sal-1 (Солесодержание), мг/л
                 "W_1": 0.15,                  # W-1 (Содержание воды), %
-                "P_vac": 0.04,                # P-vac (Вакуум в К-2), МПа
-                "T_2": 340.0                  # T-2 (Температура К-2), °C
+                "P_vac": K2_PRESSURE_NORMAL,  # P-vac (остаточное давление К-2), МПа
+                "T_2": K2_TEMP_NORMAL,        # T-2 (Температура К-2), °C
+                "L_2": 50.0                   # L-2 (Уровень куба К-2), %
             }
 
     def set_valve(self, valve_id: str, state: bool):
@@ -180,18 +188,20 @@ class ELOUAVTSimulator:
         next_W = max(0.05, min(5.0, next_W))
 
         # -------------------------------------------------------------
-        # 0.1. Моделирование агрегированного блока ВТ (Вакуум P_vac, Температура куба T_2)
+        # 0.1. Физическая модель К-2 по расчёту инженера АСУ ТП Андрея
         # -------------------------------------------------------------
-        p_vac_target = 0.04
-        t2_target = 340.0
-        if self.defects.get("vt_vacuum_loss", False) or not V_VT:
-            p_vac_target = 0.095 # Потеря вакуума в К-2 (падение остаточного давления)
-            t2_target = 378.0    # Перегрев куба К-2
-        
-        next_P_vac = self.sensors["P_vac"] + (p_vac_target - self.sensors["P_vac"]) * 0.12 + (random.random() - 0.5) * 0.001
-        next_T_2 = self.sensors["T_2"] + (t2_target - self.sensors["T_2"]) * 0.1 + (random.random() - 0.5) * 0.3
-        next_P_vac = max(0.02, min(0.12, next_P_vac))
-        next_T_2 = max(200.0, min(420.0, next_T_2))
+        next_L_2, next_P_vac, next_T_2 = self.k2_dynamics.step(
+            level=self.sensors["L_2"],
+            pressure=self.sensors["P_vac"],
+            temperature=self.sensors["T_2"],
+            feed_open=V_3,
+            outflow_available=(
+                not self.defects["power_fail"]
+                and not self.defects["k2_pump_fail"]
+            ),
+            vacuum_available=V_VT and not self.defects["vt_vacuum_loss"],
+            heat_available=not self.defects["power_fail"],
+        )
 
         # -------------------------------------------------------------
         # 1. Моделирование расхода сырья (F_in) с учетом неисправностей и блокировок ПАЗ
@@ -270,8 +280,11 @@ class ELOUAVTSimulator:
         self.sensors["L_1"] = round(next_L, 2)
         self.sensors["Sal_1"] = round(next_Sal, 1)
         self.sensors["W_1"] = round(next_W, 2)
-        self.sensors["P_vac"] = round(next_P_vac, 3)
-        self.sensors["T_2"] = round(next_T_2, 1)
+        # Расчётные скорости К-2 меньше шага старых индикаторов, поэтому
+        # сохраняем повышенную точность, а форматируем значения уже в UI.
+        self.sensors["P_vac"] = round(next_P_vac, 5)
+        self.sensors["T_2"] = round(next_T_2, 2)
+        self.sensors["L_2"] = round(next_L_2, 2)
 
         # -------------------------------------------------------------
         # 5. Проверка аварийных условий и блокировок (ПАЗ / ESD)
@@ -329,7 +342,8 @@ class ELOUAVTSimulator:
             "sensors": copy.deepcopy(self.sensors),
             "setpoints": copy.deepcopy(self.setpoints),
             "defects": copy.deepcopy(self.defects),
-            "accident_reason": self.accident_reason
+            "accident_reason": self.accident_reason,
+            "k2_dynamics": self.k2_dynamics.get_snapshot(),
         }
 
     def load_snapshot(self, snapshot: dict):
@@ -340,6 +354,11 @@ class ELOUAVTSimulator:
         self.time_elapsed = snapshot["time_elapsed"]
         self.valves = copy.deepcopy(snapshot["valves"])
         self.sensors = copy.deepcopy(snapshot["sensors"])
+        self.sensors.setdefault("P_vac", K2_PRESSURE_NORMAL)
+        self.sensors.setdefault("T_2", K2_TEMP_NORMAL)
+        self.sensors.setdefault("L_2", 50.0)
         self.setpoints = copy.deepcopy(snapshot["setpoints"])
         self.defects = copy.deepcopy(snapshot["defects"])
+        self.defects.setdefault("k2_pump_fail", False)
         self.accident_reason = snapshot["accident_reason"]
+        self.k2_dynamics.load_snapshot(snapshot.get("k2_dynamics", {}))

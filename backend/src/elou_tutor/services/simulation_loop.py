@@ -8,6 +8,10 @@ from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_CRITICAL_LEVEL, COLUMN_PRES_CRITICAL_LEVEL,
     COLUMN_LEVEL_HIGH_CRITICAL_LEVEL, COLUMN_LEVEL_LOW_CRITICAL_LEVEL,
     ESCALATION_WARNING_DELAY_SEC, ESCALATION_CRITICAL_DELAY_SEC,
+    K2_LEVEL_HIGH, K2_LEVEL_HIGH_CRITICAL,
+    K2_LEVEL_LOW, K2_LEVEL_LOW_CRITICAL,
+    K2_PRESSURE_WARNING, K2_PRESSURE_CRITICAL,
+    K2_TEMP_WARNING, K2_TEMP_CRITICAL,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,6 +95,9 @@ async def _advance_one_second(session):
     temp = session.simulator.sensors["T_1"]
     pres = session.simulator.sensors["P_1"]
     level = session.simulator.sensors["L_1"]
+    k2_level = session.simulator.sensors["L_2"]
+    k2_pressure = session.simulator.sensors["P_vac"]
+    k2_temp = session.simulator.sensors["T_2"]
 
     # Формируем автоматические предупреждения по техрегламенту
     if temp > FURNACE_TEMP_WARNING:
@@ -109,12 +116,31 @@ async def _advance_one_second(session):
         sev = "CRITICAL" if level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL else "WARNING"
         session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) опасно низок! Риск срыва печных насосов.", severity=sev, fingerprint="column_level_low")
 
+    if k2_level > K2_LEVEL_HIGH:
+        sev = "CRITICAL" if k2_level > K2_LEVEL_HIGH_CRITICAL else "WARNING"
+        session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-2 ({k2_level:.1f}%) выше нормы! Проверьте откачку насосами Н-4/Н-32.", severity=sev, fingerprint="k2_level_high")
+    elif k2_level < K2_LEVEL_LOW:
+        sev = "CRITICAL" if k2_level < K2_LEVEL_LOW_CRITICAL else "WARNING"
+        session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-2 ({k2_level:.1f}%) опасно низок! Риск кавитации насосов и обнажения змеевиков.", severity=sev, fingerprint="k2_level_low")
+
+    if k2_pressure > K2_PRESSURE_WARNING:
+        sev = "CRITICAL" if k2_pressure >= K2_PRESSURE_CRITICAL else "WARNING"
+        session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Остаточное давление в К-2 растёт ({k2_pressure:.3f} МПа). Проверьте эжекторы и подачу пара.", severity=sev, fingerprint="k2_pressure_high")
+
+    if k2_temp > K2_TEMP_WARNING:
+        sev = "CRITICAL" if k2_temp >= K2_TEMP_CRITICAL else "WARNING"
+        session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Температура куба К-2 ({k2_temp:.1f}°C) выше нормы. Риск коксования и крекинга мазута.", severity=sev, fingerprint="k2_temp_high")
+
     # Логика эскалации алертов
     is_currently_critical = (
         temp > FURNACE_TEMP_CRITICAL_LEVEL
         or pres > COLUMN_PRES_CRITICAL_LEVEL
         or level > COLUMN_LEVEL_HIGH_CRITICAL_LEVEL
         or (level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL and not is_startup_filling)
+        or k2_level > K2_LEVEL_HIGH_CRITICAL
+        or k2_level < K2_LEVEL_LOW_CRITICAL
+        or k2_pressure >= K2_PRESSURE_CRITICAL
+        or k2_temp >= K2_TEMP_CRITICAL
     )
     if is_currently_critical:
         if not session.critical_alert_active:

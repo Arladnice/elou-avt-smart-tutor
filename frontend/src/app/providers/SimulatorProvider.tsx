@@ -555,6 +555,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         T_1: sensors.T_1,
         P_1: sensors.P_1,
         L_1: sensors.L_1,
+        L_2: sensors.L_2,
       };
       // Откат таймера = сброс сессии или смена сценария (в т.ч. со стороны сервера):
       // старые точки нельзя смешивать с новыми, иначе ось времени идёт вспять

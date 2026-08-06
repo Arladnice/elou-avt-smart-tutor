@@ -10,7 +10,8 @@ export type DefectId =
   | 'air_fail'
   | 'steam_fail'
   | 'elou_desalt_fail'
-  | 'vt_vacuum_loss';
+  | 'vt_vacuum_loss'
+  | 'k2_pump_fail';
 
 export type Valves = Record<ValveId, boolean>;
 export type Defects = Record<DefectId, boolean>;
@@ -23,6 +24,7 @@ export interface Sensors {
   W_1: number;
   P_vac: number;
   T_2: number;
+  L_2: number;
 }
 
 export interface Setpoints {
@@ -54,6 +56,7 @@ export interface TelemetryPoint {
   T_1: number;
   P_1: number;
   L_1: number;
+  L_2: number;
 }
 
 /** Глубина хранения истории телеметрии (точек = секунд симуляции) */
@@ -86,7 +89,7 @@ export interface TelemetryState {
 
 export const INITIAL_VALVES: Valves = { V_1: true, V_2: false, V_3: true, V_ELOU: true, V_VT: true };
 
-export const INITIAL_SENSORS: Sensors = { T_1: 280, P_1: 0.25, L_1: 50, Sal_1: 4.2, W_1: 0.15, P_vac: 0.04, T_2: 340 };
+export const INITIAL_SENSORS: Sensors = { T_1: 280, P_1: 0.25, L_1: 50, Sal_1: 4.2, W_1: 0.15, P_vac: 0.04, T_2: 350, L_2: 50 };
 
 export const INITIAL_DEFECTS: Defects = {
   pump_fail: false,
@@ -97,6 +100,7 @@ export const INITIAL_DEFECTS: Defects = {
   steam_fail: false,
   elou_desalt_fail: false,
   vt_vacuum_loss: false,
+  k2_pump_fail: false,
 };
 
 export const INITIAL_INTERLOCKS: InterlockRow[] = [

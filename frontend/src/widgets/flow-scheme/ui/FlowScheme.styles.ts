@@ -79,7 +79,7 @@ export const ValveGroup = styled.g<{ $isOpen: boolean }>`
     transition: ${props => props.theme.transitions.default};
   }
 
-  circle {
+  > circle {
     fill: ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.danger)};
     filter: drop-shadow(0 0 6px ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.danger)});
     transition: ${props => props.theme.transitions.default};
@@ -87,6 +87,32 @@ export const ValveGroup = styled.g<{ $isOpen: boolean }>`
 
   &:hover polygon {
     stroke-width: 3;
+  }
+`;
+
+export const EquipmentInfoGroup = styled.g`
+  cursor: help;
+  outline: none;
+
+  circle {
+    fill: #111827;
+    stroke: #7c8ba1;
+    stroke-width: 1;
+    transition: ${props => props.theme.transitions.default};
+  }
+
+  text {
+    fill: #b8c4d6;
+    font-size: 7px;
+    font-weight: 700;
+    pointer-events: none;
+  }
+
+  &:hover circle,
+  &:focus-visible circle {
+    fill: rgba(0, 229, 255, 0.14);
+    stroke: ${props => props.theme.colors.accent};
+    filter: drop-shadow(0 0 4px ${props => props.theme.colors.accent});
   }
 `;
 

@@ -8,6 +8,9 @@ from elou_tutor.domain.process_limits import (
     COLUMN_PRES_ESD,
     COLUMN_PRES_CRITICAL,
     FURNACE_TEMP_CRITICAL,
+    K2_LEVEL_LOW_CRITICAL,
+    K2_PRESSURE_WARNING,
+    K2_TEMP_CRITICAL,
 )
 
 
@@ -57,16 +60,17 @@ class InterlockController:
         furnace_temp = float(sensors.get("T_1", 0.0))
         vacuum_pressure = float(sensors.get("P_vac", 0.0))
         vacuum_temp = float(sensors.get("T_2", 0.0))
+        vacuum_level = float(sensors.get("L_2", 50.0))
 
         alarms = {
             "LIRSA 1a": level >= COLUMN_LEVEL_HIGH_CRITICAL_LEVEL,
             "LIRSA 2a": level <= COLUMN_LEVEL_LOW_CRITICAL_LEVEL,
             "LIRSA 2д": level <= COLUMN_LEVEL_LOW_CRITICAL_LEVEL,
-            "LIRSA 3a": level >= COLUMN_LEVEL_HIGH_CRITICAL_LEVEL,
+            "LIRSA 3a": vacuum_level <= K2_LEVEL_LOW_CRITICAL,
             "PIRSA 9a": pressure >= COLUMN_PRES_ESD,
             "TIRSA 10a": furnace_temp >= FURNACE_TEMP_CRITICAL,
-            "PIRSA 11a": vacuum_pressure >= 0.08,
-            "TIRSA 12a": vacuum_temp >= 375.0,
+            "PIRSA 11a": vacuum_pressure >= K2_PRESSURE_WARNING,
+            "TIRSA 12a": vacuum_temp >= K2_TEMP_CRITICAL,
             "PIRSA 13a": pressure >= COLUMN_PRES_CRITICAL,
         }
 
