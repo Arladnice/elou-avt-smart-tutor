@@ -35,6 +35,47 @@ export const SVGCanvas = styled.svg`
   height: 100%;
   min-height: 380px;
   background-color: #0b0f17;
+
+  .flow-arrow-head {
+    fill: ${props => props.theme.colors.accent};
+  }
+
+  .source-label,
+  .equipment-tag,
+  .column-tag,
+  .valve-tag {
+    fill: ${props => props.theme.colors.text};
+    font-family: ${props => props.theme.fonts.mono};
+    font-weight: 700;
+    text-anchor: middle;
+  }
+
+  .source-label {
+    font-size: 15px;
+    text-anchor: start;
+  }
+
+  .equipment-tag,
+  .valve-tag {
+    font-size: 11px;
+  }
+
+  .column-tag {
+    font-size: 17px;
+  }
+
+  .utility-label {
+    fill: ${props => props.theme.colors.textMuted};
+    font-family: ${props => props.theme.fonts.mono};
+    font-size: 10px;
+  }
+
+  .sparkline-frame {
+    fill: #090d14;
+    stroke: ${props => props.theme.colors.border};
+    stroke-width: 0.5;
+    rx: 2px;
+  }
 `;
 
 // Стилизованные датчики
@@ -134,6 +175,57 @@ export const EquipmentGroup = styled.g<{ $isAlert: boolean }>`
     stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.accent};
     filter: drop-shadow(0 0 5px ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.accent});
   }
+
+  .pump-body {
+    fill: #131924;
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.text};
+    stroke-width: 2;
+  }
+
+  .pump-rotor {
+    fill: ${props => props.$isAlert ? props.theme.colors.danger : 'rgba(0, 229, 255, 0.18)'};
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.text};
+    stroke-width: 1.5;
+  }
+
+  .furnace-body {
+    fill: #2b1515;
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : '#ff7a45'};
+    stroke-width: 2;
+  }
+
+  .furnace-coil {
+    fill: none;
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : '#ff9c6e'};
+    stroke-width: 3;
+    stroke-linejoin: round;
+  }
+
+  .vessel-body {
+    fill: #172237;
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.accent};
+    stroke-width: 2;
+  }
+
+  .column-body {
+    fill: #172237;
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : '#3e537a'};
+    stroke-width: 2;
+  }
+
+  .column-tray {
+    stroke: ${props => props.theme.colors.text};
+    stroke-width: 2;
+  }
+
+  .level-frame {
+    fill: #131924;
+    stroke: ${props => props.theme.colors.border};
+  }
+
+  .level-fill {
+    fill: rgba(0, 229, 255, 0.22);
+  }
 `;
 
 // Потоки трубопроводов
@@ -152,7 +244,22 @@ export const PipeFlow = styled.path<{ $isActive?: boolean; $speed?: string }>`
   stroke-width: 2;
   stroke-dasharray: 8, 16;
   fill: none;
+  marker-end: ${props => (isActivePipe(props.$isActive) ? 'url(#flow-arrow)' : 'none')};
   animation: ${flowAnimation} ${props => props.$speed || '1.5s'} linear infinite;
+`;
+
+export const UtilityLine = styled.line`
+  stroke: ${props => props.theme.colors.textMuted};
+  stroke-width: 2;
+  stroke-dasharray: 7 5;
+`;
+
+export const StaticValveGroup = styled.g`
+  polygon {
+    fill: #131924;
+    stroke: ${props => props.theme.colors.text};
+    stroke-width: 2;
+  }
 `;
 
 export const SparklinePath = styled.path<{ $strokeColor: string }>`
