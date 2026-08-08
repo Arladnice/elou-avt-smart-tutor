@@ -1,6 +1,6 @@
 import styled, { css } from 'styled-components';
 
-export const Container = styled.div<{ $isEmergency?: boolean }>`
+export const Container = styled.div<{ $isEmergency?: boolean; $fill?: boolean }>`
   background-color: ${props => props.theme.colors.surface};
   border: 1px solid ${props => props.$isEmergency ? props.theme.colors.danger : props.theme.colors.border};
   border-radius: 5px;
@@ -8,6 +8,12 @@ export const Container = styled.div<{ $isEmergency?: boolean }>`
   flex-shrink: 0;
   box-shadow: ${props => props.$isEmergency ? `inset 3px 0 0 ${props.theme.colors.danger}` : 'none'};
   transition: ${props => props.theme.transitions.default};
+  ${props => props.$fill && css`
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  `}
 `;
 
 export const Header = styled.div<{ $collapsed: boolean }>`
@@ -60,7 +66,7 @@ export const CollapseIcon = styled.span<{ $collapsed: boolean }>`
   }
 `;
 
-export const Body = styled.div<{ $collapsed: boolean }>`
+export const Body = styled.div<{ $collapsed: boolean; $fill?: boolean }>`
   overflow: hidden;
   transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
 
@@ -82,6 +88,13 @@ export const Body = styled.div<{ $collapsed: boolean }>`
       padding: 6px 10px;
     `}
   }
+
+  ${props => props.$fill && !props.$collapsed && css`
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  `}
 `;
 
 

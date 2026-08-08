@@ -36,26 +36,14 @@ export const LeftColumn = styled.div`
   gap: 8px;
 `;
 
-export const LeftLogWrapper = styled.div`
-  display: none;
-
-  @media (max-height: 780px) {
-    display: flex;
-    flex-direction: column;
-    flex: 0 0 auto;
-    max-height: 40%;
-    min-height: 0;
-  }
-`;
-
 export const SidebarLogWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 100px;
+  flex: 0 0 auto;
+  min-height: 0;
 
-  @media (max-height: 780px) {
-    display: none;
+  > div {
+    flex: 1;
   }
 `;
 
@@ -63,13 +51,91 @@ export const Sidebar = styled.aside`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow-y: auto;
+  overflow: hidden;
   height: 100%;
 
   @media (max-height: 950px) {
     gap: 6px;
   }
   
+`;
+
+export const SidebarStatusBar = styled.div<{ $hasCritical: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid ${props => props.$hasCritical ? props.theme.colors.danger : props.theme.colors.border};
+  border-radius: 5px;
+  background-color: ${props => props.$hasCritical ? props.theme.colors.dangerMuted : props.theme.colors.surface};
+`;
+
+export const StatusLabel = styled.span`
+  color: ${props => props.theme.colors.text};
+  font-size: 11px;
+  font-weight: 700;
+`;
+
+export const AlarmCounters = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 600;
+`;
+
+export const CriticalCounter = styled.span`
+  color: ${props => props.theme.colors.danger};
+`;
+
+export const WarningCounter = styled.span`
+  color: ${props => props.theme.colors.warning};
+`;
+
+export const SidebarNavigation = styled.nav`
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 5px;
+  background-color: ${props => props.theme.colors.surface};
+`;
+
+export const SidebarTab = styled.button<{ $active: boolean }>`
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px 6px;
+  border: 1px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
+  border-radius: 4px;
+  background-color: ${props => props.$active ? props.theme.colors.primaryMuted : 'transparent'};
+  color: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.textMuted};
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+
+  &:hover {
+    color: ${props => props.theme.colors.primary};
+    background-color: ${props => props.theme.colors.primaryMuted};
+  }
+`;
+
+export const SidebarWorkspace = styled.div`
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+
+  > div {
+    min-height: 100%;
+  }
+
   /* Кастомный тонкий скроллбар для SCADA-интерфейса */
   &::-webkit-scrollbar {
     width: 4px;

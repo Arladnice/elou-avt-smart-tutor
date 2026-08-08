@@ -55,11 +55,13 @@ export const Title = styled.h1`
 export const Content = styled.main`
   display: grid;
   grid-template-columns: 1fr 1.2fr;
+  grid-template-rows: minmax(0, 1fr) 220px;
   gap: 16px;
   padding: 16px;
   overflow: hidden;
 
   @media (max-height: 950px) {
+    grid-template-rows: minmax(0, 1fr) 190px;
     gap: 10px;
     padding: 10px;
   }
@@ -70,7 +72,7 @@ export const PanelColumn = styled.div`
   flex-direction: column;
   gap: 16px;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
 
   @media (max-height: 950px) {
     gap: 10px;
@@ -383,6 +385,32 @@ export const ScenarioLabel = styled.span`
   @media (max-height: 950px) {
     margin-bottom: 4px;
   }
+`;
+
+export const InstructorLogCard = styled(StretchCard)`
+  grid-column: 1 / -1;
+  min-height: 0;
+
+  .ant-card-body {
+    min-height: 0;
+    padding: 8px 12px;
+  }
+`;
+
+export const AlarmSummary = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 10px;
+  font-weight: 600;
+`;
+
+export const CriticalAlarmCount = styled.span`
+  color: ${props => props.theme.colors.danger};
+`;
+
+export const WarningAlarmCount = styled.span`
+  color: ${props => props.theme.colors.warning};
 `;
 
 export const ScenarioHeading = styled.div`
@@ -711,7 +739,22 @@ export const TopCardsRow = styled.div`
   grid-template-columns: 1.15fr 0.85fr;
   gap: 16px;
   align-items: stretch;
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+
+  > .ant-card {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  > .ant-card > .ant-card-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
 
   @media (max-height: 950px) {
     gap: 10px;
