@@ -138,10 +138,14 @@ class SimulationSession:
                 sensors["L_1"]
             ])
             
+        # Окно телеметрии семифичевое и описывает только контур К-1 — его
+        # прогнозирует сеть. Показания вакуумного блока передаём отдельно:
+        # риск по ним считается по факту, а не предсказывается.
         pred_vals, risk = self.predictor.predict_risk(
-            self.telemetry_history, 
-            sim_state["timeElapsed"], 
-            scenario_id=self.active_scenario
+            self.telemetry_history,
+            sim_state["timeElapsed"],
+            scenario_id=self.active_scenario,
+            k2_sensors=sensors,
         )
         
         score, errors, recs, recommended_scenario_id = self.analyzer.evaluate_session(

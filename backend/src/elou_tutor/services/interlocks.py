@@ -9,7 +9,7 @@ from elou_tutor.domain.process_limits import (
     COLUMN_PRES_CRITICAL,
     FURNACE_TEMP_CRITICAL,
     K2_LEVEL_LOW_CRITICAL,
-    K2_PRESSURE_WARNING,
+    K2_PRESSURE_CRITICAL,
     K2_TEMP_CRITICAL,
 )
 
@@ -69,7 +69,9 @@ class InterlockController:
             "LIRSA 3a": vacuum_level <= K2_LEVEL_LOW_CRITICAL,
             "PIRSA 9a": pressure >= COLUMN_PRES_ESD,
             "TIRSA 10a": furnace_temp >= FURNACE_TEMP_CRITICAL,
-            "PIRSA 11a": vacuum_pressure >= K2_PRESSURE_WARNING,
+            # Порог блокировки, а не сигнализации: панель показывает сработавшие
+            # ПАЗ. Сигнализация по ≥1,0 кгс/см² идёт отдельным аларм-сообщением.
+            "PIRSA 11a": vacuum_pressure >= K2_PRESSURE_CRITICAL,
             "TIRSA 12a": vacuum_temp >= K2_TEMP_CRITICAL,
             "PIRSA 13a": pressure >= COLUMN_PRES_CRITICAL,
         }

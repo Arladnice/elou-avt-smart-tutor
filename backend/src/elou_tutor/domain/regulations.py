@@ -12,6 +12,7 @@
 from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_WARNING, COLUMN_PRES_NORMAL_MIN, COLUMN_PRES_NORMAL_MAX,
     COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_BALANCE_MIN, COLUMN_LEVEL_BALANCE_MAX,
+    K2_LEVEL_HIGH, K2_PRESSURE_WARNING, K2_TEMP_WARNING,
 )
 
 
@@ -207,6 +208,30 @@ TECH_REGULATIONS = {
         "text": "Уставка выше 340°C выводит печь в зону повышенного риска коксования и "
                 "прогара змеевика. Одного предупреждения недостаточно: действие учитывается "
                 "при расчёте итоговой оценки.",
+        "category": "PARAMETER_BREACH",
+    },
+    "K2_VACUUM_NOT_RESTORED": {
+        "clause": "HAZOP: давление в К-2 / позиция PRSA 213",
+        "title": "Сессия завершена с сорванным вакуумом в К-2",
+        "text": f"Остаточное давление в колонне К-2 превышает порог сигнализации "
+                f"({K2_PRESSURE_WARNING} МПа, 1,0 кгс/см²). Потерянный вакуум ведёт к "
+                "коксованию и крекингу мазута; установку нельзя оставлять в этом состоянии.",
+        "category": "PARAMETER_BREACH",
+    },
+    "K2_BOTTOM_OVERHEAT": {
+        "clause": "HAZOP: температура куба К-2 / позиция TIRSA 12a",
+        "title": "Перегрев кубовой части К-2",
+        "text": f"Температура куба К-2 превысила порог предупреждения ({K2_TEMP_WARNING}°C). "
+                "Перегретый мазут коксуется и подвергается крекингу, что выводит из строя "
+                "насосы откачки Н-4/Н-32 и загрязняет кубовую часть колонны.",
+        "category": "PARAMETER_BREACH",
+    },
+    "K2_BOTTOM_FLOODED": {
+        "clause": "HAZOP: уровень куба К-2 / позиции LRCSA 604, LRSA 604A/604B",
+        "title": "Захлёбывание кубовой части К-2",
+        "text": f"Уровень куба К-2 превысил верхнюю сигнализацию ({K2_LEVEL_HIGH}%). "
+                "Дальнейшее заполнение ведёт к перебросу продукта в вышележащие тарелки "
+                "и срыву работы колонны.",
         "category": "PARAMETER_BREACH",
     },
 }

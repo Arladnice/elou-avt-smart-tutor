@@ -9,12 +9,17 @@ from elou_tutor.ml.settings import (
     ONNX_PATH, INPUT_DIM, SEQUENCE_LENGTH,
     SCALER_MIN, SCALER_MAX, OUT_MIN, OUT_MAX,
     RISK_WEIGHT_TEMP, RISK_WEIGHT_PRES, RISK_WEIGHT_LEVEL, RISK_PENALTY_NO_FEED,
+    RISK_WEIGHT_K2_PRESSURE, RISK_WEIGHT_K2_TEMP, RISK_WEIGHT_K2_LEVEL,
 )
 from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_CRITICAL, FURNACE_TEMP_CRITICAL_LEVEL, FURNACE_TEMP_WARNING, COLUMN_PRES_WARNING, COLUMN_PRES_ESD,
     COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_LOW_INTERLOCK,
     COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
     STARTUP_HEATING_THRESHOLD_TEMP, STARTUP_FILLING_TIME_LIMIT_SEC, VALVE_ACTION_TIMEOUT_SEC,
+    K2_PRESSURE_NORMAL, K2_PRESSURE_WARNING, K2_PRESSURE_CRITICAL,
+    K2_TEMP_WARNING, K2_TEMP_CRITICAL,
+    K2_LEVEL_LOW, K2_LEVEL_LOW_INTERLOCK, K2_LEVEL_LOW_CRITICAL,
+    K2_LEVEL_HIGH, K2_LEVEL_HIGH_CRITICAL,
 )
 from elou_tutor.ml.artifact_integrity import verify_model_artifacts
 
@@ -84,12 +89,18 @@ class RiskPredictor:
             logger.error("Ошибка чистого ONNX-инференса: %s", exc)
             return None, False
 
-    def predict_risk(self, window_data, time_elapsed: int = 100, scenario_id: str = "shutdown"):
+    def predict_risk(self, window_data, time_elapsed: int = 100, scenario_id: str = "shutdown",
+                     k2_sensors: dict = None):
         """
         Принимает window_data: список или numpy array размерности (30, 7):
         каждая строка — [valve_V1, valve_V2, valve_V3, furnaceTempSp,
                           furnaceTemp, columnPres, columnLevel].
         scenario_id: используется для подавления ложных рисков на фазе пуска.
+        k2_sensors: фактические показания вакуумного блока {L_2, P_vac, T_2}.
+            Необязателен: сеть эти параметры не прогнозирует, поэтому вклад К-2
+            считается по факту и добавляется к риску контура К-1. Без аргумента
+            поведение полностью совпадает с прежним — на этом держатся офлайн-
+            пайплайн и метрики качества LSTM.
         Возвращает:
           predicted_values: [temp_15s, pres_15s, level_15s]
           risk_level: уровень риска аварии в %
@@ -192,7 +203,11 @@ class RiskPredictor:
                     risk += (COLUMN_LEVEL_LOW - risk_level) / (COLUMN_LEVEL_LOW - COLUMN_LEVEL_LOW_INTERLOCK) * 75.0
             elif time_elapsed > VALVE_ACTION_TIMEOUT_SEC and window[-1, 0] < 0.5:  # V-1 закрыт > 15с
                 risk += RISK_PENALTY_NO_FEED
-            
+
+        # 4. Вакуумный блок К-2 по фактическим показаниям
+        k2_risk, k2_is_critical = self._evaluate_k2_risk(k2_sensors)
+        risk += k2_risk
+
         # Корректируем итоговый процент риска
         risk = np.clip(risk, 0.0, 100.0)
         
@@ -202,15 +217,69 @@ class RiskPredictor:
         last_level = actual_level
         
         is_critical = (
-            last_pres >= COLUMN_PRES_ESD or 
-            last_temp >= FURNACE_TEMP_CRITICAL or 
-            (last_level <= COLUMN_LEVEL_LOW_CRITICAL and not is_startup_filling) or 
-            last_level >= COLUMN_LEVEL_HIGH_CRITICAL
+            last_pres >= COLUMN_PRES_ESD or
+            last_temp >= FURNACE_TEMP_CRITICAL or
+            (last_level <= COLUMN_LEVEL_LOW_CRITICAL and not is_startup_filling) or
+            last_level >= COLUMN_LEVEL_HIGH_CRITICAL or
+            k2_is_critical
         )
         if is_critical:
             risk = 100.0
 
         return [round(float(pred_temp), 2), round(float(pred_pres), 3), round(float(pred_level), 2)], round(float(risk), 1)
+
+    @staticmethod
+    def _evaluate_k2_risk(k2_sensors):
+        """
+        Вклад вакуумного блока К-2 в общий риск по фактическим показаниям.
+
+        Возвращает (вклад в %, признак критического состояния). Критическое
+        состояние поднимает итоговый риск до 100% так же, как и по контуру К-1:
+        достижение порога блокировки ПАЗ — это уже авария, а не тренд к ней.
+
+        Прогноза здесь нет намеренно: LSTM обучена на семи фичах контура К-1
+        и параметры К-2 не предсказывает. Смешивать её выход с фактическими
+        значениями К-2 было бы выдачей факта за прогноз.
+        """
+        if not k2_sensors:
+            return 0.0, False
+
+        level = float(k2_sensors.get("L_2", 50.0))
+        pressure = float(k2_sensors.get("P_vac", K2_PRESSURE_NORMAL))
+        temp = float(k2_sensors.get("T_2", K2_TEMP_WARNING))
+
+        risk = 0.0
+
+        # Срыв вакуума: рост остаточного давления от сигнализации к блокировке
+        if pressure > K2_PRESSURE_WARNING:
+            span = K2_PRESSURE_CRITICAL - K2_PRESSURE_WARNING
+            risk += (pressure - K2_PRESSURE_WARNING) / span * RISK_WEIGHT_K2_PRESSURE
+
+        # Перегрев куба: риск коксования и крекинга мазута
+        if temp > K2_TEMP_WARNING:
+            span = K2_TEMP_CRITICAL - K2_TEMP_WARNING
+            risk += (temp - K2_TEMP_WARNING) / span * RISK_WEIGHT_K2_TEMP
+
+        # Уровень куба. Ниже блокировки насосов Н-4/Н-32 шкала резко круче:
+        # это уже кавитация и обнажение змеевиков, а не отклонение от нормы.
+        if level > K2_LEVEL_HIGH:
+            span = K2_LEVEL_HIGH_CRITICAL - K2_LEVEL_HIGH
+            risk += (level - K2_LEVEL_HIGH) / span * RISK_WEIGHT_K2_LEVEL
+        elif level < K2_LEVEL_LOW:
+            if level <= K2_LEVEL_LOW_INTERLOCK:
+                span = K2_LEVEL_LOW_INTERLOCK - K2_LEVEL_LOW_CRITICAL
+                risk += 75.0 + (K2_LEVEL_LOW_INTERLOCK - level) / span * 25.0
+            else:
+                span = K2_LEVEL_LOW - K2_LEVEL_LOW_INTERLOCK
+                risk += (K2_LEVEL_LOW - level) / span * 75.0
+
+        is_critical = (
+            pressure >= K2_PRESSURE_CRITICAL
+            or temp >= K2_TEMP_CRITICAL
+            or level <= K2_LEVEL_LOW_CRITICAL
+            or level >= K2_LEVEL_HIGH_CRITICAL
+        )
+        return risk, is_critical
 
     def _run_mathematical_fallback(self, window):
         """

@@ -1,23 +1,28 @@
 from fastapi import APIRouter, Depends
 from elou_tutor.db.queries import get_all_sessions, clear_all_sessions
-from elou_tutor.api.deps import get_current_user, require_instructor
+from elou_tutor.api.deps import require_instructor
 from elou_tutor.db.audit import log_audit_event
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 @router.get("")
-def get_sessions(user: dict = Depends(get_current_user)):
+def get_sessions(user: dict = Depends(require_instructor)):
     """
     Возвращает историю тренировочных сессий.
     Выполняет проверку ИБ-целостности (SHA-256) для каждой записи.
+
+    Только инструктор: выборка не фильтруется по пользователю и содержит ФИО,
+    оценки и нарушения всех операторов. Свой разбор оператор получает в
+    ScoreCard собственной сессии.
     """
     return get_all_sessions()
 
 @router.get("/active")
-def get_active_sessions(user: dict = Depends(get_current_user)):
+def get_active_sessions(user: dict = Depends(require_instructor)):
     """
     Возвращает список текущих активных сессий операторов в реальном времени.
-    Используется инструктором для выбора отслеживаемой сессии.
+    Используется инструктором для выбора отслеживаемой сессии — оператору чужие
+    сессии не показываем.
     """
     from elou_tutor.services.connection_manager import manager
     

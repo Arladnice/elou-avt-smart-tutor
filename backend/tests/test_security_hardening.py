@@ -51,8 +51,31 @@ class TestRestAuthentication(unittest.TestCase):
         """История тренировок содержит ФИО и оценки — анонимный доступ запрещён."""
         self.assertEqual(self.client.get("/api/sessions").status_code, 401)
 
-    def test_sessions_history_allows_authenticated(self):
+    def test_sessions_history_rejects_operator(self):
+        """
+        История — это ФИО, оценки и нарушения всех операторов сразу.
+
+        Выборка не фильтруется по пользователю, поэтому доступ оператора означал
+        бы, что любой обучаемый видит результаты коллег. Разбор тренировки
+        оператор получает в ScoreCard своей сессии, база истории ему не нужна.
+        """
         resp = self.client.get("/api/sessions", headers=self._auth(self.operator_token))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_sessions_history_allows_instructor(self):
+        resp = self.client.get("/api/sessions", headers=self._auth(self.instructor_token))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_active_sessions_reject_anonymous(self):
+        self.assertEqual(self.client.get("/api/sessions/active").status_code, 401)
+
+    def test_active_sessions_reject_operator(self):
+        """Список активных сессий — инструмент наблюдения инструктора."""
+        resp = self.client.get("/api/sessions/active", headers=self._auth(self.operator_token))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_active_sessions_allow_instructor(self):
+        resp = self.client.get("/api/sessions/active", headers=self._auth(self.instructor_token))
         self.assertEqual(resp.status_code, 200)
 
     def test_clear_history_rejects_anonymous(self):

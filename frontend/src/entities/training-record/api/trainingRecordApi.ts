@@ -1,7 +1,7 @@
 import { BASE_URL, authHeaders, authorizedFetch } from '@/shared/api';
 import type { TrainingRecord, ActiveSession } from '../model/types';
 
-/** История завершённых тренировок: доступна любой авторизованной роли */
+/** История завершённых тренировок по всем операторам: только инструктор */
 export const fetchTrainingRecords = async (): Promise<TrainingRecord[]> => {
   const response = await authorizedFetch(`${BASE_URL}/sessions`, { headers: authHeaders() });
   if (!response.ok) {
