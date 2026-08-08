@@ -8,12 +8,22 @@ import {
   K1_LEVEL_FULL_SCALE_MM,
   K2_LEVEL_FULL_SCALE_MM,
   K2_LEVEL_HIGH,
+  K2_LEVEL_HIGH_CRITICAL,
   K2_LEVEL_LOW,
+  K2_LEVEL_LOW_INTERLOCK,
   K2_LEVEL_LOW_CRITICAL,
   K2_PRESSURE_CRITICAL,
   K2_PRESSURE_WARNING,
   K2_TEMP_CRITICAL,
   K2_TEMP_WARNING,
+  LEVEL_HIGH,
+  LEVEL_HIGH_CRITICAL,
+  LEVEL_LOW,
+  LEVEL_LOW_CRITICAL,
+  PRES_CRITICAL,
+  PRES_WARNING,
+  TEMP_CRITICAL,
+  TEMP_WARNING,
 } from '@/shared/config/thresholds';
 import type { EquipmentId } from '../model/equipmentCatalog';
 import EquipmentDrawer from './EquipmentDrawer';
@@ -259,9 +269,10 @@ const FlowScheme: React.FC = () => {
 
   const powerFailed = defects.power_fail;
   const k1FeedActive = valves.V_1 && !defects.pump_fail && !powerFailed;
+  const k1ReliefActive = valves.V_2 && !defects.valve_jam;
   const k1LoopActive = !powerFailed;
   const k2FeedActive = valves.V_3 && !powerFailed;
-  const k2OutflowActive = !defects.k2_pump_fail && !powerFailed;
+  const k2OutflowActive = !defects.k2_pump_fail && !powerFailed && sensors.L_2 > K2_LEVEL_LOW_INTERLOCK;
 
   return (
     <>
@@ -280,7 +291,7 @@ const FlowScheme: React.FC = () => {
           </S.HeaderStatusContainer>
         </S.SchemeHeader>
 
-        <S.SVGCanvas viewBox="0 0 1260 620" role="img" aria-label="Технологическая схема ЭЛОУ, К-1, К-2, печей П-1 и П-3, ёмкостей Е-1 и Е-2">
+        <S.SVGCanvas viewBox="0 0 1260 620" role="img" aria-label="Технологическая схема ЭЛОУ, К-1, К-2, печей П-1 и П-3, ёмкостей Е-1 и Е-2, линий сброса газа">
           <defs>
             <marker id="flow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
               <path d="M0,0 L8,4 L0,8 Z" className="flow-arrow-head" />
@@ -298,6 +309,20 @@ const FlowScheme: React.FC = () => {
             isAlert={Boolean(defects.pump_fail || powerFailed)}
             onOpen={setSelectedEquipmentId}
           />
+
+          <S.PipeLine d="M 205,24 V 72" $isActive={valves.V_ELOU} />
+          <S.PipeFlow d="M 205,24 V 72" $isActive={valves.V_ELOU} />
+          <ValveSymbol
+            valveId="V_ELOU"
+            equipmentId="V_ELOU"
+            transform="translate(205,48) rotate(90)"
+            label="V-ELOU"
+            isOpen={valves.V_ELOU}
+            vertical
+            onToggle={handleValveClick}
+            onOpen={setSelectedEquipmentId}
+          />
+          <text x="218" y="22" className="utility-label">ДЕЭМУЛЬГАТОР</text>
 
           <S.PipeLine d="M 138,72 H 250 V 190 H 410" $isActive={k1FeedActive} />
           <S.PipeFlow d="M 138,72 H 250 V 190 H 410" $isActive={k1FeedActive} />
@@ -317,15 +342,24 @@ const FlowScheme: React.FC = () => {
             tag="К-1"
             equipmentId="K_1"
             level={sensors.L_1}
-            isAlert={Boolean(defects.steam_fail || powerFailed)}
+            isAlert={Boolean(defects.steam_fail || defects.valve_jam || powerFailed)}
             onOpen={setSelectedEquipmentId}
           />
 
-          <S.PipeLine d="M 475,120 V 70 H 620" $isActive />
-          <S.PipeFlow d="M 475,120 V 70 H 620" $isActive />
-          <S.StaticValveGroup transform="translate(570,70)">
-            <polygon points="-12,-9 0,0 -12,9 12,-9 0,0 12,9" />
-          </S.StaticValveGroup>
+          <S.PipeLine d="M 475,120 V 70 H 620" />
+          <S.PipeLine d="M 475,70 V 28 H 585" $isActive={k1ReliefActive} />
+          <S.PipeFlow d="M 475,70 V 28 H 585" $isActive={k1ReliefActive} />
+          <ValveSymbol
+            valveId="V_2"
+            equipmentId="V_2"
+            transform="translate(475,48) rotate(90)"
+            label="V-2"
+            isOpen={valves.V_2}
+            vertical
+            onToggle={handleValveClick}
+            onOpen={setSelectedEquipmentId}
+          />
+          <text x="505" y="18" className="gas-release-label">СБРОС ГАЗА</text>
           <VesselSymbol
             x={620}
             y={47}
@@ -334,18 +368,10 @@ const FlowScheme: React.FC = () => {
             isAlert={Boolean(defects.valve_jam || powerFailed)}
             onOpen={setSelectedEquipmentId}
           />
-          <S.PipeLine d="M 680,93 V 142" $isActive={valves.V_2} />
-          <S.PipeFlow d="M 680,93 V 142" $isActive={valves.V_2} />
-          <ValveSymbol
-            valveId="V_2"
-            equipmentId="V_2"
-            transform="translate(680,118) rotate(90)"
-            label="V-2"
-            isOpen={valves.V_2}
-            vertical
-            onToggle={handleValveClick}
-            onOpen={setSelectedEquipmentId}
-          />
+          <S.UtilityLine x1="680" y1="93" x2="680" y2="142" />
+          <S.StaticValveGroup transform="translate(680,118) rotate(90)">
+            <polygon points="-11,-8 0,0 -11,8 11,-8 0,0 11,8" />
+          </S.StaticValveGroup>
           <text x="694" y="142" className="utility-label">ДРЕНАЖ</text>
 
           <S.UtilityLine x1="605" y1="235" x2="540" y2="235" />
@@ -362,7 +388,7 @@ const FlowScheme: React.FC = () => {
             tag="Н-3"
             equipmentId="N_3"
             direction="left"
-            isAlert={Boolean(defects.pump_fail || powerFailed)}
+            isAlert={powerFailed}
             onOpen={setSelectedEquipmentId}
           />
           <S.PipeLine d="M 302,466 H 220" $isActive={k1LoopActive} />
@@ -375,7 +401,7 @@ const FlowScheme: React.FC = () => {
             y={430}
             tag="П-3"
             equipmentId="P_3"
-            isAlert={Boolean(defects.coil_overheat || powerFailed)}
+            isAlert={powerFailed}
             onOpen={setSelectedEquipmentId}
           />
           <S.PipeLine d="M 130,466 H 72 V 278 H 410" $isActive={k1LoopActive} />
@@ -444,8 +470,12 @@ const FlowScheme: React.FC = () => {
             onOpen={setSelectedEquipmentId}
           />
 
-          <S.PipeLine d="M 965,160 V 92 H 1095" $isActive={valves.V_VT} />
-          <S.PipeFlow d="M 965,160 V 92 H 1095" $isActive={valves.V_VT} />
+          <S.PipeLine d="M 965,160 V 92 H 1095" />
+          <S.PipeLine d="M 965,92 V 28 H 1080" />
+          <S.StaticValveGroup transform="translate(965,56) rotate(90)">
+            <polygon points="-12,-9 0,0 -12,9 12,-9 0,0 12,9" />
+          </S.StaticValveGroup>
+          <text x="995" y="18" className="gas-release-label">СБРОС ГАЗА</text>
           <VesselSymbol
             x={1095}
             y={69}
@@ -521,16 +551,16 @@ const FlowScheme: React.FC = () => {
           </g>
 
           <g transform="translate(585,190)">
-            <S.SensorBox $isWarning={sensors.P_1 > 0.3} $isDanger={sensors.P_1 > 0.4}>
+            <S.SensorBox $isWarning={sensors.P_1 > PRES_WARNING} $isDanger={sensors.P_1 > PRES_CRITICAL}>
               <rect className="bg" x="-42" y="-10" width="84" height="26" rx="4" />
               <text className="value" x="0" y="7" textAnchor="middle">{sensors.P_1} МПа</text>
               <text className="label" x="0" y="-14" textAnchor="middle">P-1 · К-1</text>
             </S.SensorBox>
             <rect x="-42" y="20" width="84" height="12" className="sparkline-frame" />
-            <S.SparklinePath d={generateSparklineD(pressureHistory, -42, 20, 84, 12, 0.05, 0.5)} $strokeColor={sensors.P_1 > 0.3 ? theme.colors.warning : theme.colors.primary} />
+            <S.SparklinePath d={generateSparklineD(pressureHistory, -42, 20, 84, 12, 0.05, 0.5)} $strokeColor={sensors.P_1 > PRES_WARNING ? theme.colors.warning : theme.colors.primary} />
           </g>
           <g transform="translate(585,330)">
-            <S.SensorBox $isWarning={sensors.L_1 > 85 || sensors.L_1 < 15} $isDanger={sensors.L_1 > 95 || sensors.L_1 < 5}>
+            <S.SensorBox $isWarning={sensors.L_1 > LEVEL_HIGH || sensors.L_1 < LEVEL_LOW} $isDanger={sensors.L_1 > LEVEL_HIGH_CRITICAL || sensors.L_1 < LEVEL_LOW_CRITICAL}>
               <rect className="bg" x="-62" y="-10" width="124" height="26" rx="4" />
               <text className="value" x="0" y="7" textAnchor="middle">
                 {Math.round((sensors.L_1 / 100) * K1_LEVEL_FULL_SCALE_MM)} мм · {sensors.L_1}%
@@ -538,16 +568,16 @@ const FlowScheme: React.FC = () => {
               <text className="label" x="0" y="-14" textAnchor="middle">L-1 · К-1</text>
             </S.SensorBox>
             <rect x="-62" y="20" width="124" height="12" className="sparkline-frame" />
-            <S.SparklinePath d={generateSparklineD(k1LevelHistory, -62, 20, 124, 12, 0, 100)} $strokeColor={(sensors.L_1 > 85 || sensors.L_1 < 15) ? theme.colors.warning : theme.colors.primary} />
+            <S.SparklinePath d={generateSparklineD(k1LevelHistory, -62, 20, 124, 12, 0, 100)} $strokeColor={(sensors.L_1 > LEVEL_HIGH || sensors.L_1 < LEVEL_LOW) ? theme.colors.warning : theme.colors.primary} />
           </g>
           <g transform="translate(695,390)">
-            <S.SensorBox $isWarning={sensors.T_1 > 310} $isDanger={sensors.T_1 > 325}>
+            <S.SensorBox $isWarning={sensors.T_1 > TEMP_WARNING} $isDanger={sensors.T_1 > TEMP_CRITICAL}>
               <rect className="bg" x="-42" y="-10" width="84" height="26" rx="4" />
               <text className="value" x="0" y="7" textAnchor="middle">{sensors.T_1}°C</text>
               <text className="label" x="0" y="-14" textAnchor="middle">T-1 · П-1</text>
             </S.SensorBox>
             <rect x="-42" y="20" width="84" height="12" className="sparkline-frame" />
-            <S.SparklinePath d={generateSparklineD(tempHistory, -42, 20, 84, 12, 240, 340)} $strokeColor={sensors.T_1 > 310 ? theme.colors.danger : theme.colors.primary} />
+            <S.SparklinePath d={generateSparklineD(tempHistory, -42, 20, 84, 12, 240, 380)} $strokeColor={sensors.T_1 > TEMP_WARNING ? theme.colors.warning : theme.colors.primary} />
           </g>
 
           <g transform="translate(1160,205)">
@@ -565,7 +595,7 @@ const FlowScheme: React.FC = () => {
             </S.SensorBox>
           </g>
           <g transform="translate(1160,410)">
-            <S.SensorBox $isWarning={sensors.L_2 > K2_LEVEL_HIGH || sensors.L_2 < K2_LEVEL_LOW} $isDanger={sensors.L_2 < K2_LEVEL_LOW_CRITICAL}>
+            <S.SensorBox $isWarning={sensors.L_2 > K2_LEVEL_HIGH || sensors.L_2 < K2_LEVEL_LOW} $isDanger={sensors.L_2 > K2_LEVEL_HIGH_CRITICAL || sensors.L_2 < K2_LEVEL_LOW_CRITICAL}>
               <rect className="bg" x="-62" y="-10" width="124" height="26" rx="4" />
               <text className="value" x="0" y="7" textAnchor="middle">
                 {Math.round((sensors.L_2 / 100) * K2_LEVEL_FULL_SCALE_MM)} мм · {sensors.L_2.toFixed(1)}%

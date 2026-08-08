@@ -194,7 +194,10 @@ class ELOUAVTSimulator:
             level=self.sensors["L_2"],
             pressure=self.sensors["P_vac"],
             temperature=self.sensors["T_2"],
-            feed_open=V_3,
+            # При потере электроснабжения насос Н-2 остановлен, поэтому
+            # передача кубового продукта К-1 в К-2 прекращается даже при
+            # оставшемся открытым V-3.
+            feed_open=V_3 and not self.defects["power_fail"],
             outflow_available=(
                 not self.defects["power_fail"]
                 and not self.defects["k2_pump_fail"]

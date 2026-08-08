@@ -5,15 +5,20 @@
  * срабатываниями защит.
  */
 export const PRES_WARNING = 0.4;
-export const TEMP_WARNING = 310;
+export const PRES_CRITICAL = 0.43;
+export const TEMP_WARNING = 340;
+export const TEMP_CRITICAL = 350;
 export const LEVEL_HIGH = 85;
-export const LEVEL_LOW = 20;
+export const LEVEL_HIGH_CRITICAL = 90;
+export const LEVEL_LOW = 18;
+export const LEVEL_LOW_CRITICAL = 8;
 export const K1_LEVEL_FULL_SCALE_MM = 2000;
 export const K2_LEVEL_FULL_SCALE_MM = 4000;
 export const SETPOINT_ACCEPTANCE_TOLERANCE = 2;
 export const K2_LEVEL_HIGH = 85;
 export const K2_LEVEL_HIGH_CRITICAL = 90;
 export const K2_LEVEL_LOW = 18;
+export const K2_LEVEL_LOW_INTERLOCK = 12;
 export const K2_LEVEL_LOW_CRITICAL = 8;
 export const K2_PRESSURE_WARNING = 0.07;
 export const K2_PRESSURE_CRITICAL = 0.147;

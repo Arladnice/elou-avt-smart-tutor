@@ -130,3 +130,15 @@ def test_k2_pump_failure_drives_level_after_transport_delay():
 
     simulator.step()
     assert simulator.sensors["L_2"] > initial_level
+
+
+def test_power_failure_stops_both_k2_feed_and_outflow():
+    simulator = ELOUAVTSimulator()
+    simulator.valves["V_3"] = True
+    initial_level = simulator.sensors["L_2"]
+
+    simulator.set_defect("power_fail", True)
+    for _ in range(K2_LEVEL_RESPONSE_DELAY_SEC + 1):
+        simulator.step()
+
+    assert simulator.sensors["L_2"] == pytest.approx(initial_level)

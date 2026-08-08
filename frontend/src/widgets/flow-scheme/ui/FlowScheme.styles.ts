@@ -70,6 +70,14 @@ export const SVGCanvas = styled.svg`
     font-size: 10px;
   }
 
+  .gas-release-label {
+    fill: ${props => props.theme.colors.textMuted};
+    font-family: ${props => props.theme.fonts.mono};
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.35px;
+  }
+
   .sparkline-frame {
     fill: ${props => props.theme.colors.surface};
     stroke: ${props => props.theme.colors.border};
