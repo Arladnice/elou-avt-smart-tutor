@@ -224,6 +224,54 @@ const InstructorPage: React.FC = () => {
 
 
   const columns = getTableColumns();
+  const criticalAlarmCount = logs.filter(log => log.type === 'error').length;
+  const warningAlarmCount = logs.filter(log => log.type === 'warning').length;
+
+  const alarmLogContent = (
+    <S.LogArea>
+      {logs.map(log => {
+        const Icon = log.type === 'error' ? AlertOctagon : log.type === 'warning' ? AlertTriangle : Info;
+        const iconColor = log.type === 'error' ? theme.colors.danger : log.type === 'warning' ? theme.colors.warning : theme.colors.primary;
+        const isAlarm = log.type === 'error' || log.type === 'warning';
+        const fb = feedbackStatus[String(log.id)];
+        return (
+          <S.LogRow key={log.id} type={log.type}>
+            <S.LogTime>[{log.time}]</S.LogTime>
+            <S.LogIconWrapper>
+              <Icon size={12} color={iconColor} />
+            </S.LogIconWrapper>
+            <span>
+              {log.message}
+              {isAlarm && (
+                fb ? (
+                  <S.FeedbackBadge $fbType={fb}>
+                    {fb === 'confirmed' ? '✅ Подтверждён' : '❌ Ложная тревога'}
+                  </S.FeedbackBadge>
+                ) : (
+                  <S.FeedbackWrapper>
+                    <S.FeedbackActionBtn
+                      $fbType="confirm"
+                      title="Подтвердить корректность срабатывания"
+                      onClick={() => handleAlarmFeedback(String(log.id), 'confirmed')}
+                    >
+                      ✅
+                    </S.FeedbackActionBtn>
+                    <S.FeedbackActionBtn
+                      $fbType="reject"
+                      title="Отметить как ложную тревогу"
+                      onClick={() => handleAlarmFeedback(String(log.id), 'false_alarm')}
+                    >
+                      ❌
+                    </S.FeedbackActionBtn>
+                  </S.FeedbackWrapper>
+                )
+              )}
+            </span>
+          </S.LogRow>
+        );
+      })}
+    </S.LogArea>
+  );
 
   return (
     <S.Container>
@@ -452,52 +500,6 @@ const InstructorPage: React.FC = () => {
             </S.StyledCard>
           </S.TopCardsRow>
 
-          {/* Журнал аудита действий оператора с оценкой алармов (GAP-6) */}
-          <S.StretchCard title="Мониторинг журнала событий и тревог">
-            <S.LogArea>
-              {logs.map(log => {
-                const Icon = log.type === 'error' ? AlertOctagon : log.type === 'warning' ? AlertTriangle : Info;
-                const iconColor = log.type === 'error' ? theme.colors.danger : log.type === 'warning' ? theme.colors.warning : theme.colors.primary;
-                const isAlarm = log.type === 'error' || log.type === 'warning';
-                const fb = feedbackStatus[String(log.id)];
-                return (
-                  <S.LogRow key={log.id} type={log.type}>
-                    <S.LogTime>[{log.time}]</S.LogTime>
-                    <S.LogIconWrapper>
-                      <Icon size={12} color={iconColor} />
-                    </S.LogIconWrapper>
-                    <span>
-                      {log.message}
-                      {isAlarm && (
-                        fb ? (
-                          <S.FeedbackBadge $fbType={fb}>
-                            {fb === 'confirmed' ? '✅ Подтверждён' : '❌ Ложная тревога'}
-                          </S.FeedbackBadge>
-                        ) : (
-                          <S.FeedbackWrapper>
-                            <S.FeedbackActionBtn
-                              $fbType="confirm"
-                              title="Подтвердить корректность срабатывания"
-                              onClick={() => handleAlarmFeedback(String(log.id), 'confirmed')}
-                            >
-                              ✅
-                            </S.FeedbackActionBtn>
-                            <S.FeedbackActionBtn
-                              $fbType="reject"
-                              title="Отметить как ложную тревогу"
-                              onClick={() => handleAlarmFeedback(String(log.id), 'false_alarm')}
-                            >
-                              ❌
-                            </S.FeedbackActionBtn>
-                          </S.FeedbackWrapper>
-                        )
-                      )}
-                    </span>
-                  </S.LogRow>
-                );
-              })}
-            </S.LogArea>
-          </S.StretchCard>
         </S.PanelColumn>
 
         {/* Правая колонка: Мониторинг в реальном времени и история сессий */}
@@ -638,6 +640,19 @@ const InstructorPage: React.FC = () => {
             </S.TableWrapper>
           </S.StretchCard>
         </S.PanelColumn>
+
+        {/* Постоянно видимая зона тревог — не уходит ниже первого экрана. */}
+        <S.InstructorLogCard
+          title="Мониторинг журнала событий и тревог"
+          extra={
+            <S.AlarmSummary>
+              <S.CriticalAlarmCount>Критические: {criticalAlarmCount}</S.CriticalAlarmCount>
+              <S.WarningAlarmCount>Предупреждения: {warningAlarmCount}</S.WarningAlarmCount>
+            </S.AlarmSummary>
+          }
+        >
+          {alarmLogContent}
+        </S.InstructorLogCard>
       </S.Content>
 
       <Modal

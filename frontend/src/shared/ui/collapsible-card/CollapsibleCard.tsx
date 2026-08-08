@@ -15,6 +15,8 @@ interface CollapsibleCardProps {
   isEmergency?: boolean;
   /** Дополнительный контент справа от заголовка (например, фильтры) */
   extra?: React.ReactNode;
+  /** Растянуть карточку на доступную высоту контейнера */
+  fill?: boolean;
 }
 
 /**
@@ -29,11 +31,12 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
   defaultCollapsed = false,
   isEmergency = false,
   extra,
+  fill = false,
 }) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   return (
-    <S.Container $isEmergency={isEmergency}>
+    <S.Container $isEmergency={isEmergency} $fill={fill}>
       <S.Header $collapsed={collapsed} onClick={() => setCollapsed(prev => !prev)}>
         <S.TitleWrapper>
           <S.CollapseIcon $collapsed={collapsed}>
@@ -48,7 +51,7 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
           </S.ExtraWrapper>
         )}
       </S.Header>
-      <S.Body $collapsed={collapsed}>
+      <S.Body $collapsed={collapsed} $fill={fill}>
         {children}
       </S.Body>
     </S.Container>
