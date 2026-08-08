@@ -43,6 +43,10 @@ RUN mkdir -p /app/data
 # сам $PORT не задаёт); Render прокидывает свой $PORT и переопределяет значение.
 ENV PORT=7860
 ENV DATABASE_PATH=/app/data/tutor.db
+# Реестр сценариев — рядом с базой, а не внутри пакета: иначе всё, что
+# инструктор создал через GUI-конструктор, исчезает при следующей сборке.
+# Поставка переносится сюда автоматически при первом запуске.
+ENV SCENARIOS_PATH=/app/data/scenarios.json
 ENV STATIC_DIR=/app/frontend/dist
 ENV PYTHONUNBUFFERED=1
 # Адрес LLM объявлен явно, чтобы его было видно в docker inspect и можно было

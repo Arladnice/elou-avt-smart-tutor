@@ -17,7 +17,11 @@ RUN pip install --no-cache-dir --no-deps . && rm -rf build
 # INTEGRITY_SALT и SECRET_KEY намеренно не объявляются в образе: их передают
 # только во время запуска через env_file / оркестратор. Приложение прекращает
 # запуск, если секрет отсутствует или короче 32 байт.
+# SCENARIOS_PATH указывает в каталог данных, а не внутрь пакета: сценарии,
+# созданные инструктором, обязаны пережить пересборку образа. При первом
+# запуске на чистом томе поставка переносится туда автоматически.
 ENV DATABASE_PATH=/app/data/tutor.db \
+    SCENARIOS_PATH=/app/data/scenarios.json \
     ALLOWED_ORIGINS=http://localhost:5173 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

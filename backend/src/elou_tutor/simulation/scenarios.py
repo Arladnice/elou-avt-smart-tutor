@@ -6,26 +6,63 @@ from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Путь переопределяется переменной SCENARIOS_PATH: тесты работают с копией,
-# чтобы прогон набора не изменял боевой реестр сценариев.
 _PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCENARIOS_FILE_PATH = os.environ.get(
-    "SCENARIOS_PATH", os.path.join(_PACKAGE_DIR, "data", "scenarios.json")
-)
+
+# Эталонная поставка сценариев техрегламента. Живёт внутри пакета, доступна
+# только на чтение: в образе каталог принадлежит слою и пересоздаётся при
+# каждой сборке.
+PACKAGE_SCENARIOS_PATH = os.path.join(_PACKAGE_DIR, "data", "scenarios.json")
+
+# Рабочий файл реестра. Инструктор пишет сюда через GUI-конструктор, поэтому
+# путь обязан указывать в переживающий редеплой каталог данных (том
+# tutor_data, там же лежит база). Значение по умолчанию оставлено внутри
+# пакета ради запуска из исходников; образы и compose задают SCENARIOS_PATH
+# явно. Тесты переопределяют его же, чтобы прогон не трогал боевой реестр.
+SCENARIOS_FILE_PATH = os.environ.get("SCENARIOS_PATH", PACKAGE_SCENARIOS_PATH)
+
+
+def _read_registry(path: str) -> Optional[List[Dict[str, Any]]]:
+    """Читает файл реестра. Возвращает None, если файла нет или он повреждён."""
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f).get("scenarios", [])
+    except Exception as e:
+        logger.error(f"Ошибка чтения файла сценариев {path}: {e}")
+        return None
 
 
 def load_scenarios() -> List[Dict[str, Any]]:
-    """Загружает список всех активных сценариев из файла конфигурации."""
-    if not os.path.exists(SCENARIOS_FILE_PATH):
+    """
+    Загружает список всех активных сценариев.
+
+    Если рабочего файла ещё нет — это первый запуск на чистом томе, и реестр
+    переносится из поставки в пакете. Без переноса сервер после деплоя отдавал
+    бы пустой список: у оператора не осталось бы ни одного учебного задания.
+    """
+    scenarios = _read_registry(SCENARIOS_FILE_PATH)
+    if scenarios is not None:
+        return scenarios
+
+    if os.path.abspath(SCENARIOS_FILE_PATH) == os.path.abspath(PACKAGE_SCENARIOS_PATH):
         logger.error(f"Файл сценариев не найден: {SCENARIOS_FILE_PATH}")
         return []
-    try:
-        with open(SCENARIOS_FILE_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data.get("scenarios", [])
-    except Exception as e:
-        logger.error(f"Ошибка чтения файла сценариев: {e}")
+
+    defaults = _read_registry(PACKAGE_SCENARIOS_PATH)
+    if defaults is None:
+        logger.error(f"Поставка сценариев недоступна: {PACKAGE_SCENARIOS_PATH}")
         return []
+
+    logger.info(
+        "Реестр сценариев не найден по пути %s — переносим поставку из пакета",
+        SCENARIOS_FILE_PATH,
+    )
+    if not save_scenarios(defaults):
+        # Перенос не удался (например, каталог только на чтение). Отдаём
+        # поставку из памяти: тренажёр работает, но правки не сохранятся.
+        logger.error("Не удалось создать рабочий реестр сценариев, работаем из поставки")
+    return defaults
 
 
 def get_scenario_by_id(scenario_id: str) -> Optional[Dict[str, Any]]:

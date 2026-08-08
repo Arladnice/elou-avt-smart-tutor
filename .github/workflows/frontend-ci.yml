@@ -47,6 +47,9 @@ jobs:
       - name: Lint (oxlint)
         run: npm run lint
 
+      - name: Tests (vitest)
+        run: npm test
+
       - name: Typecheck & build (tsc + vite)
         run: npm run build
 
