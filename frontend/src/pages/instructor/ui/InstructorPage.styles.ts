@@ -20,7 +20,8 @@ export const Header = styled.header`
   justify-content: space-between;
   background-color: ${props => props.theme.colors.surface};
   border-bottom: 1px solid ${props => props.theme.colors.border};
-  padding: 0 20px;
+  padding: 0 18px;
+  box-shadow: 0 1px 3px ${props => props.theme.colors.shadow};
 
   @media (max-height: 950px) {
     padding: 0 16px;
@@ -30,8 +31,7 @@ export const Header = styled.header`
 export const Title = styled.h1`
   font-size: 16px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.2px;
   color: ${props => props.theme.colors.text};
   display: flex;
   align-items: center;
@@ -40,9 +40,15 @@ export const Title = styled.h1`
   &::before {
     content: '';
     display: inline-block;
-    width: 8px;
-    height: 16px;
-    background-color: ${props => props.theme.colors.warning};
+    width: 4px;
+    height: 18px;
+    background-color: ${props => props.theme.colors.primary};
+  }
+
+  span {
+    color: ${props => props.theme.colors.textMuted};
+    font-size: 12px;
+    font-weight: 500;
   }
 `;
 
@@ -75,7 +81,7 @@ export const StyledCard = styled(Card)`
   background-color: ${props => props.theme.colors.surface};
   border-color: ${props => props.theme.colors.border};
   color: ${props => props.theme.colors.text};
-  border-radius: 6px;
+  border-radius: 5px;
 
   .ant-card-head {
     border-bottom: 1px solid ${props => props.theme.colors.border};
@@ -92,7 +98,7 @@ export const StyledCard = styled(Card)`
     color: ${props => props.theme.colors.textMuted};
     font-size: 13px;
     font-weight: 600;
-    text-transform: uppercase;
+    letter-spacing: 0.1px;
 
     @media (max-height: 950px) {
       font-size: 11px;
@@ -163,7 +169,7 @@ export const MonitorRow = styled.div`
 `;
 
 export const MonitorItem = styled.div`
-  background-color: #111620;
+  background-color: ${props => props.theme.colors.canvas};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 4px;
   padding: 10px;
@@ -208,7 +214,7 @@ export const MetricsGrid = styled.div`
 `;
 
 export const MetricItem = styled.div<{ $isAlert?: boolean }>`
-  background-color: #111620;
+  background-color: ${props => props.$isAlert ? props.theme.colors.dangerMuted : props.theme.colors.canvas};
   border: 1px solid ${props => (props.$isAlert ? props.theme.colors.danger : props.theme.colors.border)};
   border-radius: 4px;
   padding: 6px 8px;
@@ -254,7 +260,7 @@ export const MetricsUnavailable = styled.div`
 `;
 
 export const ConnectedBadge = styled.div`
-  background-color: #111620;
+  background-color: ${props => props.theme.colors.surfaceLight};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 4px;
   padding: 6px 12px;
@@ -269,7 +275,7 @@ export const DefectRow = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background-color: rgba(17, 22, 32, 0.6);
+  background-color: ${props => props.theme.colors.canvas};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 4px;
   margin-bottom: 6px;
@@ -312,7 +318,7 @@ export const DefectInfo = styled.div`
 
 export const LogArea = styled.div`
   flex: 1;
-  background-color: #05070a;
+  background-color: ${props => props.theme.colors.canvas};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 4px;
   padding: 10px;
@@ -330,9 +336,9 @@ export const LogRow = styled.div<{ type: 'info' | 'warning' | 'error' }>`
   gap: 6px;
   line-height: 1.4;
   color: ${props => 
-    props.type === 'error' ? '#ff3333' : 
-    props.type === 'warning' ? '#ffcc00' : 
-    '#e1e7f0'
+    props.type === 'error' ? props.theme.colors.danger :
+    props.type === 'warning' ? props.theme.colors.warning :
+    props.theme.colors.text
   };
 `;
 
@@ -341,22 +347,21 @@ export const LogRow = styled.div<{ type: 'info' | 'warning' | 'error' }>`
 export const HeaderRight = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 `;
 
 export const ConnectedBadgeStatus = styled.span<{ $active: boolean }>`
   font-size: 10px;
-  color: ${props => props.$active ? '#00ff66' : '#5c6470'};
+  color: ${props => props.$active ? props.theme.colors.success : props.theme.colors.offline};
 `;
 
 export const ConnectedOperatorName = styled.strong<{ $connected: boolean }>`
-  color: ${props => props.$connected ? '#00ff66' : '#7c8ba1'};
+  color: ${props => props.$connected ? props.theme.colors.success : props.theme.colors.textMuted};
 `;
 
 export const LogoutButton = styled(Button)`
-  text-transform: uppercase;
   font-size: 11px;
-  font-weight: bold;
+  font-weight: 600;
 `;
 
 export const ProcessControlLayout = styled.div`
@@ -371,13 +376,30 @@ export const ProcessControlLayout = styled.div`
 
 export const ScenarioLabel = styled.span`
   font-size: 11px;
-  text-transform: uppercase;
-  color: #7c8ba1;
+  color: ${props => props.theme.colors.textMuted};
   display: block;
   margin-bottom: 6px;
 
   @media (max-height: 950px) {
     margin-bottom: 4px;
+  }
+`;
+
+export const ScenarioHeading = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+
+  ${ScenarioLabel} { margin-bottom: 0; }
+`;
+
+export const BuilderButton = styled(Button)`
+  && {
+    color: ${props => props.theme.colors.primary};
+    border-color: ${props => props.theme.colors.primary};
+    font-size: 11px;
   }
 `;
 
@@ -440,7 +462,7 @@ export const FullWidthButton = styled(Button)`
 `;
 
 export const LogTime = styled.span`
-  color: #7c8ba1;
+  color: ${props => props.theme.colors.textMuted};
   margin-right: 4px;
   flex-shrink: 0;
 `;
@@ -455,9 +477,9 @@ export const SensorValue = styled.span<{ $isAlert: boolean; $isWarning?: boolean
   font-weight: 700;
   font-family: monospace;
   color: ${props => 
-    props.$isAlert ? '#ff3333' : 
-    props.$isWarning ? '#ffcc00' : 
-    '#00e5ff'
+    props.$isAlert ? props.theme.colors.danger :
+    props.$isWarning ? props.theme.colors.warning :
+    props.theme.colors.text
   };
 
   @media (max-height: 950px) {
@@ -507,17 +529,17 @@ export const TableWrapper = styled.div`
 
 export const StyledTable = styled(Table)`
   &&& {
-    background-color: #111620;
-    color: #e1e7f0;
+    background-color: ${props => props.theme.colors.surface};
+    color: ${props => props.theme.colors.text};
 
     .ant-table {
       background: transparent;
-      color: #e1e7f0;
+      color: ${props => props.theme.colors.text};
     }
 
     .ant-table-cell {
       background: transparent;
-      color: #e1e7f0;
+      color: ${props => props.theme.colors.text};
       border-bottom: 1px solid ${props => props.theme.colors.border};
       white-space: nowrap;
     }
@@ -537,7 +559,7 @@ export const StyledTable = styled(Table)`
     }
 
     .ant-table-row:hover .ant-table-cell {
-      background: rgba(255, 255, 255, 0.05);
+      background: ${props => props.theme.colors.surfaceLight};
     }
 
     .ant-table-tbody > tr.ant-table-row,
@@ -553,61 +575,50 @@ export const ModalTitle = styled.span`
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e1e7f0;
+  color: ${props => props.theme.colors.text};
   font-size: 15px;
   font-weight: bold;
 `;
 
 export const CloseButton = styled(Button)`
-  background: #00e5ff;
-  border-color: #00e5ff;
-  color: #0b0f17;
+  background: ${props => props.theme.colors.primary};
+  border-color: ${props => props.theme.colors.primary};
+  color: #ffffff;
   font-weight: bold;
 
   &&:hover, &&:focus {
-    background: #33ebff;
-    border-color: #33ebff;
-    color: #0b0f17;
+    background: ${props => props.theme.colors.accent};
+    border-color: ${props => props.theme.colors.accent};
+    color: #ffffff;
   }
 `;
-
-export const modalStyles = {
-  body: {
-    backgroundColor: '#0b0f17',
-    color: '#e1e7f0',
-    padding: '20px',
-    maxHeight: '60vh',
-    overflowY: 'auto' as const
-  }
-};
 
 export const ModalBodyContainer = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-bottom: 20px;
-  border-bottom: 1px solid #1f293d;
+  border-bottom: 1px solid ${props => props.theme.colors.border};
   padding-bottom: 12px;
 `;
 
 export const SectionTitle = styled.h4`
-  color: #7c8ba1;
-  text-transform: uppercase;
+  color: ${props => props.theme.colors.textMuted};
   font-size: 11px;
   font-weight: bold;
   margin-bottom: 8px;
 `;
 
 export const ViolationCard = styled.div`
-  background-color: #211517;
-  border: 1px solid #5a1a1e;
+  background-color: ${props => props.theme.colors.dangerMuted};
+  border: 1px solid ${props => props.theme.colors.danger};
   border-radius: 4px;
   padding: 10px;
   margin-bottom: 8px;
 `;
 
 export const ViolationHeader = styled.div`
-  color: #ff4d4f;
+  color: ${props => props.theme.colors.danger};
   font-weight: bold;
   font-size: 12px;
   margin-bottom: 2px;
@@ -615,17 +626,17 @@ export const ViolationHeader = styled.div`
 
 export const ViolationText = styled.div`
   font-size: 11px;
-  color: #e8cbcc;
+  color: ${props => props.theme.colors.text};
 `;
 
 export const NoViolationsText = styled.div`
-  color: #00ff66;
+  color: ${props => props.theme.colors.success};
   font-size: 12px;
 `;
 
 export const SessionLogBox = styled.div`
-  background-color: #05070a;
-  border: 1px solid #1f293d;
+  background-color: ${props => props.theme.colors.canvas};
+  border: 1px solid ${props => props.theme.colors.border};
   border-radius: 4px;
   padding: 10px;
   max-height: 180px;
@@ -637,14 +648,14 @@ export const SessionLogBox = styled.div`
 export const SessionLogRow = styled.div<{ type?: 'info' | 'warning' | 'error' }>`
   margin-bottom: 4px;
   color: ${props => 
-    props.type === 'error' ? '#ff4d4f' : 
-    props.type === 'warning' ? '#ffcc00' : 
-    '#e1e7f0'
+    props.type === 'error' ? props.theme.colors.danger :
+    props.type === 'warning' ? props.theme.colors.warning :
+    props.theme.colors.text
   };
 `;
 
 export const ArchiveMessage = styled.div`
-  color: #7c8ba1;
+  color: ${props => props.theme.colors.textMuted};
   font-style: italic;
 `;
 
@@ -776,7 +787,7 @@ export const TabsContainer = styled.div`
   display: flex;
   border-bottom: 1px solid ${props => props.theme.colors.border};
   padding: 0 16px;
-  background-color: #0b0f17;
+  background-color: ${props => props.theme.colors.surfaceLight};
   gap: 16px;
   flex-shrink: 0;
 `;
@@ -784,8 +795,8 @@ export const TabsContainer = styled.div`
 export const TabItem = styled.button<{ active: boolean }>`
   background: none;
   border: none;
-  border-bottom: 2px solid ${props => props.active ? '#00e5ff' : 'transparent'};
-  color: ${props => props.active ? '#00e5ff' : props.theme.colors.textMuted};
+  border-bottom: 2px solid ${props => props.active ? props.theme.colors.primary : 'transparent'};
+  color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.textMuted};
   font-size: 12px;
   font-weight: 600;
   padding: 10px 4px;
@@ -793,10 +804,10 @@ export const TabItem = styled.button<{ active: boolean }>`
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s ease;
+  transition: ${props => props.theme.transitions.default};
 
   &:hover {
-    color: #00e5ff;
+    color: ${props => props.theme.colors.primary};
   }
 
   @media (max-height: 950px) {
@@ -821,8 +832,8 @@ export const InfraGrid = styled.div`
 `;
 
 export const MetricCard = styled.div<{ active?: boolean }>`
-  background-color: #0b0f17;
-  border: 1px solid ${props => props.active ? '#00ff66' : props.theme.colors.border};
+  background-color: ${props => props.theme.colors.canvas};
+  border: 1px solid ${props => props.active ? props.theme.colors.success : props.theme.colors.border};
   border-radius: 6px;
   padding: 12px;
   display: flex;
@@ -868,7 +879,7 @@ export const SettingsLayout = styled.div`
 `;
 
 export const SettingBox = styled.div`
-  background-color: #0b0f17;
+  background-color: ${props => props.theme.colors.canvas};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 6px;
   padding: 12px;
@@ -879,8 +890,7 @@ export const SettingBox = styled.div`
   .header {
     font-size: 12px;
     font-weight: 700;
-    text-transform: uppercase;
-    color: #00e5ff;
+    color: ${props => props.theme.colors.primary};
     border-bottom: 1px solid ${props => props.theme.colors.border};
     padding-bottom: 4px;
   }
@@ -892,7 +902,7 @@ export const MuteItem = styled.div`
   align-items: center;
   font-size: 11px;
   padding: 4px 0;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+  border-bottom: 1px dashed ${props => props.theme.colors.border};
 
   .label {
     color: ${props => props.theme.colors.text};
@@ -924,15 +934,15 @@ export const FeedbackWrapper = styled.div`
 `;
 
 export const FeedbackActionBtn = styled.button<{ $fbType: 'confirm' | 'reject' }>`
-  background-color: ${props => props.$fbType === 'confirm' ? 'rgba(82, 196, 26, 0.15)' : 'rgba(255, 77, 79, 0.15)'};
-  border: 1px solid ${props => props.$fbType === 'confirm' ? '#52c41a' : '#ff4d4f'};
-  color: ${props => props.$fbType === 'confirm' ? '#52c41a' : '#ff4d4f'};
+  background-color: ${props => props.$fbType === 'confirm' ? props.theme.colors.successMuted : props.theme.colors.dangerMuted};
+  border: 1px solid ${props => props.$fbType === 'confirm' ? props.theme.colors.success : props.theme.colors.danger};
+  color: ${props => props.$fbType === 'confirm' ? props.theme.colors.success : props.theme.colors.danger};
   border-radius: 3px;
   padding: 1px 5px;
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: ${props => props.theme.transitions.default};
 
   &:hover {
     opacity: 0.85;
@@ -946,7 +956,7 @@ export const FeedbackBadge = styled.span<{ $fbType: 'confirmed' | 'false_alarm' 
   margin-left: 8px;
   padding: 1px 5px;
   border-radius: 3px;
-  color: ${props => props.$fbType === 'confirmed' ? '#52c41a' : '#ff4d4f'};
-  background-color: ${props => props.$fbType === 'confirmed' ? 'rgba(82, 196, 26, 0.12)' : 'rgba(255, 77, 79, 0.12)'};
-  border: 1px solid ${props => props.$fbType === 'confirmed' ? 'rgba(82, 196, 26, 0.4)' : 'rgba(255, 77, 79, 0.4)'};
+  color: ${props => props.$fbType === 'confirmed' ? props.theme.colors.success : props.theme.colors.danger};
+  background-color: ${props => props.$fbType === 'confirmed' ? props.theme.colors.successMuted : props.theme.colors.dangerMuted};
+  border: 1px solid ${props => props.$fbType === 'confirmed' ? props.theme.colors.success : props.theme.colors.danger};
 `;

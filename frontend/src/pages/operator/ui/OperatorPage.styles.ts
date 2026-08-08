@@ -16,8 +16,8 @@ export const GridContainer = styled.div`
 export const MainArea = styled.main`
   display: grid;
   grid-template-columns: minmax(0, 10fr) minmax(0, 4fr); /* Защита от распирания колонок */
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 10px;
   overflow: hidden;
   height: calc(100vh - 60px);
 
@@ -78,11 +78,11 @@ export const Sidebar = styled.aside`
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: #222c3e;
+    background: ${props => props.theme.colors.borderStrong};
     border-radius: 2px;
   }
   &::-webkit-scrollbar-thumb:hover {
-    background: #00e5ff;
+    background: ${props => props.theme.colors.primary};
   }
 `;
 

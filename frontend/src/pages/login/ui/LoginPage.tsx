@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { login } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { App } from 'antd';
+import { ThemeToggle } from '@/shared/ui';
 
 import * as S from './LoginPage.styles';
 
@@ -55,11 +56,12 @@ const Login: React.FC = () => {
 
   return (
     <S.Container>
+      <S.ThemeControl><ThemeToggle /></S.ThemeControl>
       <S.LoginCard
         title={
           <>
-            <div>КТК ЭЛОУ-АВТ // ТРЕНАЖЕР</div>
-            <S.HeaderSubtitle>Интеллектуальная система обучения персонала</S.HeaderSubtitle>
+            <div>КТК ЭЛОУ-АВТ</div>
+            <S.HeaderSubtitle>Компьютерный тренажёр технологического персонала</S.HeaderSubtitle>
           </>
         }
         variant="borderless"
@@ -91,22 +93,21 @@ const Login: React.FC = () => {
               value={role} 
               onChange={v => setRole(v as 'operator' | 'instructor')}
               options={[
-                { value: 'operator', label: 'Оператор (SCADA-управление)' },
-                { value: 'instructor', label: 'Инструктор (Контроль и сбои)' }
+                { value: 'operator', label: 'Оператор — управление установкой' },
+                { value: 'instructor', label: 'Инструктор — управление обучением' }
               ]}
-              styles={S.selectStyles}
             />
           </S.FormGroup>
 
           <S.StyledButton type="primary" htmlType="submit">
-            Запустить терминал
+            Войти в систему
           </S.StyledButton>
         </S.Form>
 
         <S.InfoBlock>
-          <S.BrainIcon size={24} color="#00e5ff" />
+          <S.BrainIcon size={22} />
           <S.InfoText>
-            <strong>ИИ-ассистент:</strong> Анализирует телеметрию в реальном времени, прогнозирует риски аварий и локализует отклонения от техрегламента по ГОСТ.
+            <strong>Учебная система:</strong> анализирует телеметрию, предупреждает об отклонениях и фиксирует действия оператора в протоколе сессии.
           </S.InfoText>
         </S.InfoBlock>
       </S.LoginCard>

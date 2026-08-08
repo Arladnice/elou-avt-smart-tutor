@@ -47,8 +47,8 @@ export const ReferenceTag = styled(Tag)`
   width: fit-content;
   margin: 0;
   color: ${props => props.theme.colors.accent};
-  background: rgba(0, 229, 255, 0.08);
-  border-color: rgba(0, 229, 255, 0.35);
+  background: ${props => props.theme.colors.accentMuted};
+  border-color: ${props => props.theme.colors.accent};
 `;
 
 export const Identity = styled.div`
@@ -75,7 +75,7 @@ export const StatusPanel = styled.div<{ $isAlert: boolean }>`
   border: 1px solid ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.success};
   border-radius: 6px;
   color: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.success};
-  background: ${props => props.$isAlert ? 'rgba(255, 51, 51, 0.07)' : 'rgba(0, 255, 102, 0.06)'};
+  background: ${props => props.$isAlert ? props.theme.colors.dangerMuted : props.theme.colors.successMuted};
 `;
 
 export const StatusText = styled.div`

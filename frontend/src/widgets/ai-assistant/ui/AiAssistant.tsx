@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import { useTheme } from 'styled-components';
 import { useTelemetry } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import {
@@ -26,6 +27,7 @@ interface ChatMessage {
 }
 
 const AiAssistant: React.FC = () => {
+  const theme = useTheme();
   const { riskLevel, sensors, valves, status, setpoints, defects, timeElapsed, predictions } = useTelemetry();
   const { scenarioId, mode: simMode } = useSession();
   const [activeTab, setActiveTab] = useState<'risk' | 'trend' | 'chat'>('risk');
@@ -33,7 +35,7 @@ const AiAssistant: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: 'Привет! Я твой ИИ-ассистент установки ЭЛОУ-АВТ. Я знаю все технологические регламенты и правила безопасности (ГОСТ). Спроси меня: "как ликвидировать перегрев П-1", "что делать при отказе насоса Н-1" или "как снизить давление в колонне К-1".'
+      content: 'Система поддержки готова к работе. Можно уточнить порядок действий при перегреве П-1, отказе насоса Н-1 или росте давления в колонне К-1.'
     }
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -115,7 +117,7 @@ const AiAssistant: React.FC = () => {
     }
 
     if (sensors.P_1 > PRES_WARNING) {
-      return `ИИ прогнозирует рост давления в колонне К-1 (${sensors.P_1.toFixed(2)} МПа). Рекомендуется кратковременно открыть клапан сброса V-2 для нормализации параметров.`;
+      return `Прогнозная модель фиксирует рост давления в колонне К-1 (${sensors.P_1.toFixed(2)} МПа). Рекомендуется кратковременно открыть клапан сброса V-2 для нормализации параметров.`;
     }
 
     if (sensors.L_1 > 80 && isLevelRising) {
@@ -144,9 +146,9 @@ const AiAssistant: React.FC = () => {
   };
 
   const getProgressColor = () => {
-    if (riskLevel > 70) return '#ff3333';
-    if (riskLevel > 30) return '#ffcc00';
-    return '#00ff66';
+    if (riskLevel > 70) return theme.colors.danger;
+    if (riskLevel > 30) return theme.colors.warning;
+    return theme.colors.success;
   };
 
   // Отправка запроса в чат
@@ -210,7 +212,7 @@ const AiAssistant: React.FC = () => {
         </S.TabButton>
         <S.TabButton $active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>
           <MessageSquare size={12} />
-          Диалог с ИИ
+          Диалог с помощником
         </S.TabButton>
         {activeTab === 'chat' && (
           <S.ModeSelector>
@@ -231,7 +233,7 @@ const AiAssistant: React.FC = () => {
         <S.StyledAlert
           type="warning"
           showIcon
-          title="Режим Аттестации (Экзамен)"
+          title="Экзаменационный режим"
           description="Автоматические подсказки отключены. Использование ИИ-чата списывает -15% балла."
         />
       )}
@@ -245,7 +247,7 @@ const AiAssistant: React.FC = () => {
               percent={riskLevel} 
               size={62}
               strokeColor={getProgressColor()}
-              railColor="#1b2332"
+              railColor={theme.colors.surfaceMuted}
               format={percent => (
                 <S.ProgressPercent color={getProgressColor()}>
                   {percent}%
@@ -302,7 +304,7 @@ const AiAssistant: React.FC = () => {
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               onPressEnter={() => handleSendMessage(inputValue)}
-              placeholder="Спросите ИИ о правилах безопасности..."
+              placeholder="Введите вопрос по регламенту..."
               disabled={isTyping}
               size="small"
             />

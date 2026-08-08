@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from 'styled-components';
 import { Activity, TrendingUp } from 'lucide-react';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
@@ -240,6 +241,7 @@ const ValveSymbol: React.FC<ValveSymbolProps> = ({
 );
 
 const FlowScheme: React.FC = () => {
+  const theme = useTheme();
   const { sensors, valves, status, defects, telemetryHistory, wsLatency } = useTelemetry();
   const { isOnline } = useSession();
   const { toggleValve } = useSimulatorActions();
@@ -525,7 +527,7 @@ const FlowScheme: React.FC = () => {
               <text className="label" x="0" y="-14" textAnchor="middle">P-1 · К-1</text>
             </S.SensorBox>
             <rect x="-42" y="20" width="84" height="12" className="sparkline-frame" />
-            <S.SparklinePath d={generateSparklineD(pressureHistory, -42, 20, 84, 12, 0.05, 0.5)} $strokeColor={sensors.P_1 > 0.3 ? '#ffcc00' : '#00ff66'} />
+            <S.SparklinePath d={generateSparklineD(pressureHistory, -42, 20, 84, 12, 0.05, 0.5)} $strokeColor={sensors.P_1 > 0.3 ? theme.colors.warning : theme.colors.primary} />
           </g>
           <g transform="translate(585,330)">
             <S.SensorBox $isWarning={sensors.L_1 > 85 || sensors.L_1 < 15} $isDanger={sensors.L_1 > 95 || sensors.L_1 < 5}>
@@ -536,7 +538,7 @@ const FlowScheme: React.FC = () => {
               <text className="label" x="0" y="-14" textAnchor="middle">L-1 · К-1</text>
             </S.SensorBox>
             <rect x="-62" y="20" width="124" height="12" className="sparkline-frame" />
-            <S.SparklinePath d={generateSparklineD(k1LevelHistory, -62, 20, 124, 12, 0, 100)} $strokeColor={(sensors.L_1 > 85 || sensors.L_1 < 15) ? '#ffcc00' : '#00ff66'} />
+            <S.SparklinePath d={generateSparklineD(k1LevelHistory, -62, 20, 124, 12, 0, 100)} $strokeColor={(sensors.L_1 > 85 || sensors.L_1 < 15) ? theme.colors.warning : theme.colors.primary} />
           </g>
           <g transform="translate(695,390)">
             <S.SensorBox $isWarning={sensors.T_1 > 310} $isDanger={sensors.T_1 > 325}>
@@ -545,7 +547,7 @@ const FlowScheme: React.FC = () => {
               <text className="label" x="0" y="-14" textAnchor="middle">T-1 · П-1</text>
             </S.SensorBox>
             <rect x="-42" y="20" width="84" height="12" className="sparkline-frame" />
-            <S.SparklinePath d={generateSparklineD(tempHistory, -42, 20, 84, 12, 240, 340)} $strokeColor={sensors.T_1 > 310 ? '#ff3333' : '#00ff66'} />
+            <S.SparklinePath d={generateSparklineD(tempHistory, -42, 20, 84, 12, 240, 340)} $strokeColor={sensors.T_1 > 310 ? theme.colors.danger : theme.colors.primary} />
           </g>
 
           <g transform="translate(1160,205)">
@@ -571,7 +573,7 @@ const FlowScheme: React.FC = () => {
               <text className="label" x="0" y="-14" textAnchor="middle">L-2 · К-2</text>
             </S.SensorBox>
             <rect x="-62" y="20" width="124" height="12" className="sparkline-frame" />
-            <S.SparklinePath d={generateSparklineD(k2LevelHistory, -62, 20, 124, 12, 0, 100)} $strokeColor={(sensors.L_2 > K2_LEVEL_HIGH || sensors.L_2 < K2_LEVEL_LOW) ? '#ffcc00' : '#aa00ff'} />
+            <S.SparklinePath d={generateSparklineD(k2LevelHistory, -62, 20, 124, 12, 0, 100)} $strokeColor={(sensors.L_2 > K2_LEVEL_HIGH || sensors.L_2 < K2_LEVEL_LOW) ? theme.colors.warning : theme.colors.primary} />
           </g>
         </S.SVGCanvas>
       </S.SchemeContainer>

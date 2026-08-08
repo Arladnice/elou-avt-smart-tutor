@@ -15,7 +15,7 @@ export const ParamSelector = styled.div`
 
 export const ParamButton = styled.button<{ $active: boolean; $color: string }>`
   flex: 1;
-  background: ${props => (props.$active ? `${props.$color}22` : 'transparent')};
+  background: ${props => (props.$active ? props.theme.colors.primaryMuted : 'transparent')};
   border: 1px solid ${props => (props.$active ? props.$color : props.theme.colors.border)};
   color: ${props => (props.$active ? props.$color : props.theme.colors.textMuted)};
   font-size: 10px;
@@ -39,7 +39,7 @@ export const ForecastSummary = styled.div<{ $isAlert: boolean }>`
   font-size: 10px;
   padding: 3px 6px;
   border-radius: 3px;
-  background: ${props => (props.$isAlert ? 'rgba(255, 51, 51, 0.12)' : props.theme.colors.surfaceLight)};
+  background: ${props => (props.$isAlert ? props.theme.colors.dangerMuted : props.theme.colors.surfaceLight)};
   border: 1px solid ${props => (props.$isAlert ? props.theme.colors.danger : props.theme.colors.border)};
 
   .label {

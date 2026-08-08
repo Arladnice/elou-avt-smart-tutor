@@ -11,28 +11,23 @@ export const CardContainer = styled.div`
 `;
 
 export const GradeBadge = styled.div<{ $grade: string }>`
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
+  width: 76px;
+  height: 76px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 42px;
-  font-weight: 900;
+  font-size: 34px;
+  font-weight: 700;
   color: white;
   background-color: ${props => {
     if (props.$grade === 'A') return props.theme.colors.success;
-    if (props.$grade === 'B') return '#0070f3';
+    if (props.$grade === 'B') return props.theme.colors.primary;
     if (props.$grade === 'C') return props.theme.colors.warning;
     return props.theme.colors.danger;
   }};
-  box-shadow: 0 0 20px ${props => {
-    if (props.$grade === 'A') return 'rgba(0, 255, 102, 0.4)';
-    if (props.$grade === 'B') return 'rgba(0, 112, 243, 0.4)';
-    if (props.$grade === 'C') return 'rgba(255, 204, 0, 0.4)';
-    return 'rgba(255, 51, 51, 0.4)';
-  }};
-  border: 4px solid #111620;
+  box-shadow: 0 2px 8px ${props => props.theme.colors.shadow};
+  border: 3px solid ${props => props.theme.colors.surface};
 `;
 
 
@@ -40,7 +35,7 @@ export const StatRow = styled.div`
   display: flex;
   justify-content: space-around;
   width: 100%;
-  background: #141b27;
+  background: ${props => props.theme.colors.canvas};
   padding: 12px;
   border-radius: 6px;
   border: 1px solid ${props => props.theme.colors.border};
@@ -56,7 +51,7 @@ export const StatItem = styled.div`
     font-size: 10px;
     font-weight: 600;
     color: ${props => props.theme.colors.textMuted};
-    text-transform: uppercase;
+    letter-spacing: 0.1px;
   }
 
   span.val {
@@ -70,7 +65,7 @@ export const StatItem = styled.div`
 export const SectionTitle = styled.h3`
   font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
+  letter-spacing: 0.1px;
   color: ${props => props.theme.colors.text};
   align-self: flex-start;
   margin-top: 10px;
@@ -94,7 +89,7 @@ export const ErrorsContainer = styled.div`
 export const ErrorItemCard = styled.div`
   padding: 8px 12px;
   border: 1px solid ${props => props.theme.colors.border};
-  background-color: #0b0f17;
+  background-color: ${props => props.theme.colors.canvas};
   border-radius: 4px;
 `;
 
@@ -106,14 +101,13 @@ export const ErrorTitle = styled.div`
 `;
 
 export const ErrorClause = styled.span`
-  background: rgba(255, 51, 51, 0.15);
+  background: ${props => props.theme.colors.dangerMuted};
   color: ${props => props.theme.colors.danger};
   font-size: 9px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 3px;
   margin-left: 8px;
-  text-transform: uppercase;
 `;
 
 export const ErrorText = styled.p`
@@ -128,8 +122,8 @@ export const RecItem = styled.div`
   color: ${props => props.theme.colors.text};
   line-height: 1.4;
   padding: 6px 12px;
-  background: rgba(0, 229, 255, 0.05);
-  border-left: 3px solid ${props => props.theme.colors.accent};
+  background: ${props => props.theme.colors.primaryMuted};
+  border-left: 3px solid ${props => props.theme.colors.primary};
   border-radius: 0 4px 4px 0;
   margin-bottom: 6px;
   width: 100%;
@@ -139,7 +133,7 @@ export const ModalTitle = styled.span`
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e1e7f0;
+  color: ${props => props.theme.colors.text};
   font-size: 15px;
 `;
 
@@ -155,7 +149,7 @@ export const HeaderTitle = styled.h2<{ color: string }>`
 
 export const HeaderSubtitle = styled.p`
   font-size: 11px;
-  color: #7c8ba1;
+  color: ${props => props.theme.colors.textMuted};
   margin-top: 2px;
 `;
 
@@ -175,12 +169,12 @@ export const FullWidthContainer = styled.div`
 
 export const AdaptiveRetrainingBanner = styled.div`
   width: 100%;
-  background: rgba(255, 153, 0, 0.1);
-  border: 1px dashed #ff9900;
+  background: ${props => props.theme.colors.warningMuted};
+  border: 1px solid ${props => props.theme.colors.warning};
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 11px;
-  color: #ffcc00;
+  color: ${props => props.theme.colors.warning};
   display: flex;
   align-items: center;
   gap: 8px;
@@ -199,19 +193,15 @@ export const PrimaryActionButton = styled(Button)`
   width: 100%;
   height: 40px;
   font-size: 12px;
-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.2) 0%, rgba(0, 229, 255, 0.05) 100%);
-  border: 1px solid #00e5ff;
-  color: #00e5ff;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
+  background: ${props => props.theme.colors.primary};
+  border: 1px solid ${props => props.theme.colors.primary};
+  color: #ffffff;
+  font-weight: 600;
 
   &&:hover, &&:focus {
-    background: #00e5ff;
-    border-color: #00e5ff;
-    color: #0b0f17;
-    box-shadow: 0 0 16px rgba(0, 229, 255, 0.4);
+    background: ${props => props.theme.colors.accent};
+    border-color: ${props => props.theme.colors.accent};
+    color: #ffffff;
   }
 `;
 
@@ -226,15 +216,15 @@ export const StyledSecondaryButton = styled(Button)`
   height: 36px;
   padding: 0 8px;
   font-size: 11px;
-  background-color: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: #a0aec0;
+  background-color: ${props => props.theme.colors.surfaceLight};
+  border-color: ${props => props.theme.colors.border};
+  color: ${props => props.theme.colors.textMuted};
   font-weight: 600;
 
   &&:hover, &&:focus {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
-    color: #ffffff;
+    background-color: ${props => props.theme.colors.surfaceMuted};
+    border-color: ${props => props.theme.colors.borderStrong};
+    color: ${props => props.theme.colors.text};
   }
 `;
 
@@ -243,17 +233,15 @@ export const StyledPdfButton = styled(Button)`
   height: 36px;
   padding: 0 8px;
   font-size: 11px;
-  background-color: rgba(16, 185, 129, 0.15);
-  border-color: #10b981;
-  color: #10b981;
+  background-color: ${props => props.theme.colors.successMuted};
+  border-color: ${props => props.theme.colors.success};
+  color: ${props => props.theme.colors.success};
   font-weight: 600;
-  text-transform: uppercase;
 
   &&:hover, &&:focus {
-    background-color: #10b981;
-    border-color: #10b981;
+    background-color: ${props => props.theme.colors.success};
+    border-color: ${props => props.theme.colors.success};
     color: #ffffff;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
   }
 `;
 
@@ -262,16 +250,15 @@ export const StyledExitButton = styled(Button)`
   height: 36px;
   padding: 0 10px;
   font-size: 11px;
-  background-color: #0a0e14;
-  border-color: #222c3e;
-  color: #7c8ba1;
+  background-color: ${props => props.theme.colors.surfaceLight};
+  border-color: ${props => props.theme.colors.border};
+  color: ${props => props.theme.colors.textMuted};
   font-weight: 600;
-  text-transform: uppercase;
 
   &&:hover, &&:focus {
-    background-color: #222c3e;
-    border-color: #222c3e;
-    color: #e1e7f0;
+    background-color: ${props => props.theme.colors.surfaceMuted};
+    border-color: ${props => props.theme.colors.borderStrong};
+    color: ${props => props.theme.colors.text};
   }
 `;
 
@@ -293,8 +280,8 @@ export const ErrorMoment = styled.span<{ $kind: 'action' | 'final' }>`
   margin-left: 8px;
   white-space: nowrap;
   color: ${props => (props.$kind === 'action' ? props.theme.colors.warning : props.theme.colors.textMuted)};
-  background: ${props => (props.$kind === 'action' ? 'rgba(255, 204, 0, 0.12)' : 'rgba(124, 139, 161, 0.12)')};
-  border: 1px solid ${props => (props.$kind === 'action' ? 'rgba(255, 204, 0, 0.35)' : 'rgba(124, 139, 161, 0.3)')};
+  background: ${props => (props.$kind === 'action' ? props.theme.colors.warningMuted : props.theme.colors.surfaceLight)};
+  border: 1px solid ${props => (props.$kind === 'action' ? props.theme.colors.warning : props.theme.colors.border)};
 `;
 
 export const TimelineContainer = styled.div`
@@ -313,7 +300,7 @@ export const TimelineStepBox = styled.div<{ $hasError: boolean }>`
   min-width: 74px;
   padding: 6px 6px 5px;
   border-radius: 4px;
-  background: ${props => (props.$hasError ? 'rgba(255, 51, 51, 0.1)' : props.theme.colors.surfaceLight)};
+  background: ${props => (props.$hasError ? props.theme.colors.dangerMuted : props.theme.colors.surfaceLight)};
   border: 1px solid ${props => (props.$hasError ? props.theme.colors.danger : props.theme.colors.border)};
 
   .action {

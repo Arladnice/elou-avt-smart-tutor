@@ -38,7 +38,7 @@ export const SwitchRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: ${props => props.theme.colors.background};
+  background-color: ${props => props.theme.colors.canvas};
   padding: 5px 10px;
   border-radius: 4px;
   border: 1px solid ${props => props.theme.colors.border};
@@ -79,21 +79,21 @@ export const TempButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 4px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid ${props => props.theme.colors.border || '#334155'};
-  color: ${props => props.theme.colors.text || '#E2E8F0'};
+  background-color: ${props => props.theme.colors.surfaceLight};
+  border: 1px solid ${props => props.theme.colors.border};
+  color: ${props => props.theme.colors.text};
   border-radius: 4px;
   padding: 4px 8px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: ${props => props.theme.transitions.default};
   white-space: nowrap;
 
   &:hover:not(:disabled) {
-    background-color: rgba(0, 229, 255, 0.15);
-    border-color: ${props => props.theme.colors.accent || '#00e5ff'};
-    color: #FFFFFF;
+    background-color: ${props => props.theme.colors.primaryMuted};
+    border-color: ${props => props.theme.colors.primary};
+    color: ${props => props.theme.colors.primary};
   }
 
   &:active:not(:disabled) {
@@ -115,7 +115,7 @@ export const SliderLabels = styled.div`
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: #7c8ba1;
+  color: ${props => props.theme.colors.textMuted};
 `;
 
 export const SwitchColumn = styled.div`

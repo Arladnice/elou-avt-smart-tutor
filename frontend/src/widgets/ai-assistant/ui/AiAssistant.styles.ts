@@ -24,8 +24,8 @@ export const TabsHeader = styled.div`
 export const TabButton = styled.button<{ $active: boolean }>`
   background: none;
   border: none;
-  border-bottom: 2px solid ${props => props.$active ? '#00e5ff' : 'transparent'};
-  color: ${props => props.$active ? '#00e5ff' : props.theme.colors.textMuted};
+  border-bottom: 2px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
+  color: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.textMuted};
   font-size: 12px;
   font-weight: 600;
   padding: 4px 8px;
@@ -36,7 +36,7 @@ export const TabButton = styled.button<{ $active: boolean }>`
   transition: all 0.2s ease;
 
   &:hover {
-    color: #00e5ff;
+    color: ${props => props.theme.colors.primary};
   }
   
   @media (max-height: 950px) {
@@ -50,16 +50,16 @@ export const ModeSelector = styled.div`
   margin-left: auto;
   align-items: center;
   gap: 4px;
-  background: ${props => props.theme.colors.surfaceLight || '#131b26'};
+  background: ${props => props.theme.colors.surfaceLight};
   padding: 2px;
   border-radius: 4px;
   border: 1px solid ${props => props.theme.colors.border};
 `;
 
 export const ModeOption = styled.button<{ $active: boolean }>`
-  background: ${props => props.$active ? '#00e5ff22' : 'transparent'};
-  border: 1px solid ${props => props.$active ? '#00e5ff' : 'transparent'};
-  color: ${props => props.$active ? '#00e5ff' : props.theme.colors.textMuted};
+  background: ${props => props.$active ? props.theme.colors.primaryMuted : 'transparent'};
+  border: 1px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
+  color: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.textMuted};
 
   font-size: 10px;
   font-weight: 600;
@@ -69,7 +69,7 @@ export const ModeOption = styled.button<{ $active: boolean }>`
   transition: all 0.2s ease;
 
   &:hover {
-    color: #00e5ff;
+    color: ${props => props.theme.colors.primary};
   }
 `;
 
@@ -123,8 +123,8 @@ export const ChatBubble = styled.div<{ $risk: number }>`
   justify-content: center;
   position: relative;
   box-shadow: ${props => {
-    if (props.$risk > 70) return '0 0 8px rgba(255, 51, 51, 0.15)';
-    if (props.$risk > 30) return '0 0 8px rgba(255, 204, 0, 0.15)';
+    if (props.$risk > 70) return `inset 3px 0 0 ${props.theme.colors.danger}`;
+    if (props.$risk > 30) return `inset 3px 0 0 ${props.theme.colors.warning}`;
     return 'none';
   }};
 
@@ -202,15 +202,15 @@ export const MessagesBox = styled.div`
     width: 6px;
   }
   &::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
+    background: ${props => props.theme.colors.surfaceMuted};
     border-radius: 3px;
   }
   &::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: ${props => props.theme.colors.borderStrong};
     border-radius: 3px;
   }
   &::-webkit-scrollbar-thumb:hover {
-    background: #00e5ff;
+    background: ${props => props.theme.colors.primary};
   }
   
   @media (max-height: 950px) {
@@ -228,8 +228,8 @@ export const MessageRow = styled.div<{ $isUser: boolean }>`
 
 export const MessageBubble = styled.div<{ $isUser: boolean }>`
   max-width: 85%;
-  background-color: ${props => props.$isUser ? 'rgba(0, 229, 255, 0.1)' : '#161c28'};
-  border: 1px solid ${props => props.$isUser ? '#00e5ff' : props.theme.colors.border};
+  background-color: ${props => props.$isUser ? props.theme.colors.primaryMuted : props.theme.colors.surfaceLight};
+  border: 1px solid ${props => props.$isUser ? props.theme.colors.primary : props.theme.colors.border};
   color: ${props => props.theme.colors.text};
   border-radius: 8px;
   padding: 6px 10px;
@@ -257,9 +257,9 @@ export const SuggestionsBox = styled.div`
 `;
 
 export const SuggestionChip = styled.button`
-  background-color: #111827;
+  background-color: ${props => props.theme.colors.surfaceLight};
   border: 1px solid ${props => props.theme.colors.border};
-  color: #00e5ff;
+  color: ${props => props.theme.colors.primary};
   border-radius: 12px;
   padding: 3px 10px;
   font-size: 10px;
@@ -268,8 +268,8 @@ export const SuggestionChip = styled.button`
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: rgba(0, 229, 255, 0.08);
-    border-color: #00e5ff;
+    background-color: ${props => props.theme.colors.primaryMuted};
+    border-color: ${props => props.theme.colors.primary};
   }
 `;
 
@@ -280,12 +280,12 @@ export const InputWrapper = styled.div`
 
   .ant-input {
     flex: 1;
-    background-color: #0f172a;
-    border-color: #334155;
-    color: #f8fafc;
+    background-color: ${props => props.theme.colors.canvas};
+    border-color: ${props => props.theme.colors.border};
+    color: ${props => props.theme.colors.text};
 
     &:hover, &:focus {
-      border-color: #00e5ff;
+      border-color: ${props => props.theme.colors.primary};
     }
   }
 

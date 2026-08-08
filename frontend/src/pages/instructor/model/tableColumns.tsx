@@ -7,12 +7,12 @@ import { StatusText, ScoreText, EllipsisCell, NowrapSpan } from '../ui/Instructo
 /** Буквенная оценка и её цвет по баллу DTW; авария — сразу F */
 export const getScoreDetails = (score: number, status: string) => {
   if (status === 'accident') {
-    return { color: '#ff3333', grade: 'F' };
+    return { color: '#b42318', grade: 'F' };
   }
-  if (score >= 85) return { color: '#00ff66', grade: 'A' };
-  if (score >= 70) return { color: '#0070f3', grade: 'B' };
-  if (score >= 50) return { color: '#ffcc00', grade: 'C' };
-  return { color: '#ff3333', grade: 'F' };
+  if (score >= 85) return { color: '#23734d', grade: 'A' };
+  if (score >= 70) return { color: '#245f8f', grade: 'B' };
+  if (score >= 50) return { color: '#a15c00', grade: 'C' };
+  return { color: '#b42318', grade: 'F' };
 };
 
 export const SCENARIO_NAMES: Record<string, string> = {
@@ -71,11 +71,11 @@ export const getTableColumns = (): ColumnsType<TrainingRecord> => [
     dataIndex: 'integrity_valid',
     key: 'integrity_valid',
     render: (valid: boolean) => valid ? (
-      <StatusText color="#00ff66">
+      <StatusText color="#23734d">
         <ShieldCheck size={14} /> OK
       </StatusText>
     ) : (
-      <StatusText color="#ff3333">
+      <StatusText color="#b42318">
         <ShieldAlert size={14} /> Нарушена!
       </StatusText>
     )

@@ -40,7 +40,7 @@ const OperatorPage: React.FC = () => {
             </CollapsibleCard>
             <CollapsibleCard
               title="ПАЗ и деблокировки"
-              icon={<ShieldAlert size={14} color="#ffcc00" />}
+              icon={<ShieldAlert size={14} />}
             >
               <InterlockPanel />
             </CollapsibleCard>
@@ -54,14 +54,14 @@ const OperatorPage: React.FC = () => {
                   scenarioTitle
                 )
               }
-              icon={<ListTodo size={14} color={isEmergency ? '#ff4d4f' : '#00e5ff'} />}
+              icon={<ListTodo size={14} />}
               isEmergency={isEmergency}
             >
               <ScenarioChecklist />
             </CollapsibleCard>
             <CollapsibleCard
-              title="Интеллектуальный ИИ-Помощник (Smart-MVP)"
-              icon={<Brain size={14} color="#00e5ff" />}
+              title="Система поддержки оператора"
+              icon={<Brain size={14} />}
             >
               <AiAssistant />
             </CollapsibleCard>

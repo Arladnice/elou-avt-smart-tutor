@@ -66,7 +66,7 @@ const ControlPanel: React.FC = () => {
       {/* Управление клапанами (Задвижками) */}
       <S.ControlGroup>
         <S.Label>
-          <Radio size={14} color="#00e5ff" />
+          <Radio size={14} />
           Дистанционные задвижки (Клапаны):
         </S.Label>
         <S.SwitchColumn>

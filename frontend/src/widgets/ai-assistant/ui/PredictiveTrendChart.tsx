@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from 'styled-components';
 import {
   ComposedChart,
   Line,
@@ -23,14 +24,13 @@ interface ParamConfig {
   predictionIndex: number;
   /** Верхний аварийный порог (согласован с config.py бэкенда) */
   warningLevel: number;
-  color: string;
   precision: number;
 }
 
 const PARAMS: ParamConfig[] = [
-  { key: 'T_1', label: 'T-1 Печь', unit: '°C', predictionIndex: 0, warningLevel: TEMP_WARNING, color: '#ff9900', precision: 1 },
-  { key: 'P_1', label: 'P-1 Колонна', unit: 'МПа', predictionIndex: 1, warningLevel: PRES_WARNING, color: '#00e5ff', precision: 3 },
-  { key: 'L_1', label: 'L-1 Уровень', unit: '%', predictionIndex: 2, warningLevel: LEVEL_HIGH, color: '#00ff66', precision: 1 },
+  { key: 'T_1', label: 'T-1 Печь', unit: '°C', predictionIndex: 0, warningLevel: TEMP_WARNING, precision: 1 },
+  { key: 'P_1', label: 'P-1 Колонна', unit: 'МПа', predictionIndex: 1, warningLevel: PRES_WARNING, precision: 3 },
+  { key: 'L_1', label: 'L-1 Уровень', unit: '%', predictionIndex: 2, warningLevel: LEVEL_HIGH, precision: 1 },
 ];
 
 interface ChartPoint {
@@ -40,10 +40,15 @@ interface ChartPoint {
 }
 
 const PredictiveTrendChart: React.FC = () => {
+  const theme = useTheme();
   const { telemetryHistory, predictions, sensors, timeElapsed } = useTelemetry();
   const [activeParam, setActiveParam] = useState<ParamKey>('T_1');
 
   const param = PARAMS.find(p => p.key === activeParam) ?? PARAMS[0];
+  const getParamColor = (key: ParamKey) => key === 'T_1'
+    ? theme.colors.warning
+    : key === 'P_1' ? theme.colors.primary : theme.colors.success;
+  const paramColor = getParamColor(param.key);
   const predictedValue = predictions?.[param.predictionIndex];
   const currentValue = sensors[param.key];
 
@@ -86,7 +91,7 @@ const PredictiveTrendChart: React.FC = () => {
       <S.ChartWrapper>
         <S.ParamSelector>
           {PARAMS.map(p => (
-            <S.ParamButton key={p.key} $active={p.key === activeParam} $color={p.color} onClick={() => setActiveParam(p.key)}>
+            <S.ParamButton key={p.key} $active={p.key === activeParam} $color={getParamColor(p.key)} onClick={() => setActiveParam(p.key)}>
               {p.label}
             </S.ParamButton>
           ))}
@@ -100,14 +105,14 @@ const PredictiveTrendChart: React.FC = () => {
     <S.ChartWrapper>
       <S.ParamSelector>
         {PARAMS.map(p => (
-          <S.ParamButton key={p.key} $active={p.key === activeParam} $color={p.color} onClick={() => setActiveParam(p.key)}>
+          <S.ParamButton key={p.key} $active={p.key === activeParam} $color={getParamColor(p.key)} onClick={() => setActiveParam(p.key)}>
             {p.label}
           </S.ParamButton>
         ))}
       </S.ParamSelector>
 
       <S.ForecastSummary $isAlert={isApproachingLimit}>
-        <span className="label">Прогноз ИИ (LSTM) на +{FORECAST_HORIZON_SEC} с:</span>
+        <span className="label">Прогноз модели на +{FORECAST_HORIZON_SEC} с:</span>
         <span className="value">
           {hasForecast ? `${formatValue(predictedValue)} ${param.unit}` : '—'} {trendSymbol}
         </span>
@@ -117,49 +122,49 @@ const PredictiveTrendChart: React.FC = () => {
       <S.ChartArea>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-            <CartesianGrid stroke="#1d2635" strokeDasharray="2 4" />
+            <CartesianGrid stroke={theme.colors.border} strokeDasharray="2 4" />
             <XAxis
               dataKey="timeElapsed"
               type="number"
               domain={['dataMin', 'dataMax']}
-              tick={{ fill: '#7c8ba1', fontSize: 9 }}
-              stroke="#222c3e"
+              tick={{ fill: theme.colors.textMuted, fontSize: 9 }}
+              stroke={theme.colors.border}
               tickFormatter={(v: number) => `${v}с`}
             />
             <YAxis
-              tick={{ fill: '#7c8ba1', fontSize: 9 }}
-              stroke="#222c3e"
+              tick={{ fill: theme.colors.textMuted, fontSize: 9 }}
+              stroke={theme.colors.border}
               domain={yDomain}
               tickFormatter={(v: number) => formatValue(v)}
             />
             <Tooltip
               contentStyle={{
-                background: '#111620',
-                border: '1px solid #222c3e',
+                background: theme.colors.surface,
+                border: `1px solid ${theme.colors.border}`,
                 borderRadius: 4,
                 fontSize: 11,
               }}
-              labelStyle={{ color: '#7c8ba1' }}
+              labelStyle={{ color: theme.colors.textMuted }}
               labelFormatter={label => `t = ${label} с`}
               formatter={(value, name) => [
                 `${formatValue(Number(value))} ${param.unit}`,
-                name === 'fact' ? 'Факт' : 'Прогноз ИИ',
+                name === 'fact' ? 'Факт' : 'Прогноз',
               ]}
             />
             {showLimitLine && (
               <ReferenceLine
                 y={param.warningLevel}
-                stroke="#ff3333"
+                stroke={theme.colors.danger}
                 strokeDasharray="4 3"
                 strokeWidth={1}
-                label={{ value: `Предел ${param.warningLevel}`, fill: '#ff3333', fontSize: 9, position: 'insideTopRight' }}
+                label={{ value: `Предел ${param.warningLevel}`, fill: theme.colors.danger, fontSize: 9, position: 'insideTopRight' }}
               />
             )}
             <Line
               type="monotone"
               dataKey="fact"
               name="fact"
-              stroke={param.color}
+              stroke={paramColor}
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}
@@ -169,10 +174,10 @@ const PredictiveTrendChart: React.FC = () => {
               type="monotone"
               dataKey="forecast"
               name="forecast"
-              stroke={isApproachingLimit ? '#ff3333' : '#aa00ff'}
+              stroke={isApproachingLimit ? theme.colors.danger : theme.colors.accent}
               strokeWidth={2}
               strokeDasharray="4 3"
-              dot={{ r: 3, fill: isApproachingLimit ? '#ff3333' : '#aa00ff' }}
+              dot={{ r: 3, fill: isApproachingLimit ? theme.colors.danger : theme.colors.accent }}
               isAnimationActive={false}
               connectNulls
             />
@@ -181,9 +186,9 @@ const PredictiveTrendChart: React.FC = () => {
       </S.ChartArea>
 
       <S.Legend>
-        <S.LegendItem $color={param.color}>— Факт</S.LegendItem>
-        <S.LegendItem $color={isApproachingLimit ? '#ff3333' : '#aa00ff'}>‑ ‑ Прогноз LSTM</S.LegendItem>
-        {showLimitLine && <S.LegendItem $color="#ff3333">‑ ‑ Аварийный предел</S.LegendItem>}
+        <S.LegendItem $color={paramColor}>— Факт</S.LegendItem>
+        <S.LegendItem $color={isApproachingLimit ? theme.colors.danger : theme.colors.accent}>‑ ‑ Прогноз LSTM</S.LegendItem>
+        {showLimitLine && <S.LegendItem $color={theme.colors.danger}>‑ ‑ Аварийный предел</S.LegendItem>}
       </S.Legend>
     </S.ChartWrapper>
   );

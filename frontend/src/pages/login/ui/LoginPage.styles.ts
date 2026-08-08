@@ -1,59 +1,79 @@
-import styled, { keyframes } from 'styled-components';
-import { Card, Button, Input, Select } from 'antd';
+import styled from 'styled-components';
 import { Brain, User } from 'lucide-react';
-
-export const glow = keyframes`
-  0% { box-shadow: 0 0 10px rgba(0, 229, 255, 0.1); }
-  50% { box-shadow: 0 0 20px rgba(0, 229, 255, 0.25); }
-  100% { box-shadow: 0 0 10px rgba(0, 229, 255, 0.1); }
-`;
+import { Button, Card, Input, Select } from 'antd';
 
 export const Container = styled.div`
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
   width: 100vw;
-  background-color: ${props => props.theme.colors.background};
+  height: 100vh;
+  padding: 32px;
+  background:
+    linear-gradient(90deg, ${props => props.theme.colors.border} 1px, transparent 1px),
+    linear-gradient(${props => props.theme.colors.border} 1px, transparent 1px),
+    ${props => props.theme.colors.background};
+  background-size: 48px 48px;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: ${props => props.theme.mode === 'light'
+      ? 'rgba(233, 237, 241, 0.84)'
+      : 'rgba(16, 21, 27, 0.84)'};
+    pointer-events: none;
+  }
+`;
+
+export const ThemeControl = styled.div`
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 2;
 `;
 
 export const LoginCard = styled(Card)`
-  width: 420px;
-  background-color: ${props => props.theme.colors.surface};
-  border-color: ${props => props.theme.colors.border};
+  z-index: 1;
+  width: min(440px, 100%);
+  overflow: hidden;
   color: ${props => props.theme.colors.text};
-  animation: ${glow} 3s infinite ease-in-out;
-  border-radius: 8px;
+  background: ${props => props.theme.colors.surface};
+  border: 1px solid ${props => props.theme.colors.borderStrong};
+  border-radius: 6px;
+  box-shadow: 0 18px 44px ${props => props.theme.colors.shadow};
 
   .ant-card-head {
+    min-height: 78px;
+    background: ${props => props.theme.colors.surfaceLight};
     border-bottom: 1px solid ${props => props.theme.colors.border};
-    text-align: center;
+    text-align: left;
   }
 
   .ant-card-head-title {
+    padding-left: 14px;
     color: ${props => props.theme.colors.text};
-    font-size: 16px;
+    border-left: 4px solid ${props => props.theme.colors.primary};
+    font-size: 18px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.2px;
   }
 
-  .ant-card-body {
-    padding: 24px;
-  }
+  .ant-card-body { padding: 28px; }
 `;
 
 export const HeaderSubtitle = styled.p`
+  margin-top: 4px;
   color: ${props => props.theme.colors.textMuted};
   font-size: 11px;
-  text-transform: uppercase;
-  margin-top: 4px;
-  font-family: ${props => props.theme.fonts.mono};
+  font-weight: 400;
 `;
 
 export const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 17px;
 `;
 
 export const FormGroup = styled.div`
@@ -63,116 +83,80 @@ export const FormGroup = styled.div`
 `;
 
 export const Label = styled.label`
-  font-size: 11px;
+  color: ${props => props.theme.colors.text};
+  font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  color: ${props => props.theme.colors.textMuted};
 `;
 
 export const StyledButton = styled(Button)`
-  background: rgba(0, 229, 255, 0.1);
-  border-color: ${props => props.theme.colors.accent};
-  color: ${props => props.theme.colors.accent};
-  font-weight: 700;
-  text-transform: uppercase;
-  height: 40px;
-  letter-spacing: 0.5px;
-  margin-top: 10px;
+  && {
+    height: 42px;
+    margin-top: 6px;
+    color: #ffffff;
+    background: ${props => props.theme.colors.primary};
+    border-color: ${props => props.theme.colors.primary};
+    border-radius: 4px;
+    font-weight: 600;
 
-  &:hover {
-    background: ${props => props.theme.colors.accent};
-    color: #0b0f17;
-    box-shadow: 0 0 15px ${props => props.theme.colors.accent};
+    &:hover {
+      color: #ffffff;
+      background: ${props => props.theme.colors.accent};
+      border-color: ${props => props.theme.colors.accent};
+    }
   }
 `;
 
 export const InfoBlock = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  background: #141b27;
-  border: 1px dashed ${props => props.theme.colors.border};
-  border-radius: 4px;
-  padding: 10px;
-  margin-top: 15px;
+  margin-top: 20px;
+  padding: 12px;
+  color: ${props => props.theme.colors.textMuted};
+  background: ${props => props.theme.colors.surfaceLight};
+  border-left: 3px solid ${props => props.theme.colors.accent};
 `;
 
 export const InfoText = styled.div`
-  font-size: 11px;
   color: ${props => props.theme.colors.textMuted};
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.5;
 
-  strong {
-    color: ${props => props.theme.colors.text};
-  }
+  strong { color: ${props => props.theme.colors.text}; }
 `;
 
 export const StyledInput = styled(Input)`
   && {
-    background-color: #0a0e14;
-    border-color: #222c3e;
-    color: #e1e7f0;
-    height: 38px;
+    height: 40px;
+    color: ${props => props.theme.colors.text};
+    background: ${props => props.theme.colors.canvas};
+    border-color: ${props => props.theme.colors.border};
 
     .ant-input {
-      background-color: #0a0e14;
-      color: #e1e7f0;
+      color: ${props => props.theme.colors.text};
+      background: transparent;
     }
 
     &:focus,
     &:focus-within {
-      border-color: ${props => props.theme.colors.accent};
-      box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.2);
+      border-color: ${props => props.theme.colors.primary};
+      box-shadow: 0 0 0 3px ${props => props.theme.colors.focusRing};
     }
   }
 
-  &:-webkit-autofill,
-  &:-webkit-autofill:hover, 
-  &:-webkit-autofill:active,
-  & input:-webkit-autofill,
-  & input:-webkit-autofill:hover, 
-  & input:-webkit-autofill:active,
-  & .ant-input:-webkit-autofill,
-  & .ant-input:-webkit-autofill:hover,
-  & .ant-input:-webkit-autofill:active {
-    transition: background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s;
-    -webkit-text-fill-color: #e1e7f0;
-    -webkit-box-shadow: 0 0 0 1000px #0a0e14 inset;
-  }
-
-  &:-webkit-autofill:focus,
-  & input:-webkit-autofill:focus,
-  & .ant-input:-webkit-autofill:focus {
-    transition: background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s;
-    -webkit-text-fill-color: #e1e7f0;
-    -webkit-box-shadow: 0 0 0 1000px #0a0e14 inset, 0 0 0 2px rgba(0, 229, 255, 0.2);
-    border-color: ${props => props.theme.colors.accent};
-  }
-  
-  .ant-input-prefix {
-    margin-right: 8px;
-  }
+  .ant-input-prefix { margin-right: 8px; }
 `;
 
 export const StyledSelect = styled(Select)`
   width: 100%;
-  height: 38px;
+  height: 40px;
 `;
 
-export const selectStyles = {
-  popup: {
-    root: {
-      backgroundColor: '#111620',
-      color: '#e1e7f0'
-    }
-  }
-};
-
-
 export const UserIcon = styled(User)`
-  color: #7c8ba1;
+  color: ${props => props.theme.colors.textMuted};
 `;
 
 export const BrainIcon = styled(Brain)`
   flex-shrink: 0;
+  color: ${props => props.theme.colors.accent};
 `;

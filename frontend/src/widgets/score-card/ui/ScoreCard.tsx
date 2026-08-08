@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from 'styled-components';
 import { useTelemetry } from '@/entities/telemetry';
 import { useSession, type ScoreCardError } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
@@ -35,6 +36,7 @@ const describeErrorMoment = (error: ScoreCardError): { label: string; hint: stri
 };
 
 const ScoreCard: React.FC = () => {
+  const theme = useTheme();
   const { status, logs } = useTelemetry();
   const { scoreCard, username, scenarioId, mode } = useSession();
   const { resetSession, logoutUser, selectScenario, selectMode } = useSimulatorActions();
@@ -52,16 +54,16 @@ const ScoreCard: React.FC = () => {
   const isSuccess = scoreCard.score >= 80;
 
   const getHeaderTitle = () => {
-    if (isSuccess) return 'ЭКЗАМЕН УСПЕШНО СДАН!';
-    if (status === 'accident') return 'ТРЕНИРОВКА ПРОВАЛЕНА (АВАРИЯ)';
-    if (status === 'esd') return 'ТРЕНИРОВКА ПРОВАЛЕНА (АВАРИЙНЫЙ ОСТАНОВ)';
-    return 'ТРЕНИРОВКА ПРОВАЛЕНА (НИЗКИЙ БАЛЛ)';
+    if (isSuccess) return 'Экзамен успешно сдан';
+    if (status === 'accident') return 'Сессия завершена аварией';
+    if (status === 'esd') return 'Выполнен аварийный останов';
+    return 'Результат ниже проходного балла';
   };
 
   const getHeaderColor = () => {
-    if (isSuccess) return '#00ff66';
-    if (status === 'accident' || status === 'esd') return '#ff3333';
-    return '#ff9900';
+    if (isSuccess) return theme.colors.success;
+    if (status === 'accident' || status === 'esd') return theme.colors.danger;
+    return theme.colors.warning;
   };
 
   const getScenarioTitle = (id: string) => {
@@ -84,23 +86,23 @@ const ScoreCard: React.FC = () => {
   const targetScenarioId = scoreCard.recommended_scenario_id || (isSuccess ? 'shutdown' : scenarioId);
   const targetScenarioTitle = getScenarioTitle(targetScenarioId);
 
-  let primaryButtonText = `🎓 Следующий шаг: ${targetScenarioTitle}`;
+  let primaryButtonText = `Следующий сценарий: ${targetScenarioTitle}`;
   let PrimaryIcon = ArrowRight;
 
   if (mode === 'exam') {
     if (isSuccess) {
-      primaryButtonText = `🎯 Сдать Экзамен: ${targetScenarioTitle}`;
+      primaryButtonText = `Перейти к экзамену: ${targetScenarioTitle}`;
       PrimaryIcon = Award;
     } else {
-      primaryButtonText = `🎓 Перейти в Обучение: ${targetScenarioTitle}`;
+      primaryButtonText = `Перейти к обучению: ${targetScenarioTitle}`;
       PrimaryIcon = GraduationCap;
     }
   } else {
     if (isSuccess) {
-      primaryButtonText = `🎓 Следующий шаг: ${targetScenarioTitle}`;
+      primaryButtonText = `Следующий сценарий: ${targetScenarioTitle}`;
       PrimaryIcon = ArrowRight;
     } else {
-      primaryButtonText = `🎓 Дообучение: ${targetScenarioTitle}`;
+      primaryButtonText = `Дообучение: ${targetScenarioTitle}`;
       PrimaryIcon = RefreshCw;
     }
   }
@@ -159,7 +161,7 @@ const ScoreCard: React.FC = () => {
     const recsHtml = scoreCard.recommendations.length > 0
       ? `
         <h3 style="color: #0369a1; border-bottom: 2px solid #7dd3fc; padding-bottom: 4px; margin-top: 20px;">
-          Адаптивные рекомендации ИИ-тьютора
+          Рекомендации по дообучению
         </h3>
         <ul style="font-size: 12px; line-height: 1.5; color: #1e293b;">
           ${scoreCard.recommendations.map(r => `<li style="margin-bottom: 4px;">${escapeHtml(r)}</li>`).join('')}
@@ -317,7 +319,7 @@ const ScoreCard: React.FC = () => {
 
         <div class="container" id="report-container">
           <div class="header">
-            <h1>Компьютерный Тренажёрный Комплекс (КТК) // ЭЛОУ-АВТ Smart Tutor</h1>
+            <h1>Компьютерный тренажёрный комплекс ЭЛОУ-АВТ</h1>
             <h2>Официальный протокол оценивания квалификации оператора технологического процесса</h2>
           </div>
 
@@ -383,24 +385,19 @@ const ScoreCard: React.FC = () => {
     printWindow.document.close();
   };
 
-  const maskStyle = { backdropFilter: 'blur(4px)' };
-
   return (
     <Modal
       open={true}
       centered
       title={
         <S.ModalTitle>
-          <Award size={16} color="#00e5ff" />
-          Карточка оценки квалификации оператора (ScoreCard)
+          <Award size={16} color={theme.colors.primary} />
+          Карточка оценки квалификации оператора
         </S.ModalTitle>
       }
       footer={null}
       closable={false}
       width={580}
-      styles={{
-        mask: maskStyle,
-      }}
     >
       <S.CardContainer>
         {/* Крупная буква оценки */}
@@ -413,7 +410,7 @@ const ScoreCard: React.FC = () => {
             {getHeaderTitle()}
           </S.HeaderTitle>
           <S.HeaderSubtitle>
-            Параметры сессии верифицированы ИИ по требованиям безопасности ({mode === 'exam' ? 'Экзаменационный контроль' : 'Обучающий режим'})
+            Результат рассчитан по эталонной последовательности и требованиям безопасности · {mode === 'exam' ? 'экзаменационный контроль' : 'обучающий режим'}
           </S.HeaderSubtitle>
         </S.CenterTextContainer>
 
@@ -437,7 +434,7 @@ const ScoreCard: React.FC = () => {
         {timeline.length > 0 && (
           <>
             <S.SectionTitle>
-              <ListOrdered size={14} color="#00e5ff" />
+              <ListOrdered size={14} color={theme.colors.primary} />
               Хронология действий оператора
             </S.SectionTitle>
             <S.TimelineContainer>
@@ -455,7 +452,7 @@ const ScoreCard: React.FC = () => {
         {scoreCard.errors.length > 0 && (
           <>
             <S.SectionTitle>
-              <AlertOctagon size={14} color="#ff3333" />
+              <AlertOctagon size={14} color={theme.colors.danger} />
               Обнаруженные нарушения регламента
             </S.SectionTitle>
             <S.ErrorsContainer>
@@ -486,12 +483,12 @@ const ScoreCard: React.FC = () => {
           </>
         )}
 
-        {/* Адаптивные рекомендации ИИ */}
+        {/* Рекомендации по результатам сессии */}
         {scoreCard.recommendations.length > 0 && (
           <>
             <S.SectionTitle>
-              <CheckCircle2 size={14} color="#00e5ff" />
-              Адаптивные рекомендации ИИ-тьютора
+              <CheckCircle2 size={14} color={theme.colors.primary} />
+              Рекомендации по дообучению
             </S.SectionTitle>
             <S.FullWidthContainer>
               {scoreCard.recommendations.map((rec, idx) => {
@@ -499,7 +496,7 @@ const ScoreCard: React.FC = () => {
                 if (isAdaptiveScenario) {
                   return (
                     <S.AdaptiveRetrainingBanner key={idx}>
-                      🎯 <strong>{rec}</strong>
+                      <strong>{rec}</strong>
                     </S.AdaptiveRetrainingBanner>
                   );
                 }

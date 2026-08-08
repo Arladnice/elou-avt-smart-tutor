@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
+import { useTheme, type DefaultTheme } from 'styled-components';
 import { Switch, Alert, Modal, Button, App } from 'antd';
 import { ShieldCheck, Users, Play, AlertTriangle, LogOut, Trash2, Info, AlertOctagon } from 'lucide-react';
 import { fetchSystemMetrics, type SystemMetrics } from '@/shared/api';
 import { useTelemetry, sendAlarmFeedback, type DefectId } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
+import { ThemeToggle } from '@/shared/ui';
 import {
   fetchTrainingRecords,
   fetchActiveSessions as fetchActiveSessionsApi,
@@ -24,14 +26,15 @@ const ScenarioBuilderModal = lazy(() =>
 );
 import * as S from './InstructorPage.styles';
 
-const getStatusBadge = (s: string) => {
-  if (s === 'running') return <S.StatusBadge status="processing" text="Работа" $color="#00ff66" />;
-  if (s === 'esd') return <S.StatusBadge status="warning" text="Аварийный Останов" $color="#ffcc00" />;
-  if (s === 'accident') return <S.StatusBadge status="error" text="АВАРИЯ" $color="#ff3333" />;
-  return <S.StatusBadge status="default" text="Пауза" $color="#7c8ba1" />;
+const getStatusBadge = (s: string, colors: DefaultTheme['colors']) => {
+  if (s === 'running') return <S.StatusBadge status="processing" text="Работа" $color={colors.success} />;
+  if (s === 'esd') return <S.StatusBadge status="warning" text="Аварийный останов" $color={colors.warning} />;
+  if (s === 'accident') return <S.StatusBadge status="error" text="Авария" $color={colors.danger} />;
+  return <S.StatusBadge status="default" text="Пауза" $color={colors.offline} />;
 };
 
 const InstructorPage: React.FC = () => {
+  const theme = useTheme();
   const { message, modal } = App.useApp();
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
   const { sensors, valves, status, defects, logs, riskLevel, accidentReason, wsLatency } = useTelemetry();
@@ -225,17 +228,17 @@ const InstructorPage: React.FC = () => {
   return (
     <S.Container>
       <S.Header>
-        <S.Title>Панель Инструктора // Контроль КТК</S.Title>
+        <S.Title>КТК ЭЛОУ-АВТ <span>Рабочее место инструктора</span></S.Title>
         <S.HeaderRight>
           <S.ConnectedBadge>
-            <Users size={14} color="#ffcc00" />
+            <Users size={14} />
             Инструктор: <strong>{username}</strong>
             <S.ConnectedBadgeStatus $active={isOnline}>
               ({isOnline ? `Online, ping ${wsLatency}ms` : 'Offline'})
             </S.ConnectedBadgeStatus>
           </S.ConnectedBadge>
           <S.ConnectedBadge>
-            <Users size={14} color="#00e5ff" />
+            <Users size={14} />
             Сессия оператора:
             <S.SessionSelect
               size="small"
@@ -252,6 +255,7 @@ const InstructorPage: React.FC = () => {
               }
             />
           </S.ConnectedBadge>
+          <ThemeToggle />
           <S.LogoutButton 
             onClick={logoutUser} 
             icon={<LogOut size={12} />} 
@@ -268,7 +272,7 @@ const InstructorPage: React.FC = () => {
         <S.PanelColumn>
           <S.TopCardsRow>
             {/* Контроль сессии */}
-            <S.StyledCard title="Управление Учебным Процессом">
+            <S.StyledCard title="Управление учебным процессом">
               <S.ProcessControlLayout>
                 <div>
                   <S.ScenarioLabel>
@@ -278,25 +282,24 @@ const InstructorPage: React.FC = () => {
                     value={mode} 
                     onChange={e => selectMode(e.target.value as 'training' | 'exam')}
                   >
-                    <S.ScenarioRadioButton value="training">🎓 Обучение (Подсказки)</S.ScenarioRadioButton>
-                    <S.ScenarioRadioButton value="exam">🎯 Экзамен (Контроль ГОСТ)</S.ScenarioRadioButton>
+                    <S.ScenarioRadioButton value="training">Обучение с подсказками</S.ScenarioRadioButton>
+                    <S.ScenarioRadioButton value="exam">Экзамен по регламенту</S.ScenarioRadioButton>
                   </S.ScenarioRadioGroupWithMargin>
                 </div>
 
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <S.ScenarioLabel style={{ margin: 0 }}>
+                  <S.ScenarioHeading>
+                    <S.ScenarioLabel>
                       Выбор учебного сценария:
                     </S.ScenarioLabel>
-                    <Button 
+                    <S.BuilderButton
                       type="dashed" 
                       size="small" 
                       onClick={() => setIsBuilderModalOpen(true)}
-                      style={{ fontSize: 11, borderColor: '#1890ff', color: '#1890ff' }}
                     >
-                      ➕ Конструктор / Импорт JSON
-                    </Button>
-                  </div>
+                      Конструктор сценария
+                    </S.BuilderButton>
+                  </S.ScenarioHeading>
                   <S.ScenarioRadioGroup 
                     value={scenarioId} 
                     onChange={e => selectScenario(e.target.value)}
@@ -375,7 +378,7 @@ const InstructorPage: React.FC = () => {
             </S.StyledCard>
 
             {/* Инъекция неисправностей */}
-            <S.StyledCard title="Внедрение нештатных ситуаций (Слайд 11 КТК)">
+            <S.StyledCard title="Внедрение нештатных ситуаций">
               <S.DefectRow>
                 <S.DefectInfo>
                   <span className="title">Отказ сырьевого насоса Н-1</span>
@@ -450,11 +453,11 @@ const InstructorPage: React.FC = () => {
           </S.TopCardsRow>
 
           {/* Журнал аудита действий оператора с оценкой алармов (GAP-6) */}
-          <S.StretchCard title="Мониторинг журнала событий (оцените сработки ИИ)">
+          <S.StretchCard title="Мониторинг журнала событий и тревог">
             <S.LogArea>
               {logs.map(log => {
                 const Icon = log.type === 'error' ? AlertOctagon : log.type === 'warning' ? AlertTriangle : Info;
-                const iconColor = log.type === 'error' ? '#ff3333' : log.type === 'warning' ? '#ffcc00' : '#00e5ff';
+                const iconColor = log.type === 'error' ? theme.colors.danger : log.type === 'warning' ? theme.colors.warning : theme.colors.primary;
                 const isAlarm = log.type === 'error' || log.type === 'warning';
                 const fb = feedbackStatus[String(log.id)];
                 return (
@@ -474,7 +477,7 @@ const InstructorPage: React.FC = () => {
                           <S.FeedbackWrapper>
                             <S.FeedbackActionBtn
                               $fbType="confirm"
-                              title="Подтвердить корректность сработки ИИ"
+                              title="Подтвердить корректность срабатывания"
                               onClick={() => handleAlarmFeedback(String(log.id), 'confirmed')}
                             >
                               ✅
@@ -500,7 +503,7 @@ const InstructorPage: React.FC = () => {
         {/* Правая колонка: Мониторинг в реальном времени и история сессий */}
         <S.PanelColumn>
           {/* Панель живого мониторинга */}
-          <S.StyledCard title="Текущие показатели оператора (Live telemetry)">
+          <S.StyledCard title="Оперативные параметры оператора">
             <S.MonitorRow>
               <S.MonitorItem>
                 <span className="lbl">Т-1 (Печь)</span>
@@ -530,28 +533,28 @@ const InstructorPage: React.FC = () => {
 
 
             <S.LiveTelemetryGrid>
-              <S.LiveTelemetrySpan span={1}>Статус: {getStatusBadge(status)}</S.LiveTelemetrySpan>
+              <S.LiveTelemetrySpan span={1}>Статус: {getStatusBadge(status, theme.colors)}</S.LiveTelemetrySpan>
               <S.LiveTelemetrySpan span={2}>
-                Риск аварии (ИИ):{' '}
-                <S.ColoredValue color={riskLevel > 70 ? '#ff3333' : '#00ff66'}>
+                Расчётный риск аварии:{' '}
+                <S.ColoredValue color={riskLevel > 70 ? theme.colors.danger : theme.colors.success}>
                   {riskLevel}%
                 </S.ColoredValue>
               </S.LiveTelemetrySpan>
               <div>
                 Клапан V-1 (Сырье):{' '}
-                <S.ColoredValue color={valves.V_1 ? '#00ff66' : '#ff3333'}>
+                <S.ColoredValue color={valves.V_1 ? theme.colors.success : theme.colors.textMuted}>
                   {valves.V_1 ? 'ОТКР' : 'ЗАКР'}
                 </S.ColoredValue>
               </div>
               <div>
                 Клапан V-2 (Сброс):{' '}
-                <S.ColoredValue color={valves.V_2 ? '#00ff66' : '#ff3333'}>
+                <S.ColoredValue color={valves.V_2 ? theme.colors.success : theme.colors.textMuted}>
                   {valves.V_2 ? 'ОТКР' : 'ЗАКР'}
                 </S.ColoredValue>
               </div>
               <div>
                 Клапан V-3 (Дренаж):{' '}
-                <S.ColoredValue color={valves.V_3 ? '#00ff66' : '#ff3333'}>
+                <S.ColoredValue color={valves.V_3 ? theme.colors.success : theme.colors.textMuted}>
                   {valves.V_3 ? 'ОТКР' : 'ЗАКР'}
                 </S.ColoredValue>
               </div>
@@ -571,7 +574,7 @@ const InstructorPage: React.FC = () => {
           </S.StyledCard>
 
           {/* Метрики сервера: наблюдаемость и производительность (К1) */}
-          <S.StyledCard title="Состояние сервера КТК (USE-метрики)">
+          <S.StyledCard title="Состояние серверных служб">
             {metrics ? (
               <S.MetricsGrid>
                 <S.MetricItem $isAlert={metrics.cpu_percent > 85}>
@@ -606,7 +609,7 @@ const InstructorPage: React.FC = () => {
             ref={stretchCardRef}
             title={
               <S.TableCardTitle>
-                <span className="main-title">Защищенная база результатов обучения (К8: ИБ)</span>
+              <span className="main-title">База результатов обучения</span>
                 <span className="sub-hint">(нажмите на строку для просмотра детального отчета)</span>
               </S.TableCardTitle>
             }
@@ -640,7 +643,7 @@ const InstructorPage: React.FC = () => {
       <Modal
         title={
           <S.ModalTitle>
-            <ShieldCheck size={18} color="#00ff66" />
+            <ShieldCheck size={18} color={theme.colors.success} />
             Детальный отчет по сессии №{selectedSession?.id}
           </S.ModalTitle>
         }
@@ -653,7 +656,6 @@ const InstructorPage: React.FC = () => {
           </S.CloseButton>
         ]}
         width={750}
-        styles={S.modalStyles}
       >
         {selectedSession && (
           <div>
@@ -663,14 +665,14 @@ const InstructorPage: React.FC = () => {
               <div>Время сессии: <strong>{Math.floor(selectedSession.duration_sec / 60)}м {selectedSession.duration_sec % 60}с</strong></div>
               <div>
                 Итоговая оценка:{' '}
-                <S.ColoredValue color={selectedSession.score >= 85 ? '#00ff66' : selectedSession.score >= 70 ? '#0070f3' : selectedSession.score >= 50 ? '#ffcc00' : '#ff3333'}>
+                <S.ColoredValue color={selectedSession.score >= 85 ? theme.colors.success : selectedSession.score >= 70 ? theme.colors.primary : selectedSession.score >= 50 ? theme.colors.warning : theme.colors.danger}>
                   {selectedSession.score}%
                 </S.ColoredValue>
               </div>
               <div>Статус: <strong>{selectedSession.status === 'accident' ? 'Авария' : selectedSession.status === 'esd' ? 'Аварийный Останов' : 'Успешно сдано'}</strong></div>
               <div>
                 ИБ Целостность:{' '}
-                <S.ColoredValue color={selectedSession.integrity_valid ? '#00ff66' : '#ff3333'}>
+                <S.ColoredValue color={selectedSession.integrity_valid ? theme.colors.success : theme.colors.danger}>
                   {selectedSession.integrity_valid ? 'Валидна' : 'Нарушена!'}
                 </S.ColoredValue>
               </div>

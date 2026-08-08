@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTheme } from 'styled-components';
 import { useTelemetry, type LogEntry } from '@/entities/telemetry';
 import { AlertTriangle, Info, AlertOctagon, HelpCircle } from 'lucide-react';
 
 import * as S from './AlarmLog.styles';
 
 const AlarmLog: React.FC = () => {
+  const theme = useTheme();
   const { logs } = useTelemetry();
   const [filterSeverity, setFilterSeverity] = useState<string | null>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
@@ -48,31 +50,31 @@ const AlarmLog: React.FC = () => {
         </S.FilterButton>
         <S.FilterButton 
           $active={filterSeverity === 'CRITICAL'} 
-          $sevColor="#ff3333" 
+          $sevColor={theme.colors.danger}
           onClick={() => setFilterSeverity('CRITICAL')}
         >
-          🔴 Критич.
+          Критические
         </S.FilterButton>
         <S.FilterButton 
           $active={filterSeverity === 'WARNING'} 
-          $sevColor="#ffcc00" 
+          $sevColor={theme.colors.warning}
           onClick={() => setFilterSeverity('WARNING')}
         >
-          🟡 Предупр.
+          Предупреждения
         </S.FilterButton>
         <S.FilterButton 
           $active={filterSeverity === 'INFO'} 
-          $sevColor="#00e5ff" 
+          $sevColor={theme.colors.primary}
           onClick={() => setFilterSeverity('INFO')}
         >
-          🔵 Инфо
+          Информация
         </S.FilterButton>
         <S.FilterButton 
           $active={filterSeverity === 'NO_DATA'} 
-          $sevColor="#7c8ba1" 
+          $sevColor={theme.colors.offline}
           onClick={() => setFilterSeverity('NO_DATA')}
         >
-          ⚫ Off-line
+          Нет данных
         </S.FilterButton>
       </S.FilterWrapper>
       

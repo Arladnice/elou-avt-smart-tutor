@@ -3,6 +3,7 @@ import { useTelemetry } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { formatTime } from '@/shared/lib';
+import { ThemeToggle } from '@/shared/ui';
 import { Play, RotateCcw, ShieldAlert, User, CheckCircle, ClipboardList, FlaskConical } from 'lucide-react';
 import * as S from './Header.styles';
 
@@ -31,7 +32,7 @@ const Header: React.FC = () => {
 
   return (
     <S.HeaderContainer>
-      <S.Title>КТК ЭЛОУ-АВТ // ИИ-Модуль</S.Title>
+      <S.Title>КТК ЭЛОУ-АВТ <span>Рабочее место оператора</span></S.Title>
       
       <S.StatusIndicator $status={status}>
         {getStatusText()}
@@ -74,6 +75,7 @@ const Header: React.FC = () => {
           <ShieldAlert size={12} />
           Авария (ESD)
         </S.Button>
+        <ThemeToggle />
         <S.Button onClick={logoutUser} $variant="secondary">
           Выход
         </S.Button>

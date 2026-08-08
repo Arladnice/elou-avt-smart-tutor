@@ -8,7 +8,7 @@ export const flowAnimation = keyframes`
 export const SchemeContainer = styled.div`
   background-color: ${props => props.theme.colors.surface};
   border: 1px solid ${props => props.theme.colors.border};
-  border-radius: 6px;
+  border-radius: 5px;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -25,7 +25,7 @@ export const SchemeHeader = styled.div`
   border-bottom: 1px solid ${props => props.theme.colors.border};
   font-size: 13px;
   font-weight: 600;
-  text-transform: uppercase;
+  letter-spacing: 0.1px;
   color: ${props => props.theme.colors.textMuted};
 `;
 
@@ -34,7 +34,7 @@ export const SVGCanvas = styled.svg`
   width: 100%;
   height: 100%;
   min-height: 380px;
-  background-color: #0b0f17;
+  background-color: ${props => props.theme.colors.canvas};
 
   .flow-arrow-head {
     fill: ${props => props.theme.colors.accent};
@@ -71,7 +71,7 @@ export const SVGCanvas = styled.svg`
   }
 
   .sparkline-frame {
-    fill: #090d14;
+    fill: ${props => props.theme.colors.surface};
     stroke: ${props => props.theme.colors.border};
     stroke-width: 0.5;
     rx: 2px;
@@ -81,21 +81,20 @@ export const SVGCanvas = styled.svg`
 // Стилизованные датчики
 export const SensorBox = styled.g<{ $isWarning?: boolean; $isDanger?: boolean }>`
   rect.bg {
-    fill: #131924;
+    fill: ${props => props.theme.colors.surface};
     stroke: ${props => {
       if (props.$isDanger) return props.theme.colors.danger;
       if (props.$isWarning) return props.theme.colors.warning;
       return props.theme.colors.border;
     }};
     stroke-width: 1.5;
-    filter: ${props => (props.$isDanger || props.$isWarning ? `drop-shadow(0 0 4px ${props.$isDanger ? props.theme.colors.danger : props.theme.colors.warning})` : 'none')};
   }
 
   text.value {
     fill: ${props => {
       if (props.$isDanger) return props.theme.colors.danger;
       if (props.$isWarning) return props.theme.colors.warning;
-      return props.theme.colors.accent;
+      return props.theme.colors.text;
     }};
     font-family: ${props => props.theme.fonts.mono};
     font-size: 13px;
@@ -114,15 +113,14 @@ export const ValveGroup = styled.g<{ $isOpen: boolean }>`
   cursor: pointer;
 
   polygon {
-    fill: ${props => (props.$isOpen ? 'rgba(0, 255, 102, 0.1)' : 'rgba(255, 51, 51, 0.1)')};
-    stroke: ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.danger)};
+    fill: ${props => (props.$isOpen ? props.theme.colors.successMuted : props.theme.colors.surfaceLight)};
+    stroke: ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.borderStrong)};
     stroke-width: 2;
     transition: ${props => props.theme.transitions.default};
   }
 
   > circle {
-    fill: ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.danger)};
-    filter: drop-shadow(0 0 6px ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.danger)});
+    fill: ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.borderStrong)};
     transition: ${props => props.theme.transitions.default};
   }
 
@@ -136,14 +134,14 @@ export const EquipmentInfoGroup = styled.g`
   outline: none;
 
   circle {
-    fill: #111827;
-    stroke: #7c8ba1;
+    fill: ${props => props.theme.colors.surfaceLight};
+    stroke: ${props => props.theme.colors.borderStrong};
     stroke-width: 1;
     transition: ${props => props.theme.transitions.default};
   }
 
   text {
-    fill: #b8c4d6;
+    fill: ${props => props.theme.colors.textMuted};
     font-size: 7px;
     font-weight: 700;
     pointer-events: none;
@@ -151,9 +149,8 @@ export const EquipmentInfoGroup = styled.g`
 
   &:hover circle,
   &:focus-visible circle {
-    fill: rgba(0, 229, 255, 0.14);
+    fill: ${props => props.theme.colors.accentMuted};
     stroke: ${props => props.theme.colors.accent};
-    filter: drop-shadow(0 0 4px ${props => props.theme.colors.accent});
   }
 `;
 
@@ -171,45 +168,44 @@ export const EquipmentGroup = styled.g<{ $isAlert: boolean }>`
 
   &:hover .equipment-hitbox,
   &:focus-visible .equipment-hitbox {
-    fill: rgba(0, 229, 255, 0.05);
+    fill: ${props => props.theme.colors.accentMuted};
     stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.accent};
-    filter: drop-shadow(0 0 5px ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.accent});
   }
 
   .pump-body {
-    fill: #131924;
+    fill: ${props => props.theme.colors.surfaceMuted};
     stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.text};
     stroke-width: 2;
   }
 
   .pump-rotor {
-    fill: ${props => props.$isAlert ? props.theme.colors.danger : 'rgba(0, 229, 255, 0.18)'};
+    fill: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.accentMuted};
     stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.text};
     stroke-width: 1.5;
   }
 
   .furnace-body {
-    fill: #2b1515;
-    stroke: ${props => props.$isAlert ? props.theme.colors.danger : '#ff7a45'};
+    fill: ${props => props.$isAlert ? props.theme.colors.dangerMuted : props.theme.colors.warningMuted};
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.warning};
     stroke-width: 2;
   }
 
   .furnace-coil {
     fill: none;
-    stroke: ${props => props.$isAlert ? props.theme.colors.danger : '#ff9c6e'};
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.warning};
     stroke-width: 3;
     stroke-linejoin: round;
   }
 
   .vessel-body {
-    fill: #172237;
+    fill: ${props => props.theme.colors.surfaceMuted};
     stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.accent};
     stroke-width: 2;
   }
 
   .column-body {
-    fill: #172237;
-    stroke: ${props => props.$isAlert ? props.theme.colors.danger : '#3e537a'};
+    fill: ${props => props.theme.colors.surfaceMuted};
+    stroke: ${props => props.$isAlert ? props.theme.colors.danger : props.theme.colors.borderStrong};
     stroke-width: 2;
   }
 
@@ -219,18 +215,18 @@ export const EquipmentGroup = styled.g<{ $isAlert: boolean }>`
   }
 
   .level-frame {
-    fill: #131924;
+    fill: ${props => props.theme.colors.surface};
     stroke: ${props => props.theme.colors.border};
   }
 
   .level-fill {
-    fill: rgba(0, 229, 255, 0.22);
+    fill: ${props => props.theme.colors.accent};
   }
 `;
 
 // Потоки трубопроводов
 export const PipeLine = styled.path<{ $isActive?: boolean }>`
-  stroke: ${props => (isActivePipe(props.$isActive) ? '#1a365d' : '#222c3e')};
+  stroke: ${props => (isActivePipe(props.$isActive) ? props.theme.colors.borderStrong : props.theme.colors.border)};
   stroke-width: 4;
   fill: none;
 `;
@@ -256,7 +252,7 @@ export const UtilityLine = styled.line`
 
 export const StaticValveGroup = styled.g`
   polygon {
-    fill: #131924;
+    fill: ${props => props.theme.colors.surface};
     stroke: ${props => props.theme.colors.text};
     stroke-width: 2;
   }
@@ -285,7 +281,7 @@ export const HeaderStatusContainer = styled.div`
 `;
 
 export const OnlineBadge = styled.span<{ $isOnline: boolean }>`
-  color: ${props => props.$isOnline ? '#00ff66' : '#7c8ba1'};
+  color: ${props => props.$isOnline ? props.theme.colors.success : props.theme.colors.offline};
   margin-left: 10px;
 `;
 
@@ -296,13 +292,13 @@ export const FlameWrapper = styled.g<{ $isActive: boolean }>`
 
 export const BlockFidelityBadge = styled.g<{ $level: 'aggregated' | 'detailed' }>`
   rect {
-    fill: ${props => props.$level === 'detailed' ? 'rgba(0, 229, 255, 0.12)' : 'rgba(255, 170, 0, 0.12)'};
-    stroke: ${props => props.$level === 'detailed' ? '#00e5ff' : '#ffaa00'};
+    fill: ${props => props.$level === 'detailed' ? props.theme.colors.accentMuted : props.theme.colors.warningMuted};
+    stroke: ${props => props.$level === 'detailed' ? props.theme.colors.accent : props.theme.colors.warning};
     stroke-width: 1;
     rx: 3;
   }
   text {
-    fill: ${props => props.$level === 'detailed' ? '#00e5ff' : '#ffaa00'};
+    fill: ${props => props.$level === 'detailed' ? props.theme.colors.accent : props.theme.colors.warning};
     font-size: 8px;
     font-weight: 700;
     text-anchor: middle;

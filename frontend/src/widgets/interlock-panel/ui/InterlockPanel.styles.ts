@@ -16,7 +16,7 @@ export const ContactBar = styled.div`
   padding: 8px 10px;
   border: 1px solid ${props => props.theme.colors.warning};
   border-radius: 6px;
-  background: rgba(255, 204, 0, 0.08);
+  background: ${props => props.theme.colors.warningMuted};
 `;
 
 export const ContactText = styled.div`
@@ -69,7 +69,7 @@ export const InterlockTable = styled(Table<InterlockRow>)`
   }
 
   && .ant-table-tbody > tr.primary-interlock > td {
-    background: rgba(0, 229, 255, 0.07);
+    background: ${props => props.theme.colors.accentMuted};
   }
 
   && .ant-table-tbody > tr:hover > td {

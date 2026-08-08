@@ -33,9 +33,9 @@ export const FilterWrapper = styled.div`
 `;
 
 export const FilterButton = styled.button<{ $active: boolean; $sevColor?: string }>`
-  background-color: ${props => props.$active ? 'rgba(0, 229, 255, 0.15)' : 'transparent'};
-  border: 1px solid ${props => props.$active ? '#00e5ff' : 'transparent'};
-  color: ${props => props.$active ? '#00e5ff' : props.$sevColor || props.theme.colors.textMuted};
+  background-color: ${props => props.$active ? props.theme.colors.primaryMuted : 'transparent'};
+  border: 1px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
+  color: ${props => props.$active ? props.theme.colors.primary : props.$sevColor || props.theme.colors.textMuted};
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 10px;
@@ -47,8 +47,8 @@ export const FilterButton = styled.button<{ $active: boolean; $sevColor?: string
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: rgba(0, 229, 255, 0.08);
-    border-color: rgba(0, 229, 255, 0.5);
+    background-color: ${props => props.theme.colors.primaryMuted};
+    border-color: ${props => props.theme.colors.primary};
   }
 `;
 
@@ -62,7 +62,7 @@ export const LogConsole = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background-color: #080b10;
+  background-color: ${props => props.theme.colors.canvas};
 
   @media (max-height: 950px) {
     padding: 6px 12px;
@@ -106,9 +106,9 @@ export const Message = styled.span`
 
 export const RepeatBadge = styled.span<{ $severity: string }>`
   background-color: ${props => {
-    if (props.$severity === 'CRITICAL') return 'rgba(255, 51, 51, 0.15)';
-    if (props.$severity === 'WARNING') return 'rgba(255, 204, 0, 0.15)';
-    return 'rgba(255, 255, 255, 0.1)';
+    if (props.$severity === 'CRITICAL') return props.theme.colors.dangerMuted;
+    if (props.$severity === 'WARNING') return props.theme.colors.warningMuted;
+    return props.theme.colors.surfaceLight;
   }};
 
   color: inherit;

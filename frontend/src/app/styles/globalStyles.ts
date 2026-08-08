@@ -2,73 +2,96 @@ import { createGlobalStyle } from 'styled-components';
 import type { ScadaThemeType } from './theme';
 
 export const GlobalStyle = createGlobalStyle<{ theme: ScadaThemeType }>`
-  /* Сброс стилей */
   *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
   }
 
+  html {
+    color-scheme: ${props => props.theme.mode};
+  }
+
   body {
-    background-color: ${props => props.theme.colors.background};
-    color: ${props => props.theme.colors.text};
-    font-family: ${props => props.theme.fonts.main};
-    overflow: hidden; /* Дашборд должен помещаться на одном экране без прокрутки тела страницы */
-    height: 100vh;
     width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    color: ${props => props.theme.colors.text};
+    background: ${props => props.theme.colors.background};
+    font-family: ${props => props.theme.fonts.main};
+    font-size: 14px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Стилизация скроллбара под SCADA-стиль */
+  ::selection {
+    color: ${props => props.theme.colors.text};
+    background: ${props => props.theme.colors.primaryMuted};
+  }
+
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: ${props => props.theme.colors.background};
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.colors.border};
-    border-radius: 3px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
     background: ${props => props.theme.colors.surfaceLight};
   }
 
-  /* Отключение дефолтных рамок кнопок и инпутов */
-  button, input, select {
-    font-family: inherit;
-    outline: none;
-    border: none;
-    background: none;
-    color: inherit;
+  ::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.colors.borderStrong};
+    border: 2px solid ${props => props.theme.colors.surfaceLight};
+    border-radius: 6px;
   }
 
-  /* Глобальное переопределение стилей модальных окон Ant Design (без !important) */
+  button, input, select {
+    color: inherit;
+    font-family: inherit;
+    outline: none;
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    box-shadow: 0 0 0 3px ${props => props.theme.colors.focusRing};
+  }
+
   div.ant-modal-content,
   div.ant-modal-confirm-body-wrapper {
-    background-color: #111620;
-    border: 1px solid #222c3e;
-    color: #e1e7f0;
-    padding: 24px;
-    border-radius: 8px;
+    color: ${props => props.theme.colors.text};
+    background: ${props => props.theme.colors.surface};
+    border: 1px solid ${props => props.theme.colors.border};
+    border-radius: 6px;
+    box-shadow: 0 16px 48px ${props => props.theme.colors.shadow};
   }
+
   div.ant-modal-header {
-    background-color: #111620;
-    border-bottom: 1px solid #222c3e;
-    padding-bottom: 8px;
     margin-bottom: 12px;
+    padding-bottom: 10px;
+    background: ${props => props.theme.colors.surface};
+    border-bottom: 1px solid ${props => props.theme.colors.border};
   }
+
   .ant-modal-title,
   div.ant-modal-confirm-title {
-    color: #e1e7f0;
-    background-color: transparent;
+    color: ${props => props.theme.colors.text};
+    background: transparent;
   }
+
   div.ant-modal-confirm-content {
-    color: #a0aec0;
+    color: ${props => props.theme.colors.textMuted};
+  }
+
+  .ant-card,
+  .ant-table-wrapper,
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-btn {
+    box-shadow: none;
+  }
+
+  .ant-switch {
+    box-shadow: inset 0 0 0 1px ${props => props.theme.colors.borderStrong};
   }
 `;

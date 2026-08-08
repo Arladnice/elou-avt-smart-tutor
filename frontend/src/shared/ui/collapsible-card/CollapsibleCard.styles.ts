@@ -2,12 +2,12 @@ import styled, { css } from 'styled-components';
 
 export const Container = styled.div<{ $isEmergency?: boolean }>`
   background-color: ${props => props.theme.colors.surface};
-  border: 1px solid ${props => props.$isEmergency ? 'rgba(255, 77, 79, 0.4)' : props.theme.colors.border};
-  border-radius: 6px;
+  border: 1px solid ${props => props.$isEmergency ? props.theme.colors.danger : props.theme.colors.border};
+  border-radius: 5px;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: ${props => props.$isEmergency ? '0 0 10px rgba(255, 77, 79, 0.1)' : 'none'};
-  transition: all 0.3s ease;
+  box-shadow: ${props => props.$isEmergency ? `inset 3px 0 0 ${props.theme.colors.danger}` : 'none'};
+  transition: ${props => props.theme.transitions.default};
 `;
 
 export const Header = styled.div<{ $collapsed: boolean }>`
@@ -22,7 +22,7 @@ export const Header = styled.div<{ $collapsed: boolean }>`
   transition: border-color 0.2s ease;
 
   &:hover {
-    background-color: rgba(0, 229, 255, 0.03);
+    background-color: ${props => props.theme.colors.surfaceLight};
   }
 
   @media (max-height: 950px) {
@@ -35,7 +35,7 @@ export const TitleWrapper = styled.div`
   color: ${props => props.theme.colors.textMuted};
   font-size: 13px;
   font-weight: 600;
-  text-transform: uppercase;
+  letter-spacing: 0.1px;
   display: flex;
   align-items: center;
   gap: 8px;
