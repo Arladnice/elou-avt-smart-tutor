@@ -1,0 +1,8 @@
+{
+  "model_version": "risk-lstm-2026-08-08-v2",
+  "forecast_horizon_sec": 15,
+  "files": {
+    "model.onnx": "a091790f145bfe872c9594d8baa6853602e11cb988ca57ff5251a147ba8de61f",
+    "model.onnx.data": "06915b89d705cdd7d170eb5fee3549d8418eb32e4d4f6cbf8262e3528db9d2b5"
+  }
+}

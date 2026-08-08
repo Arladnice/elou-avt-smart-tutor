@@ -19,7 +19,10 @@ from elou_tutor.ml.settings import (
 )
 from training.config import (
     RANDOM_SEED, LEARNING_RATE, EPOCHS, BATCH_SIZE,
-    TRAIN_SPLIT, VAL_SPLIT, DATASET_PATH, MODEL_PATH, TEST_DATA_PATH,
+    TRAIN_SPLIT, VAL_SPLIT, DATASET_PATH, MODEL_PATH, TEST_DATA_PATH, HAZARD_SAMPLE_WEIGHT,
+)
+from elou_tutor.domain.process_limits import (
+    COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_PRES_WARNING, FURNACE_TEMP_WARNING,
 )
 
 # Setup logging
@@ -77,6 +80,28 @@ def normalize(data):
 def denormalize_output(data_norm):
     """Денормализует выходные данные (3 параметра прогноза)."""
     return data_norm * (OUT_MAX - OUT_MIN) + OUT_MIN
+
+
+def weighted_mse(predictions, targets):
+    """Усиливает вклад опасных хвостов без изменения формата ONNX-выхода."""
+    targets_real = targets * torch.as_tensor(OUT_MAX - OUT_MIN, device=targets.device) + torch.as_tensor(
+        OUT_MIN, device=targets.device
+    )
+    hazardous = (
+        (targets_real[:, 0] >= FURNACE_TEMP_WARNING)
+        | (targets_real[:, 1] >= COLUMN_PRES_WARNING)
+        | (targets_real[:, 2] >= COLUMN_LEVEL_HIGH)
+        | (targets_real[:, 2] <= COLUMN_LEVEL_LOW)
+    )
+    weights = torch.where(hazardous, HAZARD_SAMPLE_WEIGHT, 1.0)
+    return torch.mean(torch.mean((predictions - targets) ** 2, dim=1) * weights)
+
+
+def _r2_score(predicted: np.ndarray, actual: np.ndarray) -> np.ndarray:
+    """Считает R² по трём прогнозируемым параметрам без внешней зависимости."""
+    residual = np.sum((predicted - actual) ** 2, axis=0)
+    total = np.sum((actual - actual.mean(axis=0)) ** 2, axis=0)
+    return 1.0 - residual / np.maximum(total, 1e-12)
 
 def build_windows_from_sessions(session_dict, session_ids):
     """Строит окна X и y строго в пределах каждой сессии (без утечки данных)."""
@@ -156,7 +181,6 @@ def train_lstm_model():
         dropout=DROPOUT
     )
     
-    criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     
@@ -173,7 +197,7 @@ def train_lstm_model():
             batch_x, batch_y = X_train[indices], y_train[indices]
             optimizer.zero_grad()
             preds = model(batch_x)
-            loss = criterion(preds, batch_y)
+            loss = weighted_mse(preds, batch_y)
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item() * batch_x.size(0)
@@ -184,16 +208,18 @@ def train_lstm_model():
         model.eval()
         with torch.no_grad():
             val_preds = model(X_val)
-            val_mse = criterion(val_preds, y_val).item()
+            val_mse = weighted_mse(val_preds, y_val).item()
             val_pred_real = denormalize_output(val_preds.numpy())
             val_true_real = denormalize_output(y_val.numpy())
             mae_temp  = np.mean(np.abs(val_pred_real[:, 0] - val_true_real[:, 0]))
             mae_pres  = np.mean(np.abs(val_pred_real[:, 1] - val_true_real[:, 1]))
             mae_level = np.mean(np.abs(val_pred_real[:, 2] - val_true_real[:, 2]))
+            r2_temp, r2_pres, r2_level = _r2_score(val_pred_real, val_true_real)
             
         logger.info(
-            "Эпоха %02d/%02d | Train MSE: %.6f | Val MSE: %.6f | MAE: Temp=%.2f°C, Pres=%.4fМПа, Level=%.2f%%",
-            epoch + 1, EPOCHS, train_mse, val_mse, mae_temp, mae_pres, mae_level
+            "Эпоха %02d/%02d | Train MSE: %.6f | Val MSE: %.6f | MAE: T=%.2f°C P=%.4fМПа L=%.2f%% | R²: T=%.3f P=%.3f L=%.3f",
+            epoch + 1, EPOCHS, train_mse, val_mse, mae_temp, mae_pres, mae_level,
+            r2_temp, r2_pres, r2_level,
         )
         
     torch.save(model.state_dict(), MODEL_PATH)

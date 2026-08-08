@@ -11,11 +11,12 @@ from elou_tutor.ml.settings import (
     RISK_WEIGHT_TEMP, RISK_WEIGHT_PRES, RISK_WEIGHT_LEVEL, RISK_PENALTY_NO_FEED,
 )
 from elou_tutor.domain.process_limits import (
-    FURNACE_TEMP_CRITICAL, FURNACE_TEMP_WARNING, COLUMN_PRES_WARNING, COLUMN_PRES_ESD,
+    FURNACE_TEMP_CRITICAL, FURNACE_TEMP_CRITICAL_LEVEL, FURNACE_TEMP_WARNING, COLUMN_PRES_WARNING, COLUMN_PRES_ESD,
     COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_LOW_INTERLOCK,
     COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
     STARTUP_HEATING_THRESHOLD_TEMP, STARTUP_FILLING_TIME_LIMIT_SEC, VALVE_ACTION_TIMEOUT_SEC,
 )
+from elou_tutor.ml.artifact_integrity import verify_model_artifacts
 
 # Пытаемся импортировать onnxruntime для легкого инференса
 try:
@@ -44,9 +45,12 @@ class RiskPredictor:
         self.ort_session = None
         self.use_onnx = False
         self.use_fallback = True
+        self.model_integrity_valid = False
+        self.model_version = "unverified"
 
         # Проверяем наличие ONNX (единственный поддерживаемый рантайм-инференс)
-        if HAS_ONNX and os.path.exists(ONNX_PATH):
+        self.model_integrity_valid, self.model_version = verify_model_artifacts()
+        if HAS_ONNX and os.path.exists(ONNX_PATH) and self.model_integrity_valid:
             try:
                 self.ort_session = ort.InferenceSession(ONNX_PATH, providers=['CPUExecutionProvider'])
                 self.use_onnx = True
@@ -55,8 +59,30 @@ class RiskPredictor:
             except Exception as e:
                 logger.warning("Ошибка загрузки ONNX модели: %s. Переход на fallback.", e)
 
+        if not self.model_integrity_valid:
+            logger.error("Проверка целостности ONNX не пройдена: %s", self.model_version)
+
         if self.use_fallback:
             logger.info("Нейросети недоступны. Исполняется резервный математический экстраполятор (polyfit).")
+
+    def predict_parameters(self, window_data):
+        """Возвращает чистый ONNX-прогноз T/P/L и признак использования модели.
+
+        Аргумент — окно телеметрии `(30, 7)` в физических единицах. Результат
+        содержит прогноз `[°C, МПа, %]`; fallback намеренно не смешивается с
+        этим методом, чтобы качество LSTM оценивалось отдельно.
+        """
+        window = np.array(window_data, dtype=np.float32)
+        if window.shape != (SEQUENCE_LENGTH, INPUT_DIM) or not self.use_onnx:
+            return None, False
+        try:
+            x_input = normalize(window).astype(np.float32)[np.newaxis, :, :]
+            pred_norm = self.ort_session.run(None, {"input": x_input})[0][0]
+            pred = denormalize_output(pred_norm)
+            return [float(pred[0]), float(pred[1]), float(pred[2])], True
+        except Exception as exc:
+            logger.error("Ошибка чистого ONNX-инференса: %s", exc)
+            return None, False
 
     def predict_risk(self, window_data, time_elapsed: int = 100, scenario_id: str = "shutdown"):
         """
@@ -96,26 +122,15 @@ class RiskPredictor:
         # -------------------------------------------------------------
         if not self.use_fallback:
             try:
-                # Нормализуем окно
-                window_norm = normalize(window)
-
-                # Инференс через ONNX Runtime
-                x_input = window_norm.astype(np.float32)[np.newaxis, :, :]
-                ort_outs = self.ort_session.run(None, {"input": x_input})
-                pred_norm = ort_outs[0][0]
-
-                # Денормируем предсказанные значения на t + 15 с (только 3 выходных)
-                pred = denormalize_output(pred_norm)
-                pred_temp_nn, pred_pres_nn, pred_level_nn = float(pred[0]), float(pred[1]), float(pred[2])
+                prediction, used_onnx = self.predict_parameters(window)
+                if not used_onnx or prediction is None:
+                    raise RuntimeError("ONNX-прогноз недоступен")
+                pred_temp_nn, pred_pres_nn, pred_level_nn = prediction
                 
-                # Объединяем предсказания ИИ и физико-математической экстраполяции:
-                # Берём наиболее консервативный (опасный) сценарий для раннего предупреждения
-                pred_temp = max(pred_temp_nn, pred_temp_math)
-                pred_pres = max(pred_pres_nn, pred_pres_math)
-                
-                dev_nn = abs(pred_level_nn - 50.0)
-                dev_math = abs(pred_level_math - 50.0)
-                pred_level = pred_level_nn if dev_nn > dev_math else pred_level_math
+                # При доступной ONNX используем именно её прогноз. Fallback не
+                # смешивается с моделью: иначе его ложные тренды ухудшают
+                # качество risk engine и делают метрики LSTM непроверяемыми.
+                pred_temp, pred_pres, pred_level = pred_temp_nn, pred_pres_nn, pred_level_nn
             except Exception as e:
                 # В случае сбоя при инференсе, задействуем резервный метод
                 logger.error("Ошибка инференса нейросети: %s. Переходим на fallback.", e)
@@ -128,17 +143,22 @@ class RiskPredictor:
 
         # Фактическая температура печи и уставка из последней точки окна
         actual_temp = float(window[-1, 4])
+        actual_pres = float(window[-1, 5])
+        actual_level = float(window[-1, 6])
         setpoint_temp = float(window[-1, 3])
         
-        # Защита от линейного "вылета" экстраполяции выше уставки при штатном разогреве:
-        # Если нет дефекта прогара, температура не может бесконечно расти выше уставки + 10°C.
-        if pred_temp > setpoint_temp + 10.0:
+        # Ограничение нужно только математическому fallback: линейная экстраполяция
+        # может «улететь» при штатном разогреве. Нельзя применять его к ONNX —
+        # иначе корректный прогноз перегрева скрывается текущей уставкой T_sp.
+        if self.use_fallback and pred_temp > setpoint_temp + 10.0:
             pred_temp = min(pred_temp, max(actual_temp, setpoint_temp + 10.0))
 
         # Физические пределы
         pred_temp = np.clip(pred_temp, 20.0, 500.0)
         pred_pres = np.clip(pred_pres, 0.02, 1.8)
         pred_level = np.clip(pred_level, 0.0, 100.0)
+        risk_pres = max(float(pred_pres), actual_pres)
+        risk_level = pred_level if abs(pred_level - 50.0) >= abs(actual_level - 50.0) else actual_level
 
         # Вычисляем риск аварии (%) по прогнозируемым параметрам
         risk = 0.0
@@ -149,25 +169,27 @@ class RiskPredictor:
         is_normal_heating = (actual_temp <= setpoint_temp + 5.0 and setpoint_temp <= FURNACE_TEMP_WARNING)
         
         # 1. По температуре печи (предупреждение: FURNACE_TEMP_WARNING=340°C, авария: FURNACE_TEMP_CRITICAL=365°C)
-        if pred_temp > FURNACE_TEMP_WARNING and not is_startup_heating and not is_normal_heating:
+        if pred_temp >= FURNACE_TEMP_CRITICAL_LEVEL:
+            risk = 100.0
+        elif pred_temp > FURNACE_TEMP_WARNING and not is_startup_heating and not is_normal_heating:
             risk += (pred_temp - FURNACE_TEMP_WARNING) / (FURNACE_TEMP_CRITICAL - FURNACE_TEMP_WARNING) * RISK_WEIGHT_TEMP
             
         # 2. По давлению в колонне (предупреждение: COLUMN_PRES_WARNING=0.40 МПа, ПАЗ: COLUMN_PRES_ESD=0.48 МПа)
-        if pred_pres > COLUMN_PRES_WARNING:
-            risk += (pred_pres - COLUMN_PRES_WARNING) / (COLUMN_PRES_ESD - COLUMN_PRES_WARNING) * RISK_WEIGHT_PRES
+        if risk_pres > COLUMN_PRES_WARNING:
+            risk += (risk_pres - COLUMN_PRES_WARNING) / (COLUMN_PRES_ESD - COLUMN_PRES_WARNING) * RISK_WEIGHT_PRES
             
         # 3. По уровню в колонне (пределы: < COLUMN_LEVEL_LOW=25% или > COLUMN_LEVEL_HIGH=85%)
         # При пуске (startup) на первых двух минутах колонна естественно пуста и заполняется сырьем
         is_startup_filling = (scenario_id == "startup" and time_elapsed <= STARTUP_FILLING_TIME_LIMIT_SEC)
         
-        if pred_level > COLUMN_LEVEL_HIGH:
-            risk += (pred_level - COLUMN_LEVEL_HIGH) / (COLUMN_LEVEL_HIGH_CRITICAL - COLUMN_LEVEL_HIGH) * RISK_WEIGHT_LEVEL
-        elif pred_level < COLUMN_LEVEL_LOW:
+        if risk_level > COLUMN_LEVEL_HIGH:
+            risk += (risk_level - COLUMN_LEVEL_HIGH) / (COLUMN_LEVEL_HIGH_CRITICAL - COLUMN_LEVEL_HIGH) * RISK_WEIGHT_LEVEL
+        elif risk_level < COLUMN_LEVEL_LOW:
             if not is_startup_filling:
-                if pred_level <= COLUMN_LEVEL_LOW_INTERLOCK:
-                    risk += 75.0 + (COLUMN_LEVEL_LOW_INTERLOCK - pred_level) / (COLUMN_LEVEL_LOW_INTERLOCK - COLUMN_LEVEL_LOW_CRITICAL) * 25.0
+                if risk_level <= COLUMN_LEVEL_LOW_INTERLOCK:
+                    risk += 75.0 + (COLUMN_LEVEL_LOW_INTERLOCK - risk_level) / (COLUMN_LEVEL_LOW_INTERLOCK - COLUMN_LEVEL_LOW_CRITICAL) * 25.0
                 else:
-                    risk += (COLUMN_LEVEL_LOW - pred_level) / (COLUMN_LEVEL_LOW - COLUMN_LEVEL_LOW_INTERLOCK) * 75.0
+                    risk += (COLUMN_LEVEL_LOW - risk_level) / (COLUMN_LEVEL_LOW - COLUMN_LEVEL_LOW_INTERLOCK) * 75.0
             elif time_elapsed > VALVE_ACTION_TIMEOUT_SEC and window[-1, 0] < 0.5:  # V-1 закрыт > 15с
                 risk += RISK_PENALTY_NO_FEED
             
@@ -175,9 +197,9 @@ class RiskPredictor:
         risk = np.clip(risk, 0.0, 100.0)
         
         # Если последнее фактическое состояние уже критическое, риск сразу 100%
-        last_temp = float(window[-1, 4])
-        last_pres = float(window[-1, 5])
-        last_level = float(window[-1, 6])
+        last_temp = actual_temp
+        last_pres = actual_pres
+        last_level = actual_level
         
         is_critical = (
             last_pres >= COLUMN_PRES_ESD or 

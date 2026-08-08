@@ -11,6 +11,7 @@ import numpy as np
 
 _ARTIFACTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "artifacts")
 ONNX_PATH = os.path.join(_ARTIFACTS_DIR, "model.onnx")
+MODEL_MANIFEST_PATH = os.path.join(_ARTIFACTS_DIR, "model.manifest.json")
 
 # Архитектура сети
 INPUT_DIM = 7        # [V_1, V_2, V_3, T_1_Sp, T_1, P_1, L_1]

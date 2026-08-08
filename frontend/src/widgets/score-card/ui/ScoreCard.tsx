@@ -345,7 +345,7 @@ const ScoreCard: React.FC = () => {
               <td>${Math.floor(scoreCard.duration / 60)} мин ${scoreCard.duration % 60} сек</td>
             </tr>
             <tr>
-              <td class="label">Оценка соответствия эталону (DTW):</td>
+              <td class="label">Оценка соответствия эталону (LCS):</td>
               <td><strong>${scoreCard.score}%</strong> &nbsp;|&nbsp; Буквенная оценка: <span class="grade-box">${scoreCard.grade}</span></td>
             </tr>
             <tr>
@@ -417,7 +417,7 @@ const ScoreCard: React.FC = () => {
         {/* Статистика сессии */}
         <S.StatRow>
           <S.StatItem>
-            <span className="label">Соответствие эталону (DTW)</span>
+            <span className="label">Соответствие эталону (LCS)</span>
             <span className="val">{scoreCard.score}%</span>
           </S.StatItem>
           <S.StatItem>

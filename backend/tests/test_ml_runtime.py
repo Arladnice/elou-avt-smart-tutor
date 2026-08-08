@@ -79,6 +79,28 @@ def test_onnx_artifact_is_package_data():
     from elou_tutor.ml import settings
 
     assert os.path.isfile(settings.ONNX_PATH), "model.onnx должен лежать внутри пакета"
+    assert os.path.isfile(settings.MODEL_MANIFEST_PATH), "manifest ONNX должен лежать внутри пакета"
+
+
+def test_onnx_artifacts_pass_integrity_verification():
+    """Рантайм не должен использовать подменённый ONNX-граф или внешние веса."""
+    from elou_tutor.ml.artifact_integrity import verify_model_artifacts
+
+    valid, detail = verify_model_artifacts()
+    assert valid, detail
+
+
+def test_pure_onnx_prediction_is_available_separately_from_fallback():
+    """Оценка LSTM не должна скрывать её результат за hybrid fallback."""
+    from elou_tutor.ml.predictor import RiskPredictor
+
+    predictor = RiskPredictor()
+    window = np.tile(np.array([1.0, 0.0, 1.0, 280.0, 280.0, 0.25, 50.0]), (30, 1))
+    prediction, used_onnx = predictor.predict_parameters(window)
+
+    assert used_onnx
+    assert prediction is not None
+    assert len(prediction) == 3
 
 
 def test_tutor_returns_four_values():

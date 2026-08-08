@@ -1,0 +1,17 @@
+{
+  "dataset_version": "2026-08-08-v2",
+  "generator_version": "2.0",
+  "random_seed": 42,
+  "records": 100000,
+  "scenario_counts": {
+    "startup": 88,
+    "defect_jam": 104,
+    "defect_power": 78,
+    "defect_air": 90,
+    "defect_overheat": 90,
+    "defect_pump": 81,
+    "defect_steam": 93,
+    "normal": 72
+  },
+  "sha256": "b7c059f397d6e6ea1c002f80f8e951acb57b433f328e9c5b9e8adda809b46cdc"
+}

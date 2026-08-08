@@ -394,7 +394,7 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                   </Form.List>
                 </Card>
 
-                <Form.Item name="golden_sequence" label="Эталонная последовательность действия (Golden Sequence для DTW)">
+                <Form.Item name="golden_sequence" label="Эталонная последовательность действий (Golden Sequence для LCS)">
                   <Select
                     mode="tags"
                     placeholder="Выберите действия в порядке их выполнения..."

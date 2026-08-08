@@ -1,5 +1,7 @@
 import os
 import sys
+import hashlib
+import json
 import logging
 import numpy as np
 import torch
@@ -16,12 +18,39 @@ BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
-from elou_tutor.ml.settings import ONNX_PATH
-from training.config import MODEL_PATH
+from elou_tutor.ml.settings import ONNX_PATH, MODEL_MANIFEST_PATH
+from training.config import DATASET_VERSION, MODEL_PATH
 from training.train import RiskLSTM
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+
+
+def _sha256(path: str) -> str:
+    """Возвращает SHA-256 артефакта ONNX."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as artifact_file:
+        for chunk in iter(lambda: artifact_file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _write_model_manifest(onnx_path: str) -> None:
+    """Создаёт manifest с хэшами ONNX-графа и внешних весов."""
+    artifact_dir = os.path.dirname(onnx_path)
+    filenames = [os.path.basename(onnx_path)]
+    external_data = f"{os.path.basename(onnx_path)}.data"
+    if os.path.isfile(os.path.join(artifact_dir, external_data)):
+        filenames.append(external_data)
+    manifest = {
+        "model_version": f"risk-lstm-{DATASET_VERSION}",
+        "forecast_horizon_sec": 15,
+        "files": {filename: _sha256(os.path.join(artifact_dir, filename)) for filename in filenames},
+    }
+    with open(MODEL_MANIFEST_PATH, "w", encoding="utf-8") as manifest_file:
+        json.dump(manifest, manifest_file, ensure_ascii=False, indent=2)
+        manifest_file.write("\n")
+    logger.info("Manifest ONNX сохранён: %s", MODEL_MANIFEST_PATH)
 
 def export_to_onnx():
     # Load model
@@ -64,6 +93,7 @@ def export_to_onnx():
     
     assert result[0].shape == (1, 3), f"Unexpected output shape: {result[0].shape}"
     logger.info("ONNX smoke-test PASSED. Output shape: %s", result[0].shape)
+    _write_model_manifest(onnx_path)
     return True
 
 if __name__ == "__main__":

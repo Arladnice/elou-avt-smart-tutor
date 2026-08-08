@@ -1,205 +1,193 @@
-"""
-Скрипт честной оценки ML-модуля (ИИ-тьютор, Уровень 3).
+"""Воспроизводимая оценка LSTM и гибридного risk engine на test-сессиях."""
 
-Выполняет:
-1. Загрузку датасета и разделение на Train/Val/Test (по session_id).
-2. Оценку Базовой пороговой модели (Baseline).
-3. Оценку нейросетевой модели RiskLSTM (через ONNX / PyTorch).
-4. Расчёт классификационных метрик: Recall, Precision, F1-Score, Lead Time.
-5. Генерирует итоговый отчёт training/reports/evaluation_report.md.
-"""
-
+import csv
+import datetime as dt
+import hashlib
+import json
+import logging
 import os
 import sys
-import logging
+from dataclasses import dataclass
+
 import numpy as np
 
-# Каталог backend/ — родитель training/. Установленный пакет кладёт в sys.path
-# только backend/src, поэтому «training» приходится добавлять самим.
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
-from elou_tutor.ml.settings import SEQUENCE_LENGTH, FORECAST_HORIZON
-from training.config import (
-    DATASET_PATH, TRAIN_SPLIT, VAL_SPLIT, RISK_THRESHOLD,
-    REPORT_PATH,
-)
-from elou_tutor.domain.process_limits import (
-    FURNACE_TEMP_CRITICAL, COLUMN_PRES_CRITICAL, COLUMN_PRES_WARNING,
-    COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
-)
+from elou_tutor.domain.process_limits import FURNACE_TEMP_CRITICAL_LEVEL
 from elou_tutor.ml.predictor import RiskPredictor
+from elou_tutor.ml.settings import FORECAST_HORIZON, OUT_MAX, OUT_MIN, SEQUENCE_LENGTH
+from training.config import DATASET_PATH, REPORT_PATH, RISK_THRESHOLD, TRAIN_SPLIT, VAL_SPLIT
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("evaluate")
+FEATURE_COLUMNS = ("valve_V1", "valve_V2", "valve_V3", "furnaceTempSp", "furnaceTemp", "columnPres", "columnLevel")
+TARGET_COLUMNS = ("furnaceTemp", "columnPres", "columnLevel")
 
 
-def load_test_dataset():
-    """Загружает тестовую выборку (последние 15% сессий) без утечки данных."""
-    if not os.path.exists(DATASET_PATH):
-        logger.error("Датасет %s не найден!", DATASET_PATH)
-        return None, None
+@dataclass
+class TestSet:
+    """Окна отложенных сессий и их будущие состояния на горизонте прогноза."""
 
-    FEATURE_INDICES = [2, 3, 4, 5, 6, 7, 8]
-    session_dict = {}
+    windows: np.ndarray
+    targets: np.ndarray
+    labels: np.ndarray
+    session_ids: list[int]
+    scenarios: list[str]
+    time_elapsed: list[int]
 
-    with open(DATASET_PATH, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-        for line in lines[1:]:
-            parts = line.strip().split(",")
-            sid = int(parts[0])
-            row = [float(parts[idx]) for idx in FEATURE_INDICES]
-            if sid not in session_dict:
-                session_dict[sid] = []
-            session_dict[sid].append(row)
 
-    session_ids = sorted(list(session_dict.keys()))
-    val_end = int(len(session_ids) * (TRAIN_SPLIT + VAL_SPLIT))
-    test_session_ids = session_ids[val_end:]
+def _sha256(path: str) -> str:
+    """Возвращает SHA-256 файла для отчёта о воспроизводимости."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as data_file:
+        for chunk in iter(lambda: data_file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
-    logger.info("Отделено %d тестовых сессий из %d суммарно.", len(test_session_ids), len(session_ids))
 
-    X_test, y_risk_true = [], []
+def _is_predictive_risk_event(row: np.ndarray) -> bool:
+    """Проверяет вход в предаварийную зону на горизонте прогноза.
 
-    for sid in test_session_ids:
-        raw_rows = np.array(session_dict[sid], dtype=np.float32)
-        if len(raw_rows) < SEQUENCE_LENGTH + FORECAST_HORIZON:
+    Это учебный сигнал для действия оператора до срабатывания ПАЗ, а не
+    подмена факта аварии. Жёсткие пределы ПАЗ остаются в симуляторе.
+    """
+    # Для первого ML-контура фиксируем одну проверяемую бизнес-задачу —
+    # раннее обнаружение предаварийного перегрева печи П-1. Давление и уровни
+    # остаются под детерминированной ПАЗ до появления размеченных событий.
+    return bool(row[4] >= FURNACE_TEMP_CRITICAL_LEVEL)
+
+
+def load_test_dataset() -> TestSet:
+    """Разделяет датасет по session_id и строит test-окна без утечки соседних окон."""
+    sessions: dict[int, list[dict[str, str]]] = {}
+    with open(DATASET_PATH, encoding="utf-8", newline="") as dataset_file:
+        for row in csv.DictReader(dataset_file):
+            sessions.setdefault(int(row["session_id"]), []).append(row)
+
+    session_ids = sorted(sessions)
+    test_start = int(len(session_ids) * (TRAIN_SPLIT + VAL_SPLIT))
+    test_ids = session_ids[test_start:]
+    windows, targets, labels, window_sessions, scenarios, times = [], [], [], [], [], []
+    for session_id in test_ids:
+        rows = sessions[session_id]
+        raw = np.array([[float(row[column]) for column in FEATURE_COLUMNS] for row in rows], dtype=np.float32)
+        if len(raw) < SEQUENCE_LENGTH + FORECAST_HORIZON:
             continue
+        for start in range(len(raw) - SEQUENCE_LENGTH - FORECAST_HORIZON + 1):
+            future_index = start + SEQUENCE_LENGTH + FORECAST_HORIZON - 1
+            future = raw[future_index]
+            windows.append(raw[start : start + SEQUENCE_LENGTH])
+            targets.append(future[4:])
+            labels.append(float(_is_predictive_risk_event(future)))
+            window_sessions.append(session_id)
+            scenarios.append(rows[start].get("scenario_type", "legacy_unknown"))
+            times.append(int(float(rows[start + SEQUENCE_LENGTH - 1]["time_elapsed"])))
 
-        for i in range(len(raw_rows) - SEQUENCE_LENGTH - FORECAST_HORIZON + 1):
-            window = raw_rows[i : i + SEQUENCE_LENGTH]
-            future_target = raw_rows[i + SEQUENCE_LENGTH + FORECAST_HORIZON - 1]
-            
-            # Целевой признак риска в будущем (t + 15с)
-            future_temp = future_target[4]   # furnaceTemp
-            future_pres = future_target[5]   # columnPres
-            future_level = future_target[6]  # columnLevel
-
-            is_accident = (
-                future_temp >= FURNACE_TEMP_CRITICAL or
-                future_pres >= COLUMN_PRES_CRITICAL or
-                future_level >= COLUMN_LEVEL_HIGH_CRITICAL or
-                future_level <= COLUMN_LEVEL_LOW_CRITICAL
-            )
-            
-            X_test.append(window)
-            y_risk_true.append(1.0 if is_accident else 0.0)
-
-    return np.array(X_test, dtype=np.float32), np.array(y_risk_true, dtype=np.float32)
+    logger.info("Test split: %d сессий из %d, %d окон", len(test_ids), len(session_ids), len(windows))
+    return TestSet(
+        windows=np.asarray(windows, dtype=np.float32),
+        targets=np.asarray(targets, dtype=np.float32),
+        labels=np.asarray(labels, dtype=np.int8),
+        session_ids=window_sessions,
+        scenarios=scenarios,
+        time_elapsed=times,
+    )
 
 
-def baseline_predict_risk(window):
-    """Пороговая базовая модель (Baseline): проверяет текущее выхождение за пределы усыпляющих норм."""
-    last_row = window[-1]
-    temp = last_row[4]
-    pres = last_row[5]
-    level = last_row[6]
+def _binary_metrics(actual: np.ndarray, predicted: np.ndarray) -> dict[str, float | int]:
+    """Возвращает матрицу ошибок и основные метрики бинарной классификации."""
+    tp = int(np.sum((actual == 1) & (predicted == 1)))
+    fp = int(np.sum((actual == 0) & (predicted == 1)))
+    fn = int(np.sum((actual == 1) & (predicted == 0)))
+    tn = int(np.sum((actual == 0) & (predicted == 0)))
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + fn) if tp + fn else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    return {"tp": tp, "fp": fp, "fn": fn, "tn": tn, "precision": precision, "recall": recall, "f1": f1}
 
-    if temp >= 350.0 or pres >= COLUMN_PRES_WARNING or level >= 90.0 or level <= 10.0:
-        return 100.0
-    return 0.0
+
+def _regression_metrics(actual: np.ndarray, predicted: np.ndarray) -> dict[str, list[float]]:
+    """Считает MAE, RMSE и R² по температуре, давлению и уровню."""
+    error = predicted - actual
+    mae = np.mean(np.abs(error), axis=0)
+    rmse = np.sqrt(np.mean(error**2, axis=0))
+    residual = np.sum(error**2, axis=0)
+    total = np.sum((actual - actual.mean(axis=0)) ** 2, axis=0)
+    r2 = 1 - residual / np.maximum(total, 1e-12)
+    return {"mae": mae.tolist(), "rmse": rmse.tolist(), "r2": r2.tolist()}
 
 
-def evaluate_models():
-    """Сравнивает Baseline и RiskLSTM на тестовой выборке."""
-    X_test, y_true = load_test_dataset()
-    if X_test is None or len(X_test) == 0:
-        logger.error("Нет данных для тестирования.")
-        return
+def _event_lead_time(session_ids: list[int], actual: np.ndarray, predicted: np.ndarray) -> dict[str, float | int | None]:
+    """Считает lead time только по событиям, где alert предшествовал аварии."""
+    leads: list[int] = []
+    for session_id in sorted(set(session_ids)):
+        indices = [index for index, value in enumerate(session_ids) if value == session_id]
+        actual_indices = [index for index in indices if actual[index] == 1]
+        alert_indices = [index for index in indices if predicted[index] == 1]
+        if actual_indices and alert_indices and alert_indices[0] <= actual_indices[0]:
+            # Alert строится на t + FORECAST_HORIZON, поэтому к разнице между
+            # индексами окон добавляется сам горизонт прогноза.
+            leads.append(actual_indices[0] - alert_indices[0] + FORECAST_HORIZON)
+    if not leads:
+        return {"events_with_lead": 0, "median_sec": None, "p10_sec": None}
+    return {"events_with_lead": len(leads), "median_sec": float(np.median(leads)), "p10_sec": float(np.percentile(leads, 10))}
+
+
+def _format_regression(name: str, metrics: dict[str, list[float]]) -> str:
+    """Готовит строку таблицы регрессионных метрик для markdown-отчёта."""
+    mae, rmse, r2 = metrics["mae"], metrics["rmse"], metrics["r2"]
+    return f"| {name} | {mae[0]:.2f} | {mae[1]:.4f} | {mae[2]:.2f} | {rmse[0]:.2f} / {rmse[1]:.4f} / {rmse[2]:.2f} | {r2[0]:.3f} / {r2[1]:.3f} / {r2[2]:.3f} |"
+
+
+def evaluate_models() -> dict[str, object]:
+    """Оценивает чистую ONNX-регрессию и гибридный risk engine раздельно."""
+    test_set = load_test_dataset()
+    if not len(test_set.windows):
+        raise RuntimeError("Не найдено окон для тестовой оценки")
 
     predictor = RiskPredictor()
+    if not predictor.use_onnx:
+        raise RuntimeError(f"ONNX недоступен: {predictor.model_version}")
 
-    baseline_preds = []
-    lstm_preds = []
+    onnx_predictions, overheat_risks = [], []
+    for window in test_set.windows:
+        prediction, used_onnx = predictor.predict_parameters(window)
+        if not used_onnx or prediction is None:
+            raise RuntimeError("ONNX не вернул прогноз для test-окна")
+        onnx_predictions.append(prediction)
+        # Метрика относится только к размеченной задаче: будущему перегреву П-1.
+        # Давление и уровень в runtime дополнительно защищает детерминированная ПАЗ.
+        overheat_risks.append(100.0 if prediction[0] >= FURNACE_TEMP_CRITICAL_LEVEL else 0.0)
 
-    logger.info("Запуск инференса на %d тестовых окнах...", len(X_test))
+    onnx_predictions = np.asarray(onnx_predictions, dtype=np.float32)
+    persistence = test_set.windows[:, -1, 4:]
+    onnx_regression = _regression_metrics(test_set.targets, onnx_predictions)
+    persistence_regression = _regression_metrics(test_set.targets, persistence)
+    overheat_binary = np.asarray(overheat_risks) >= RISK_THRESHOLD
+    overheat_metrics = _binary_metrics(test_set.labels, overheat_binary.astype(np.int8))
+    # Псевдоним сохраняет компактный шаблон markdown-отчёта ниже.
+    hybrid_metrics = overheat_metrics
+    lead = _event_lead_time(test_set.session_ids, test_set.labels, overheat_binary.astype(np.int8))
+    dataset_metadata_path = f"{DATASET_PATH}.metadata.json"
+    metadata = {}
+    if os.path.isfile(dataset_metadata_path):
+        with open(dataset_metadata_path, encoding="utf-8") as metadata_file:
+            metadata = json.load(metadata_file)
 
-    for window in X_test:
-        # Baseline
-        base_risk = baseline_predict_risk(window)
-        baseline_preds.append(1.0 if base_risk >= RISK_THRESHOLD else 0.0)
-
-        # LSTM (ONNX / Fallback)
-        _, lstm_risk = predictor.predict_risk(window)
-        lstm_preds.append(1.0 if lstm_risk >= RISK_THRESHOLD else 0.0)
-
-    baseline_preds = np.array(baseline_preds)
-    lstm_preds = np.array(lstm_preds)
-
-    def calc_metrics(y_real, y_pred):
-        tp = np.sum((y_real == 1) & (y_pred == 1))
-        fp = np.sum((y_real == 0) & (y_pred == 1))
-        fn = np.sum((y_real == 1) & (y_pred == 0))
-        tn = np.sum((y_real == 0) & (y_pred == 0))
-
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
-        accuracy = (tp + tn) / len(y_real) if len(y_real) > 0 else 0.0
-
-        return {
-            "TP": int(tp), "FP": int(fp), "FN": int(fn), "TN": int(tn),
-            "precision": float(precision),
-            "recall": float(recall),
-            "f1": float(f1),
-            "accuracy": float(accuracy)
-        }
-
-    base_metrics = calc_metrics(y_true, baseline_preds)
-    lstm_metrics = calc_metrics(y_true, lstm_preds)
-
-    report_content = f"""# 📈 Отчёт о честной оценке ML-модели (Evaluation Report)
-
-**Дата проведения:** 2026-07-26
-**Размер тестовой выборки:** {len(y_true)} окон (по 30с) из изолированных тестовых сессий (Test Split: 15%).
-
----
-
-## 📊 Сравнение метрик: Baseline (Пороговые правила) vs. RiskLSTM
-
-| Метрика | Baseline (Правила) | RiskLSTM (Нейросеть ONNX) | Выигрыш / Комментарий |
-|---|---|---|---|
-| **Recall (Полнота)** | {base_metrics['recall']:.4f} ({base_metrics['recall']*100:.1f}%) | {lstm_metrics['recall']:.4f} ({lstm_metrics['recall']*100:.1f}%) | +{(lstm_metrics['recall'] - base_metrics['recall'])*100:.1f}% (Обнаружение аварий до их наступления) |
-| **Precision (Точность)** | {base_metrics['precision']:.4f} ({base_metrics['precision']*100:.1f}%) | {lstm_metrics['precision']:.4f} ({lstm_metrics['precision']*100:.1f}%) | Снижение ложных срабатываний |
-| **F1-Score** | {base_metrics['f1']:.4f} | {lstm_metrics['f1']:.4f} | Итоговый баланс качества |
-| **Accuracy** | {base_metrics['accuracy']:.4f} ({base_metrics['accuracy']*100:.1f}%) | {lstm_metrics['accuracy']:.4f} ({lstm_metrics['accuracy']*100:.1f}%) | Общая точность на балансе |
-| **Lead Time (Время предупреждения)** | 0 сек (по факту) | **15 сек** (упреждающий прогноз) | **Главное преимущество LSTM** |
-
----
-
-## 🔍 Детализация матрицы ошибок (Confusion Matrix)
-
-### Baseline Model:
-- **True Positives (TP):** {base_metrics['TP']}
-- **False Positives (FP):** {base_metrics['FP']}
-- **False Negatives (FN):** {base_metrics['FN']}
-- **True Negatives (TN):** {base_metrics['TN']}
-
-### RiskLSTM Model:
-- **True Positives (TP):** {lstm_metrics['TP']}
-- **False Positives (FP):** {lstm_metrics['FP']}
-- **False Negatives (FN):** {lstm_metrics['FN']}
-- **True Negatives (TN):** {lstm_metrics['TN']}
-
----
-
-## 💡 Выводы для защиты проекта (К5: Использование ИИ)
-1. **Преимущество упреждения:** Пороговые правила (Baseline) способны обнаружить аварию **только в момент превышения** норматива (Lead Time = 0с). Модель **RiskLSTM** благодаря временным окнам даёт **упреждение в 15 секунд**, предоставляя оператору время на реакцию.
-2. **Отсутствие Data Leakage:** Выборки разбиты строго по `session_id`, исключая попадание соседних окон одной сессии в обучении и тесте.
-"""
-
-    report_path = REPORT_PATH
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(report_content)
-
-    logger.info("Отчёт успешно сохранён в %s", report_path)
-    print("\n" + "="*50)
-    print("ML Evaluation Completed!")
-    print(f"Baseline F1: {base_metrics['f1']:.4f} | RiskLSTM F1: {lstm_metrics['f1']:.4f}")
-    print(f"Report written to {report_path}")
-    print("="*50 + "\n")
+    report = f"""# Оценка ML-модуля\n\n**Дата запуска:** {dt.date.today().isoformat()}  \n**Датасет SHA-256:** `{_sha256(DATASET_PATH)}`  \n**Число test-окон:** {len(test_set.labels)}; положительных окон предаварийного перегрева П-1: {int(test_set.labels.sum())}.\n\n## Прогноз параметров: чистая ONNX LSTM\n\n| Модель | MAE T, °C | MAE P, МПа | MAE L, п.п. | RMSE T / P / L | R² T / P / L |\n|---|---:|---:|---:|---:|---:|\n{_format_regression('ONNX LSTM', onnx_regression)}\n{_format_regression('Persistence (последнее значение)', persistence_regression)}\n\nLSTM оценивается отдельно от fallback и технологических правил. Это прогноз T/P/L на {FORECAST_HORIZON} секунд, а не вероятность аварии.\n\n## Гибридный risk engine\n\n| TP | FP | FN | TN | Precision | Recall | F1 |\n|---:|---:|---:|---:|---:|---:|---:|\n| {hybrid_metrics['tp']} | {hybrid_metrics['fp']} | {hybrid_metrics['fn']} | {hybrid_metrics['tn']} | {hybrid_metrics['precision']:.3f} | {hybrid_metrics['recall']:.3f} | {hybrid_metrics['f1']:.3f} |\n\nLead time считается по первому alert до первого окна предаварийного перегрева П-1, а не подменяется горизонтом модели. Событий с измеренным упреждением: {lead['events_with_lead']}; median: {lead['median_sec']}; p10: {lead['p10_sec']}.\n\n## Ограничения\n\n- Данные синтетические; переносимость на реальную установку не доказана.\n- Метрики risk engine относятся к раннему обнаружению перегрева П-1; давление и уровни пока контролируются детерминированной ПАЗ.\n- Для конкурсной защиты следует заявлять только значения из этого отчёта и не подменять горизонт прогноза измеренным lead time.\n\n## Воспроизводимость\n\n```json\n{json.dumps(metadata, ensure_ascii=False, indent=2)}\n```\n"""
+    report = report.replace("## Гибридный risk engine", "## ML-сигнал раннего перегрева П-1")
+    report = report.replace(
+        "Метрики risk engine относятся к раннему обнаружению перегрева П-1; давление и уровни пока контролируются детерминированной ПАЗ.",
+        "Метрики ML-сигнала относятся к раннему обнаружению перегрева П-1; давление и уровни в runtime контролируются детерминированной ПАЗ.",
+    )
+    report = report.replace("  \n", "\n")
+    with open(REPORT_PATH, "w", encoding="utf-8") as report_file:
+        report_file.write(report)
+    logger.info("Отчёт сохранён: %s", REPORT_PATH)
+    return {"onnx_regression": onnx_regression, "risk": overheat_metrics, "lead": lead}
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     evaluate_models()

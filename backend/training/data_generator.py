@@ -1,6 +1,9 @@
 import sys
 import os
 import csv
+import hashlib
+import json
+import logging
 import random
 
 # Каталог backend/ — родитель training/. Установленный пакет кладёт в sys.path
@@ -10,15 +13,45 @@ if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
 from elou_tutor.simulation.model import ELOUAVTSimulator
-from training.config import DATASET_PATH
+from training.config import DATASET_PATH, DATASET_VERSION, GENERATOR_VERSION, RANDOM_SEED
 
-def generate_telemetry_data(output_path, num_samples=100000):
+logger = logging.getLogger(__name__)
+
+
+def _dataset_sha256(path: str) -> str:
+    """Возвращает SHA-256 файла датасета для model/data card."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as data_file:
+        for chunk in iter(lambda: data_file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _write_metadata(output_path: str, seed: int, records: int, scenario_counts: dict[str, int]) -> None:
+    """Сохраняет версию, seed и распределение сценариев рядом с CSV."""
+    metadata_path = f"{output_path}.metadata.json"
+    payload = {
+        "dataset_version": DATASET_VERSION,
+        "generator_version": GENERATOR_VERSION,
+        "random_seed": seed,
+        "records": records,
+        "scenario_counts": scenario_counts,
+        "sha256": _dataset_sha256(output_path),
+    }
+    with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+        json.dump(payload, metadata_file, ensure_ascii=False, indent=2)
+        metadata_file.write("\n")
+    logger.info("Метаданные датасета сохранены: %s", metadata_path)
+
+
+def generate_telemetry_data(output_path: str, num_samples: int = 100000, seed: int = RANDOM_SEED) -> None:
     """
     Генерирует синтетический датасет телеметрии на основе физической модели.
     Имитирует нормальную работу, пусконаладочные режимы, инжекцию неисправностей
     и различные действия оператора (адекватные и ошибочные).
     """
-    print(f"Начало генерации данных. Целевой размер: {num_samples} строк...")
+    random.seed(seed)
+    logger.info("Генерация синтетического датасета: %d строк, seed=%d", num_samples, seed)
     sim = ELOUAVTSimulator()
     
     headers = [
@@ -26,12 +59,13 @@ def generate_telemetry_data(output_path, num_samples=100000):
         "furnaceTempSp", "furnaceTemp", "columnPres", "columnLevel",
         "defect_pump_fail", "defect_coil_overheat", "defect_valve_jam",
         "defect_power_fail", "defect_air_fail", "defect_steam_fail",
-        "accident_risk", "status"
+        "accident_risk", "status", "scenario_type", "dataset_version"
     ]
     
     records_generated = 0
     last_reported = 0
     session_id = 0
+    scenario_counts: dict[str, int] = {}
     
     with open(output_path, mode="w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -40,14 +74,15 @@ def generate_telemetry_data(output_path, num_samples=100000):
         while records_generated < num_samples:
             # Выводим прогресс каждые 10 000 строк
             if records_generated - last_reported >= 10000:
-                print(f"Сгенерировано: {records_generated} / {num_samples} строк ({records_generated/num_samples*100:.1f}%)")
+                logger.info("Сгенерировано: %d / %d строк (%.1f%%)", records_generated, num_samples, records_generated / num_samples * 100)
                 last_reported = records_generated
             session_id += 1
-            sim.reset()
             scenario_type = random.choice([
                 "normal", "startup", "defect_overheat", "defect_pump", "defect_jam",
                 "defect_power", "defect_air", "defect_steam"
             ])
+            scenario_counts[scenario_type] = scenario_counts.get(scenario_type, 0) + 1
+            sim.reset("startup" if scenario_type == "startup" else "shutdown")
             
             # Длина одной симуляционной сессии
             session_length = random.randint(100, 300)
@@ -190,7 +225,9 @@ def generate_telemetry_data(output_path, num_samples=100000):
                     1 if state["defects"]["air_fail"] else 0,
                     1 if state["defects"]["steam_fail"] else 0,
                     round(risk, 2),
-                    state["status"]
+                    state["status"],
+                    scenario_type,
+                    DATASET_VERSION,
                 ])
                 
                 records_generated += 1
@@ -200,7 +237,9 @@ def generate_telemetry_data(output_path, num_samples=100000):
                 if state["status"] in ["accident", "esd"]:
                     break # Конец сессии при аварии или ESD
                     
-    print(f"Генерация завершена! Создано {records_generated} строк в файле {output_path}")
+    _write_metadata(output_path, seed, records_generated, scenario_counts)
+    logger.info("Генерация завершена: %d строк в %s", records_generated, output_path)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     generate_telemetry_data(DATASET_PATH)

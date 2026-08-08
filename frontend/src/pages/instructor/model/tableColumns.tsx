@@ -4,7 +4,7 @@ import { formatDuration } from '@/shared/lib';
 import type { TrainingRecord } from '@/entities/training-record';
 import { StatusText, ScoreText, EllipsisCell, NowrapSpan } from '../ui/InstructorPage.styles';
 
-/** Буквенная оценка и её цвет по баллу DTW; авария — сразу F */
+/** Буквенная оценка и её цвет по баллу LCS; авария — сразу F */
 export const getScoreDetails = (score: number, status: string) => {
   if (status === 'accident') {
     return { color: '#b42318', grade: 'F' };
@@ -58,7 +58,7 @@ export const getTableColumns = (): ColumnsType<TrainingRecord> => [
     render: (v: number) => <NowrapSpan>{formatDuration(v)}</NowrapSpan>
   },
   {
-    title: 'Оценка (DTW)',
+    title: 'Оценка (LCS)',
     dataIndex: 'score',
     key: 'score',
     render: (v: number, record: TrainingRecord) => {
