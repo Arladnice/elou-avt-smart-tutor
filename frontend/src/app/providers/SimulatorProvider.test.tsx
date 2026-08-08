@@ -10,6 +10,8 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { useContext } from 'react';
 import { SimulatorActionsContext, type SimulatorActions } from '@/entities/simulator';
+import { TelemetryContext, type TelemetryState } from '@/entities/telemetry';
+import { SessionContext, type SessionState } from '@/entities/session';
 import { SimulatorProvider } from './SimulatorProvider';
 
 /** Учёт созданных сокетов и отправленных в них команд. */
@@ -57,9 +59,13 @@ class FakeWebSocket {
 }
 
 let actions: SimulatorActions;
+let telemetry: TelemetryState;
+let session: SessionState;
 
 const CaptureActions = () => {
   actions = useContext(SimulatorActionsContext)!;
+  telemetry = useContext(TelemetryContext)!;
+  session = useContext(SessionContext)!;
   return null;
 };
 
@@ -164,4 +170,85 @@ test('смена сессии по-прежнему переподключает
   // Сессия — это другой поток телеметрии на сервере, здесь переподключение обязано остаться
   await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(2));
   expect(FakeWebSocket.instances[1].url).toContain('session_id=session-42');
+});
+
+// ---------------------------------------------------------------
+// Протокол рассылки: отсутствие ключа означает «не изменилось»
+// ---------------------------------------------------------------
+
+/** Минимальный пакет телеметрии без журнала и карточки оценки. */
+const telemetryPacket = (overrides: Record<string, unknown> = {}) => ({
+  status: 'running',
+  timeElapsed: 10,
+  valves: { V_1: true, V_2: false, V_3: true, V_VT: true },
+  sensors: { T_1: 280, P_1: 0.25, L_1: 50, L_2: 50, P_vac: 0.04, T_2: 350 },
+  setpoints: { T_1_Sp: 280 },
+  defects: {},
+  accidentReason: '',
+  riskLevel: 5,
+  predictions: [280, 0.25, 50],
+  ...overrides,
+});
+
+const deliver = async (payload: Record<string, unknown>) => {
+  await act(async () => {
+    FakeWebSocket.instances[0].onmessage?.({ data: JSON.stringify(payload) });
+  });
+};
+
+const connected = async () => {
+  renderProvider();
+  await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+};
+
+test('журнал из пакета попадает в контекст телеметрии', async () => {
+  await connected();
+
+  await deliver(telemetryPacket({
+    logs: [{ id: '1', time: '00:05', type: 'warning', message: 'Давление растёт' }],
+  }));
+
+  expect(telemetry.logs).toHaveLength(1);
+  expect(telemetry.logs[0].message).toBe('Давление растёт');
+});
+
+test('пакет без журнала сохраняет уже показанный журнал', async () => {
+  await connected();
+  await deliver(telemetryPacket({
+    logs: [{ id: '1', time: '00:05', type: 'warning', message: 'Давление растёт' }],
+  }));
+
+  // Такт покоя: сервер не повторяет неизменившийся журнал
+  await deliver(telemetryPacket({ timeElapsed: 11 }));
+
+  expect(telemetry.logs).toHaveLength(1);
+  expect(telemetry.logs[0].message).toBe('Давление растёт');
+});
+
+test('пакет без карточки оценки не стирает показанную карточку', async () => {
+  await connected();
+  await deliver(telemetryPacket({
+    status: 'success',
+    scoreCard: { score: 90, grade: 'A', duration: 120, errors: [], recommendations: [] },
+  }));
+  expect(session.scoreCard?.score).toBe(90);
+
+  await deliver(telemetryPacket({ status: 'success', timeElapsed: 11 }));
+
+  expect(session.scoreCard?.score).toBe(90);
+});
+
+test('сброс сессии приходит новым журналом и очищает старый', async () => {
+  await connected();
+  await deliver(telemetryPacket({
+    logs: [{ id: '1', time: '00:05', type: 'warning', message: 'Давление растёт' }],
+  }));
+
+  await deliver(telemetryPacket({
+    timeElapsed: 0,
+    logs: [{ id: '9', time: '00:00', type: 'info', message: 'Система перезапущена' }],
+  }));
+
+  expect(telemetry.logs).toHaveLength(1);
+  expect(telemetry.logs[0].message).toBe('Система перезапущена');
 });

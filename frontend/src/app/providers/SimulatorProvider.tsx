@@ -440,13 +440,16 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setDefects(data.defects);
         setRiskLevel(data.riskLevel);
         setPredictions(data.predictions);
-        setLogs(data.logs);
         setAccidentReason(data.accidentReason);
-        // Карточка оценки приходит в каждом пакете после завершения сессии и не
-        // меняется — обновляем только при реальном изменении содержимого
-        setScoreCard(prev =>
-          JSON.stringify(prev) === JSON.stringify(data.scoreCard ?? null) ? prev : data.scoreCard,
-        );
+        // Журнал и карточка оценки меняются редко, поэтому сервер шлёт их
+        // только при изменении: отсутствие ключа означает «оставь как есть».
+        // Полный снимок приходит при подключении и после сброса сессии.
+        if (data.logs !== undefined) setLogs(data.logs);
+        if ('scoreCard' in data) {
+          setScoreCard(prev =>
+            JSON.stringify(prev) === JSON.stringify(data.scoreCard ?? null) ? prev : data.scoreCard,
+          );
+        }
         if (data.speedMultiplier !== undefined) setSpeedMultiplier(data.speedMultiplier);
         if (data.isPaused !== undefined) setIsPaused(data.isPaused);
         if (data.hasSnapshot !== undefined) setHasSnapshot(data.hasSnapshot);

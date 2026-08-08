@@ -1,3 +1,12 @@
+import {
+  K2_LEVEL_HIGH,
+  K2_LEVEL_LOW,
+  K2_LEVEL_LOW_INTERLOCK,
+  K2_PRESSURE_NORMAL,
+  K2_PRESSURE_WARNING,
+  K2_TEMP_WARNING,
+  LEVEL_HIGH,
+} from '@/shared/config';
 import type { Defects, Sensors, Setpoints, Valves } from './types';
 
 /**
@@ -43,7 +52,11 @@ export const stepMockPhysics = (
   const desaltFailed = defects.elou_desalt_fail || !valves.V_ELOU;
   const vacuumLost = defects.vt_vacuum_loss || !valves.V_VT;
   const k2Inflow = valves.V_3 ? 0.25 : 0;
-  const k2Outflow = defects.power_fail || defects.k2_pump_fail || nextK2Level <= 12 ? 0 : 0.25;
+  // Насосы Н-4/Н-32 блокируются на том же уровне, что и на сервере, — порог
+  // берём из общего конфига, иначе демо-режим разъезжается с реальными ПАЗ
+  const pumpsBlocked =
+    defects.power_fail || defects.k2_pump_fail || nextK2Level <= K2_LEVEL_LOW_INTERLOCK;
+  const k2Outflow = pumpsBlocked ? 0 : 0.25;
   nextK2Level = Math.max(0, Math.min(100, nextK2Level + k2Inflow - k2Outflow));
 
   return {
@@ -52,7 +65,9 @@ export const stepMockPhysics = (
     L_1: Math.round(nextLevel * 100) / 100,
     Sal_1: desaltFailed ? 42.0 : 4.2,
     W_1: desaltFailed ? 3.2 : 0.15,
-    P_vac: vacuumLost ? 0.09 : 0.04,
+    // При срыве вакуума давление обязано уйти за порог сигнализации, иначе
+    // демо-режим не покажет ни тревоги, ни роста риска
+    P_vac: vacuumLost ? K2_PRESSURE_WARNING + 0.01 : K2_PRESSURE_NORMAL,
     T_2: defects.power_fail ? Math.max(150, prev.T_2 - 0.12) : vacuumLost ? Math.min(420, prev.T_2 + 0.02) : 350.0,
     L_2: Math.round(nextK2Level * 100) / 100,
   };
@@ -63,8 +78,15 @@ export const evaluateMockRisk = (sensors: Sensors): number => {
   let risk = 5;
   if (sensors.T_1 > 310) risk += 30;
   if (sensors.P_1 > 0.4) risk += 40;
-  if (sensors.L_1 > 85 || sensors.L_1 < 15) risk += 25;
-  if (sensors.L_2 > 85 || sensors.L_2 < 18 || sensors.P_vac > 0.07 || sensors.T_2 > 360) risk += 25;
+  if (sensors.L_1 > LEVEL_HIGH || sensors.L_1 < 15) risk += 25;
+  if (
+    sensors.L_2 > K2_LEVEL_HIGH ||
+    sensors.L_2 < K2_LEVEL_LOW ||
+    sensors.P_vac > K2_PRESSURE_WARNING ||
+    sensors.T_2 > K2_TEMP_WARNING
+  ) {
+    risk += 25;
+  }
   return Math.min(100, risk);
 };
 
