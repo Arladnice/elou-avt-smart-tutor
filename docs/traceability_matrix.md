@@ -6,7 +6,7 @@
 | К2. Демонстрация | `elou_salt_breakthrough` | `docs/demo_scenario.md`, три прогона, MP4 | Открыто |
 | К3. Архитектура | backend layers, FSD frontend, API/WS contracts | 6 import-contracts, `architecture.md` | Подтверждено для MVP |
 | К4. Конкурентоспособность | web-MVP, экономика и roadmap | первичные источники, пилотные KPI | Гипотеза |
-| К5. AI | ONNX LSTM, hybrid risk, LCS, retrieval | ONNX smoke, evaluation report | Работает на синтетике; не валидировано на реальных данных |
+| К5. AI | ONNX LSTM, risk forecast, LCS, retrieval | ONNX smoke, integrity test, evaluation report, model/data cards | Работает на синтетике; не валидировано на реальных данных |
 | К6. Презентация и требования | PPTX, README, требования | render/overflow, claim review | Требует обновления PPTX |
 | К7. Инфраструктура | Docker, Caddy, CI | clean compose, restart, load/restore logs | Открыто |
 | К8. ИБ | JWT, RBAC, rate limit, HMAC, audit, SSRF | automated tests и WS RBAC smoke | Подтверждено для demo-контура |
