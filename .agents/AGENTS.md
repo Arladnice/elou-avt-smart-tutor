@@ -66,7 +66,7 @@
      │   ├── db/              # SQLite: database.py, queries.py, audit.py
      │   ├── services/        # Оркестрация: сессии, фоновый цикл, ИИ-чат, RAG, анти-SSRF
      │   └── api/             # FastAPI: main.py, security.py, deps.py, schemas.py, routes/
-     ├── training/            # Офлайн-обучение LSTM. В прод-образ НЕ входит (torch)
+     ├── ml_training/            # Офлайн-обучение LSTM. В прод-образ НЕ входит (torch)
      ├── tests/               # pytest
      └── pyproject.toml       # Пакет, package data, конфиг ruff и контрактов слоёв
      ```
@@ -96,17 +96,17 @@
 
 ---
 
-## 🧠 5. Стандарты AI/ML-модулей (`elou_tutor/ml/`, `elou_tutor/tutor/`, `backend/training/`)
+## 🧠 5. Стандарты AI/ML-модулей (`elou_tutor/ml/`, `elou_tutor/tutor/`, `ml_training/`)
 ИИ разведён по трём местам — по признаку «нужно ли это в рантайме»:
 рантайм-инференс риска в `backend/src/elou_tutor/ml/`, оценка действий оператора
-в `backend/src/elou_tutor/tutor/`, офлайн-обучение в `backend/training/`.
+в `backend/src/elou_tutor/tutor/`, офлайн-обучение в `ml_training/`.
 Все файлы в них ОБЯЗАНЫ придерживаться следующих правил:
 
 1. **Разделение Train и Inference**:
-   - Код обучения (train loop, DataLoader, optimizer) — в `backend/training/train.py`.
+   - Код обучения (train loop, DataLoader, optimizer) — в `ml_training/train.py`.
    - Код инференса (загрузка модели, predict) — в `elou_tutor/ml/predictor.py`.
    - Один файл НЕ должен содержать и обучение, и инференс.
-   - PyTorch — только в `backend/training/`. Рантайм исполняет ONNX-граф, torch в
+   - PyTorch — только в `ml_training/`. Рантайм исполняет ONNX-граф, torch в
      зависимости прод-образа не входит, и ветки под него в рантайме быть не должно.
 2. **Воспроизводимость**:
    - В начале обучения ОБЯЗАТЕЛЬНО фиксировать сиды: `random.seed(SEED)`, `np.random.seed(SEED)`, `torch.manual_seed(SEED)`.
@@ -116,7 +116,7 @@
      (`SCALER_MIN`, `SCALER_MAX`, `OUT_MIN`, `OUT_MAX`) — в `elou_tutor/ml/settings.py`.
      Обучение импортирует их оттуда же, что и рантайм: иначе обучение и инференс разъедутся.
    - Параметры, нужные только обучению (learning_rate, epochs, batch_size, разбиение
-     выборки, пути к артефактам) — в `backend/training/config.py`.
+     выборки, пути к артефактам) — в `ml_training/config.py`.
    - Запрет хардкода внутри тела функций.
 4. **Метрики и логирование обучения**:
    - Каждый epoch ОБЯЗАН логировать: epoch номер, train loss, val loss (если есть), MAE/R² на валидации.
@@ -198,7 +198,7 @@
 ## 🤖 9. Использование экспертных субагентов (Expert Subagents)
 После внесения любых крупных изменений в кодовую базу (например, рефакторинг, добавление новой фичи, создание новых модулей, интеграция компонентов), агент ОБЯЗАН:
 1. Запустить проверку/валидацию изменений с помощью соответствующих специализированных экспертов-субагентов (Skills):
-   - **ai-ml-expert** — при изменениях в `elou_tutor/ml/`, `elou_tutor/tutor/` или `backend/training/`, связанных с нейросетями, обучением, инференсом и LCS-выравниванием.
+   - **ai-ml-expert** — при изменениях в `elou_tutor/ml/`, `elou_tutor/tutor/` или `ml_training/`, связанных с нейросетями, обучением, инференсом и LCS-выравниванием.
    - **backend-expert** — при изменениях в `backend/` (FastAPI, WebSocket, DB, Security).
    - **frontend-expert** — при изменениях в `frontend/` (компоненты React, стили styled-components, API-клиенты).
    - **simulator-expert** — при изменениях в физическом симуляторе `elou_tutor/simulation/`.

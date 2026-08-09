@@ -6,14 +6,14 @@ import json
 import logging
 import random
 
-# Каталог backend/ — родитель training/. Установленный пакет кладёт в sys.path
-# только backend/src, поэтому «training» приходится добавлять самим.
-BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if BACKEND_DIR not in sys.path:
-    sys.path.insert(0, BACKEND_DIR)
+# Корень репозитория — родитель ml_training/. Установленный пакет кладёт в sys.path
+# только backend/src, поэтому «ml_training» приходится добавлять самим.
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from elou_tutor.simulation.model import ELOUAVTSimulator
-from training.config import DATASET_PATH, DATASET_VERSION, GENERATOR_VERSION, RANDOM_SEED
+from ml_training.config import DATASET_PATH, DATASET_VERSION, GENERATOR_VERSION, RANDOM_SEED
 
 logger = logging.getLogger(__name__)
 

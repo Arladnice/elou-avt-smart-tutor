@@ -123,7 +123,7 @@
 
 - `docs/requirements.md`
 - `docs/architecture.md`, `docs/ai_architecture.md`
-- `backend/training/reports/evaluation_report.md`
+- `ml_training/reports/evaluation_report.md`
 - `docs/ml_model_card.md`, `docs/ml_data_card.md`
 - `docs/infrastructure.md`, `docs/security_threat_model.md`
 - `docs/mini_hazop_andrey.md`

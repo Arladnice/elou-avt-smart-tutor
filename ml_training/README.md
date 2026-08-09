@@ -2,7 +2,7 @@
 
 Здесь живёт всё, что нужно, чтобы получить `model.onnx` — модель, которая в рантайме прогнозирует технологические параметры на 15 секунд вперёд и считает уровень риска.
 
-**Этот каталог не входит в прод-образ.** Обучение требует PyTorch (сотни мегабайт), а рантайму достаточно `onnxruntime`. Поэтому `backend/training` перечислен в `.dockerignore`, а Dockerfile копирует только `backend/src`. Тест `backend/tests/test_training_isolation.py` следит за тем, чтобы пакет `elou_tutor` никогда не начал импортировать этот каталог.
+**Этот каталог не входит в прод-образ.** Обучение требует PyTorch (сотни мегабайт), а рантайму достаточно `onnxruntime`. Поэтому `ml_training` перечислен в `.dockerignore`, а Dockerfile копирует только `backend/src`. Тест `backend/tests/test_training_isolation.py` следит за тем, чтобы пакет `elou_tutor` никогда не начал импортировать этот каталог.
 
 ## Почему гиперпараметры не лежат здесь
 
@@ -12,7 +12,7 @@
 
 ```bash
 pip install -e backend
-pip install -r backend/training/requirements.txt
+pip install -r ml_training/requirements.txt
 ```
 
 Первая команда ставит runtime-пакет, поэтому `elou_tutor.ml.settings` доступен офлайн-пайплайну. Вторая ставит только инструменты обучения: torch, onnx, scikit-learn, pandas и matplotlib.
@@ -22,10 +22,10 @@ pip install -r backend/training/requirements.txt
 Скрипты запускаются из корня репозитория и рассчитаны на выполнение по цепочке:
 
 ```bash
-python backend/training/data_generator.py   # 1. синтетическая телеметрия из симулятора
-python backend/training/train.py            # 2. обучение LSTM
-python backend/training/export_onnx.py      # 3. экспорт в ONNX
-python backend/training/evaluate.py         # 4. честная оценка на отложенной выборке
+python ml_training/data_generator.py   # 1. синтетическая телеметрия из симулятора
+python ml_training/train.py            # 2. обучение LSTM
+python ml_training/export_onnx.py      # 3. экспорт в ONNX
+python ml_training/evaluate.py         # 4. честная оценка на отложенной выборке
 ```
 
 `baselines.py` — вспомогательный: считает тривиальные базовые решения, с которыми сравнивается модель. Запускается независимо.

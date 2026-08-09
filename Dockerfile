@@ -25,7 +25,7 @@ WORKDIR /app
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Код проекта: ставим пакет; офлайн-пайплайн (backend/training) не копируем.
+# Код проекта: ставим пакет; офлайн-пайплайн (ml_training/ в корне) не копируем.
 # rm -rf build в том же слое: setuptools оставляет каталог сборки с копией
 # исходников, и без уборки он остаётся в финальном образе мёртвым грузом.
 COPY backend/pyproject.toml ./
