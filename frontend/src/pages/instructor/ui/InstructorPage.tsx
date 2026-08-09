@@ -7,6 +7,7 @@ import { useTelemetry, sendAlarmFeedback, type DefectId } from '@/entities/telem
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { ThemeToggle } from '@/shared/ui';
+import { K2_LEVEL_HIGH, K2_LEVEL_LOW } from '@/shared/config';
 import {
   fetchTrainingRecords,
   fetchActiveSessions as fetchActiveSessionsApi,
@@ -527,7 +528,10 @@ const InstructorPage: React.FC = () => {
               </S.MonitorItem>
               <S.MonitorItem>
                 <span className="lbl">L-2 (Куб К-2)</span>
-                <S.SensorValue $isAlert={false} $isWarning={sensors.L_2 > 85 || sensors.L_2 < 18}>
+                <S.SensorValue
+                  $isAlert={false}
+                  $isWarning={sensors.L_2 > K2_LEVEL_HIGH || sensors.L_2 < K2_LEVEL_LOW}
+                >
                   {sensors.L_2} %
                 </S.SensorValue>
               </S.MonitorItem>

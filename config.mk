@@ -32,7 +32,7 @@ FRONTEND_PORT ?= 8080
 
 # --- Исходники ---
 FRONTEND_DIR ?= frontend
-PY_SOURCES   ?= backend/src backend/training
+PY_SOURCES   ?= backend/src ml_training
 
 # Минимальная версия Node для фронтенда: её требует oxlint (^20.19 || >=22.12),
 # Vite 7 и React 19. Под Node 16 установка молча пропускает бинарные пакеты

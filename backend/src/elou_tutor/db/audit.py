@@ -22,21 +22,37 @@ def log_audit_event(actor: str, action: str, details: str):
 
     Каждая запись включает хэш предыдущей, поэтому удаление или правка строки
     разрывает цепочку и обнаруживается verify_audit_chain().
+
+    Чтение последнего хэша и вставка новой записи обязаны быть одной атомарной
+    операцией. Обработчик WebSocket пишет журнал из пула потоков, и без общей
+    транзакции два одновременных события читают один и тот же prev_hash —
+    цепочка раздваивается, а verify_audit_chain сообщает о подделке там, где
+    её нет. BEGIN IMMEDIATE берёт блокировку записи сразу, поэтому writer'ы
+    выстраиваются в очередь, а не наперегонки.
     """
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     with get_db_connection() as conn:
+        # Транзакцией управляем вручную: в режиме по умолчанию sqlite3 открывает
+        # её только перед INSERT, оставляя SELECT снаружи — ровно та щель, из-за
+        # которой цепочка и разъезжалась.
+        conn.isolation_level = None
         cursor = conn.cursor()
-        row = cursor.execute(
-            "SELECT integrity_hash FROM audit_logs ORDER BY id DESC LIMIT 1"
-        ).fetchone()
-        prev_hash = row[0] if row else ""
-        h = calculate_integrity_hash(timestamp, actor, action, details, prev_hash)
-        cursor.execute(
-            "INSERT INTO audit_logs (timestamp, actor, action, details, integrity_hash, prev_hash) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (timestamp, actor, action, details, h, prev_hash)
-        )
-        conn.commit()
+        cursor.execute("BEGIN IMMEDIATE")
+        try:
+            row = cursor.execute(
+                "SELECT integrity_hash FROM audit_logs ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            prev_hash = row[0] if row else ""
+            h = calculate_integrity_hash(timestamp, actor, action, details, prev_hash)
+            cursor.execute(
+                "INSERT INTO audit_logs (timestamp, actor, action, details, integrity_hash, prev_hash) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (timestamp, actor, action, details, h, prev_hash)
+            )
+        except BaseException:
+            cursor.execute("ROLLBACK")
+            raise
+        cursor.execute("COMMIT")
 
 
 async def log_audit_event_async(actor: str, action: str, details: str):

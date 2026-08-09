@@ -4,7 +4,10 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    "types": ["vite/client"],
+    // node нужен тестам: сверка порогов читает питоновский модуль домена через
+    // node:fs. Прикладной код Node-API не использует — импорт node:* в бандл
+    // не пройдёт сборку vite
+    "types": ["vite/client", "vitest/globals", "node"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 

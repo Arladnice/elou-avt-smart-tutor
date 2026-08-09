@@ -24,6 +24,9 @@ services:
       - ./backend/.env
     environment:
       - DATABASE_PATH=/app/data/tutor.db
+      # Реестр сценариев на томе, а не в смонтированных исходниках: правки
+      # инструктора — это данные стенда, им не место в рабочей копии репозитория
+      - SCENARIOS_PATH=/app/data/scenarios.json
       # Смонтированные исходники должны выигрывать у копии в site-packages,
       # иначе --reload перезапускает сервер, но код остаётся из образа
       - PYTHONPATH=/app/src

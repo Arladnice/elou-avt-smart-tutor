@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import time
 from elou_tutor.services.connection_manager import manager
 from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_WARNING, COLUMN_PRES_WARNING, COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW,
@@ -145,11 +144,15 @@ async def _advance_one_second(session):
     if is_currently_critical:
         if not session.critical_alert_active:
             session.critical_alert_active = True
-            session.critical_alert_start_time = time.time()
+            # Отсчёт идёт по времени техпроцесса, а не по настенным часам:
+            # процесс умеет стоять на паузе и идти с множителем скорости.
+            # На time.time() пауза дольше минуты давала ложную эскалацию сразу
+            # после возобновления, а ускорение сдвигало учебную норму реакции.
+            session.critical_alert_start_time = session.simulator.time_elapsed
             session.operator_reacted_to_critical = False
             session.escalation_warning_sent = False
         elif not session.operator_reacted_to_critical:
-            elapsed = time.time() - session.critical_alert_start_time
+            elapsed = session.simulator.time_elapsed - session.critical_alert_start_time
             if elapsed >= ESCALATION_CRITICAL_DELAY_SEC:
                 session.add_log("error", f"ЭСКАЛАЦИЯ: Оператор не предпринял действий в течение {int(ESCALATION_CRITICAL_DELAY_SEC)} секунд после критического отклонения!", severity="CRITICAL", fingerprint="escalation_alert_60")
                 session.operator_reacted_to_critical = True

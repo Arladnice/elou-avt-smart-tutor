@@ -13,6 +13,7 @@
 from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_WARNING, FURNACE_TEMP_MIN_STARTUP, FURNACE_TEMP_MAX_SHUTDOWN,
     COLUMN_LEVEL_BALANCE_MIN, COLUMN_LEVEL_BALANCE_MAX, STARTUP_MIN_TIME_SEC,
+    K2_LEVEL_HIGH, K2_PRESSURE_WARNING, K2_TEMP_WARNING,
 )
 from elou_tutor.domain.regulations import TECH_REGULATIONS
 from elou_tutor.simulation.scenarios import get_scenario_by_id
@@ -74,6 +75,11 @@ class ErrorAnalyzer:
         actions = list(actions)
         actions = [a.replace("V_1", "V1").replace("V_2", "V2").replace("V_3", "V3") for a in actions]
 
+        # Что оператор реально сделал: только переименование позиций арматуры,
+        # без домысленных операций. Разбор аварий обязан опираться на этот
+        # список, иначе засчитывает действия, дописанные самим анализатором.
+        performed_actions = list(actions)
+
         # Отметки времени нормализуем синхронно: анализ вставляет неявные
         # действия, и без этого позиции в двух списках разъехались бы.
         times = self._align_timeline(actions, timeline)
@@ -83,7 +89,7 @@ class ErrorAnalyzer:
 
         # Оценка парирования аварий (если были инъецированы дефекты)
         if defects_triggered:
-            result = self._evaluate_defect_handling(actions, defects_triggered,
+            result = self._evaluate_defect_handling(performed_actions, defects_triggered,
                                                     scenario_id, final_sensors)
             if result is not None:
                 score, errors, recs, rec_id = result
@@ -237,8 +243,17 @@ class ErrorAnalyzer:
 
         # Отказ электроснабжения
         if "power_fail" in defects_triggered:
-            has_sp_down = "SP_DOWN" in actions or "power_fail" in defects_triggered
-            has_v1_close = "V1_CLOSE" in actions or "V1_OPEN" not in actions
+            # Снятие нагрева проверяется по факту действия. Прежняя запись
+            # `"SP_DOWN" in actions or "power_fail" in defects_triggered`
+            # внутри этой же ветки всегда истинна, поэтому требование не
+            # проверялось ни разу.
+            has_sp_down = "SP_DOWN" in actions or "ESD" in actions
+            # Защита засчитывается только за явное действие оператора.
+            # Условие «V1_OPEN нет в списке» означало «подача и так перекрыта»
+            # и работало, пока в разбор попадал дополненный список: при пуске
+            # нормализатор сам дописывал туда V1_OPEN. На реальных действиях
+            # оно превращается в зачёт за бездействие.
+            has_v1_close = "V1_CLOSE" in actions
             if has_sp_down and (has_v1_close or "V2_OPEN" in actions):
                 return 100, [], [
                     "Поздравляем! Вы успешно парировали последствия обесточивания установки (power_fail).",
@@ -304,6 +319,113 @@ class ErrorAnalyzer:
                 "При срыве отпарного пара откройте дренажный клапан V-3 для вывода кубового "
                 "остатка или сброс V-2."
             ], "overpressure_relief"
+
+        # Срыв вакуума в блоке ВТ (отказ пароэжекторной группы)
+        if "vt_vacuum_loss" in defects_triggered:
+            # Дефект моделирует именно отказ эжекторов: в simulation/model.py
+            # vacuum_available = V_VT and not defects["vt_vacuum_loss"], поэтому
+            # подача пара вакуум уже не восстановит. Единственное, что защищает
+            # мазут от коксования, — снятие тепловой нагрузки либо останов.
+            has_esd = "ESD" in actions
+            has_sp_down = "SP_DOWN" in actions
+            if has_esd or has_sp_down:
+                checked_ejectors = "V_VT_OPEN" in actions
+                praise = [
+                    "Поздравляем! Вы правильно отреагировали на срыв вакуума в блоке ВТ.",
+                    "Вы сняли тепловую нагрузку с куба К-2, не дав мазуту закоксоваться "
+                    "и подвергнуться крекингу при росте остаточного давления.",
+                ]
+                if checked_ejectors:
+                    praise.append(
+                        "Проверка подачи рабочего пара на эжекторы (V-VT) выполнена верно: "
+                        "при прекращении подачи пара это восстановило бы вакуум."
+                    )
+                praise.append("Рекомендуемый следующий этап траектории: 'Отказ насосов откачки К-2'")
+                return 100, [], praise, "recirculation"
+
+            return 30, [{
+                "clause": "Раздел 7.10.4 / HAZOP: давление в К-2",
+                "title": "Коксование мазута при срыве вакуума",
+                "text": "При потере вакуума остаточное давление в К-2 растёт от 1,0 к "
+                        "1,5 кгс/см², температура куба поднимается, и мазут коксуется с "
+                        "крекингом. Оператор обязан снизить уставку нагрева печи (SP_DOWN) "
+                        "либо активировать ПАЗ (ESD). Расчётное время на вмешательство — "
+                        "не более 20 минут.",
+            }], [
+                "При срыве вакуума немедленно снизьте тепловую нагрузку печи П-1 или нажмите ESD.",
+                "Проверьте подачу рабочего пара на эжекторы ВТ (V-VT) — при прекращении "
+                "подачи её восстановление вернёт вакуум.",
+                "Рекомендуемый адаптивный сценарий дообучения: 'Срыв вакуума ВТ'",
+            ], "vt_vacuum_failure"
+
+        # Отказ насосов откачки куба К-2 (Н-4 / Н-32)
+        if "k2_pump_fail" in defects_triggered:
+            # Откачка встала, приток из куба К-1 идёт через V-3 (в модели
+            # feed_open = V_3 and not power_fail). Единственный способ
+            # остановить заполнение куба — перекрыть этот приток.
+            has_esd = "ESD" in actions
+            has_v3_close = "V3_CLOSE" in actions
+            if has_esd or has_v3_close:
+                return 100, [], [
+                    "Поздравляем! Вы верно отработали отказ насосов откачки куба К-2 Н-4/Н-32.",
+                    "Вы прекратили подачу кубового остатка из К-1, не допустив заполнения "
+                    "куба К-2 и захлёбывания колонны.",
+                    "Квалификационная траектория успешно завершена! Вы готовы к итоговому экзамену.",
+                ], "startup"
+
+            return 30, [{
+                "clause": "Раздел 7.10.4 / HAZOP: уровень куба К-2",
+                "title": "Захлёбывание колонны К-2 при остановленной откачке",
+                "text": "При отказе насосов Н-4/Н-32 вывод кубового остатка прекращается, "
+                        "и куб К-2 заполняется примерно за 6,7 минуты при открытом V-3. "
+                        "Показания уровня запаздывают на 45 секунд, поэтому реагировать надо "
+                        "по факту отказа насосов, а не по уровнемеру: закрыть V-3 либо "
+                        "активировать ПАЗ (ESD).",
+            }], [
+                "При отказе насосов откачки К-2 закройте дренаж V-3, прекратив подачу "
+                "кубового остатка в переполняющийся куб.",
+                "Помните о запаздывании уровнемера К-2 на 45 секунд — уровень уже растёт, "
+                "когда прибор ещё показывает норму.",
+                "Рекомендуемый адаптивный сценарий дообучения: 'Рециркуляция'",
+            ], "recirculation"
+
+        # Нарушение электрообессоливания в ЭЛОУ (проскок солей и воды)
+        if "elou_desalt_fail" in defects_triggered:
+            # Дефект маскирует клапан подачи деэмульгатора (в model.py
+            # sal_target растёт при `elou_desalt_fail or not V_ELOU`), то есть
+            # моделирует отказ самого блока ЭЛОУ. Обессоливание восстановить
+            # нельзя, парируется последствие: вскипание воды и бросок давления.
+            has_esd = "ESD" in actions
+            has_relief = "V2_OPEN" in actions
+            if has_esd or has_relief:
+                praise = [
+                    "Поздравляем! Вы правильно отреагировали на проскок солей и воды из ЭЛОУ.",
+                    "Вы сбросили давление из колонны К-1, не дав вскипающей воде "
+                    "разогнать давление и унести влагу в верх колонны.",
+                ]
+                if "V_ELOU_OPEN" in actions:
+                    praise.append(
+                        "Проверка подачи деэмульгатора (V-ELOU) выполнена верно: при "
+                        "перекрытой подаче это восстановило бы обессоливание."
+                    )
+                praise.append("Рекомендуемый следующий этап траектории: 'Срыв вакуума ВТ'")
+                return 100, [], praise, "vt_vacuum_failure"
+
+            return 30, [{
+                "clause": "Мини-HAZOP: сырьё в К-1, проскок воды / Раздел 3.5",
+                "title": "Унос воды и бросок давления при нарушении обессоливания",
+                "text": "При отказе электрообессоливания солесодержание поднимается с 4,2 до "
+                        "42 мг/л, обводнённость — с 0,15 до 3,2%. Вода вскипает в колонне К-1, "
+                        "разгоняя давление и вынося влагу в верх колонн, что ведёт к коррозии "
+                        "конденсационно-холодильного оборудования. Оператор обязан открыть "
+                        "сброс V-2 на факельную линию либо активировать ПАЗ (ESD).",
+            }], [
+                "При проскоке солей и воды откройте сброс V-2: вскипающая вода разгоняет "
+                "давление в колонне К-1.",
+                "Проверьте подачу деэмульгатора в ЭЛОУ (V-ELOU) — при перекрытой подаче "
+                "её восстановление вернёт обессоливание.",
+                "Рекомендуемый адаптивный сценарий дообучения: 'Проскок солей и воды из ЭЛОУ'",
+            ], "elou_salt_breakthrough"
 
         return None
 
@@ -542,6 +664,50 @@ class ErrorAnalyzer:
             )
             score -= 20
 
+        score = self._apply_k2_physical_checks(score, sensors, time_elapsed, errors, recommendations)
+
+        return score
+
+    def _apply_k2_physical_checks(self, score, sensors, time_elapsed, errors, recommendations):
+        """
+        Проверяет финальное состояние вакуумного блока К-2.
+
+        Проверяются только состояния, опасные в любом сценарии: сорванный
+        вакуум, перегрев куба и захлёбывание. Низкий уровень куба сюда
+        намеренно не входит — при останове колонны он падает штатно (V-3
+        закрыт, насосы Н-4/Н-32 продолжают откачку), и штраф за него наказывал
+        бы оператора за правильно выполненный регламент.
+        """
+        pressure = sensors.get("P_vac")
+        if pressure is not None and pressure > K2_PRESSURE_WARNING:
+            errors.append(self._localize(TECH_REGULATIONS["K2_VACUUM_NOT_RESTORED"], at_second=time_elapsed))
+            recommendations.insert(
+                0, f"Остаточное давление в К-2 на конец сессии — {pressure:.3f} МПа при пороге "
+                   f"сигнализации {K2_PRESSURE_WARNING} МПа. Восстановите вакуум подачей пара "
+                   "на эжекторы ВТ или снимите тепловую нагрузку перед завершением."
+            )
+            score -= 20
+
+        bottom_temp = sensors.get("T_2")
+        if bottom_temp is not None and bottom_temp > K2_TEMP_WARNING:
+            errors.append(self._localize(TECH_REGULATIONS["K2_BOTTOM_OVERHEAT"], at_second=time_elapsed))
+            recommendations.insert(
+                0, f"Температура куба К-2 составила {bottom_temp:.1f}°C при пороге "
+                   f"{K2_TEMP_WARNING}°C. Снижайте нагрев до завершения сессии, иначе мазут "
+                   "коксуется и выводит из строя насосы откачки."
+            )
+            score -= 20
+
+        bottom_level = sensors.get("L_2")
+        if bottom_level is not None and bottom_level > K2_LEVEL_HIGH:
+            errors.append(self._localize(TECH_REGULATIONS["K2_BOTTOM_FLOODED"], at_second=time_elapsed))
+            recommendations.insert(
+                0, f"Уровень куба К-2 достиг {bottom_level:.1f}% при верхней сигнализации "
+                   f"{K2_LEVEL_HIGH}%. Усильте откачку насосами Н-4/Н-32 или прекратите подачу "
+                   "кубового остатка клапаном V-3."
+            )
+            score -= 20
+
         return score
 
     # Маппинг ID сценариев на их человекочитаемые названия (из InstructorDashboard)
@@ -557,6 +723,8 @@ class ErrorAnalyzer:
         "power_fail": "Отказ электроснабжения (power_fail)",
         "air_fail": "Отказ воздуха КИПиА (air_fail)",
         "steam_fail": "Срыв подачи отпарного пара (steam_fail)",
+        "vt_vacuum_failure": "Срыв вакуума вакуумного блока ВТ",
+        "elou_salt_breakthrough": "Проскок солей и воды из ЭЛОУ",
     }
 
     # Последовательная траектория обучения при успешном прохождении
