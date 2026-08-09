@@ -5,7 +5,8 @@ export const Container = styled.div`
   display: grid;
   grid-template-rows: clamp(48px, 5.5vh, 64px) 1fr;
   height: 100vh;
-  width: 100vw;
+  width: 100%;
+  min-width: 0;
   background-color: ${props => props.theme.colors.background};
   color: ${props => props.theme.colors.text};
 
@@ -80,8 +81,10 @@ export const Content = styled.main`
 
   @media (max-width: 1320px) {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(520px, 1fr) minmax(430px, 0.9fr) 150px;
+    grid-template-rows: auto auto 150px;
     overflow-y: auto;
+    height: auto;
+    min-height: 0;
   }
 `;
 
@@ -92,6 +95,11 @@ export const PanelColumn = styled.div`
   height: 100%;
   min-width: 0;
   overflow: hidden;
+
+  @media (max-width: 1320px) {
+    height: auto;
+    overflow: visible;
+  }
 
   @media (max-height: 950px) {
     gap: 10px;

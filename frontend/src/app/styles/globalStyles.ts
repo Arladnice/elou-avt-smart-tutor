@@ -13,7 +13,7 @@ export const GlobalStyle = createGlobalStyle<{ theme: ScadaThemeType }>`
   }
 
   body {
-    width: 100vw;
+    width: 100%;
     height: 100vh;
     overflow: hidden;
     color: ${props => props.theme.colors.text};
