@@ -11,6 +11,7 @@
 import os
 import sys
 import sqlite3
+import threading
 import unittest
 
 TEST_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "tutor_test.db"))
@@ -154,6 +155,48 @@ class TestAuditChain(unittest.TestCase):
 
         ok, _ = verify_audit_chain()
         self.assertFalse(ok, "Правка строки журнала осталась незамеченной")
+
+    def test_concurrent_writers_keep_chain_intact(self):
+        """
+        Параллельная запись не должна разветвлять цепочку.
+
+        Обработчик WebSocket пишет аудит через log_audit_event_async, то есть
+        из пула потоков: два события, пришедших одновременно, читают один и тот
+        же последний хэш и встают в журнал с одинаковым prev_hash. Цепочка
+        раздваивается, и verify_audit_chain сообщает о подделке там, где её нет.
+        """
+        from elou_tutor.db.audit import log_audit_event, verify_audit_chain
+
+        writers = 8
+        per_writer = 20
+        start = threading.Barrier(writers)
+        failures = []
+
+        def writer(idx):
+            try:
+                start.wait()
+                for i in range(per_writer):
+                    log_audit_event(f"operator_{idx}", "CONCURRENT_PROBE", f"событие {i}")
+            except Exception as exc:  # noqa: BLE001 — падение потока нужно увидеть в отчёте
+                failures.append(exc)
+
+        threads = [threading.Thread(target=writer, args=(i,)) for i in range(writers)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(failures, [], f"Запись в журнал упала с ошибкой: {failures}")
+
+        conn = sqlite3.connect(DB_PATH)
+        written = conn.execute(
+            "SELECT COUNT(*) FROM audit_logs WHERE action = 'CONCURRENT_PROBE'"
+        ).fetchone()[0]
+        conn.close()
+        self.assertEqual(written, writers * per_writer, "Часть событий не попала в журнал")
+
+        ok, broken_at = verify_audit_chain()
+        self.assertTrue(ok, f"Параллельная запись разорвала цепочку на записи {broken_at}")
 
 
 class TestAuditActorIsReal(unittest.TestCase):

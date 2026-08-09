@@ -103,14 +103,21 @@ export const INITIAL_DEFECTS: Defects = {
   k2_pump_fail: false,
 };
 
+/**
+ * Стартовое состояние панели ПАЗ до первого пакета телеметрии и в демо-режиме.
+ *
+ * Позиции названы так же, как в техрегламенте, и совпадают с
+ * INTERLOCK_DEFINITIONS на бэкенде: иначе до подключения оператор видит один
+ * набор обозначений, а после — другой.
+ */
 export const INITIAL_INTERLOCKS: InterlockRow[] = [
-  { tag: 'LIRSA 1a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
-  { tag: 'LIRSA 2a', logic: '2oo2', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
-  { tag: 'LIRSA 2д', logic: '2oo2', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
-  { tag: 'LIRSA 3a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
-  { tag: 'PIRSA 9a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
-  { tag: 'TIRSA 10a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
-  { tag: 'PIRSA 11a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
-  { tag: 'TIRSA 12a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
-  { tag: 'PIRSA 13a', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'LRCA 602', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
+  { tag: 'LR 602А', logic: '2oo2', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
+  { tag: 'LR 602В', logic: '2oo2', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
+  { tag: 'LRSA 604А', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: true, bypassed: false, alarm: false },
+  { tag: 'PRSA 204', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'TR 55-1', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'PRSA 213', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'TR 43-9', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'PRSA 204/II', logic: '1oo1', mechanism: 'Контактор КМ-2', primary: false, bypassed: false, alarm: false },
 ];

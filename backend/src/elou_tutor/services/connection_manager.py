@@ -97,9 +97,16 @@ class SimulationSession:
         self.escalation_warning_sent: bool = False
         self.interlocks = InterlockController()
 
+        # Ревизия журнала растёт при любом его изменении: и при добавлении
+        # записи, и при правке существующей по fingerprint. Счётчика длины мало —
+        # повтор сигнала меняет запись на месте, не удлиняя список.
+        self.logs_revision: int = 0
+        self._sent_logs_revision = None
+        self._sent_score_card = None
+
     async def broadcast_state(self):
         started = time.perf_counter()
-        state = self.get_full_state()
+        state = self.get_broadcast_state()
         for ws in list(self.operator_sockets):
             try:
                 await ws.send_json(state)
@@ -114,11 +121,40 @@ class SimulationSession:
         broadcast_latencies_ms.append((time.perf_counter() - started) * 1000.0)
 
     async def send_state_to(self, websocket: WebSocket):
+        # Полный снимок: подключившийся в середине сессии клиент ничего о
+        # предыдущих тактах не знает, дельта ему бесполезна.
         state = self.get_full_state()
         try:
             await websocket.send_json(state)
         except Exception:
             pass
+
+    def get_broadcast_state(self) -> dict:
+        """
+        Состояние для периодической рассылки: без полей, которые не изменились.
+
+        Телеметрия уходит каждую секунду каждому клиенту, а журнал и карточка
+        оценки меняются редко: журнал пополняется по событию, карточка после
+        завершения сессии статична. Пересылка их в каждом такте давала 80 КБ
+        на пакет при заполненных лимитах и заставляла фронтенд заменять весь
+        массив журнала целиком раз в секунду.
+
+        Отсутствие ключа означает «не изменилось» — клиент сохраняет своё
+        значение. Полный снимок отдаёт send_state_to при подключении.
+        """
+        state = self.get_full_state()
+
+        if self._sent_logs_revision == self.logs_revision:
+            del state["logs"]
+        else:
+            self._sent_logs_revision = self.logs_revision
+
+        if state["scoreCard"] == self._sent_score_card:
+            del state["scoreCard"]
+        else:
+            self._sent_score_card = state["scoreCard"]
+
+        return state
 
     def get_full_state(self) -> dict:
         sim_state = self.simulator.get_state()
@@ -138,10 +174,14 @@ class SimulationSession:
                 sensors["L_1"]
             ])
             
+        # Окно телеметрии семифичевое и описывает только контур К-1 — его
+        # прогнозирует сеть. Показания вакуумного блока передаём отдельно:
+        # риск по ним считается по факту, а не предсказывается.
         pred_vals, risk = self.predictor.predict_risk(
-            self.telemetry_history, 
-            sim_state["timeElapsed"], 
-            scenario_id=self.active_scenario
+            self.telemetry_history,
+            sim_state["timeElapsed"],
+            scenario_id=self.active_scenario,
+            k2_sensors=sensors,
         )
         
         score, errors, recs, recommended_scenario_id = self.analyzer.evaluate_session(
@@ -191,7 +231,9 @@ class SimulationSession:
             "scenarioId": self.active_scenario,
             "riskLevel": risk,
             "predictions": pred_vals,
-            "actions": self.actions_taken,
+            # actions в пакет не входит: ни один клиент его не читает, а при
+            # лимите в 500 действий это до 4 КБ в каждой секундной рассылке.
+            # Хронология для разбора уезжает в scoreCard.timeline.
             "logs": self.logs,
             "scoreCard": score_card,
             "speedMultiplier": self.speed_multiplier,
@@ -266,6 +308,9 @@ class SimulationSession:
             scenario = self.active_scenario
             
         self.simulator.reset(scenario)
+        # Журнал очищается ниже: это тоже изменение, и клиенту нужен новый
+        # полный список, иначе он продолжит показывать записи прошлой сессии
+        self.logs_revision += 1
         self.actions_taken.clear()
         self.action_timeline.clear()
         self.defects_triggered.clear()
@@ -310,6 +355,9 @@ class SimulationSession:
                     recent_log["time"] = time_str
                     recent_log["type"] = log_type
                     recent_log["severity"] = severity
+                    # Запись изменилась на месте, длина журнала прежняя —
+                    # без явной отметки рассылка сочла бы журнал неизменным
+                    self.logs_revision += 1
                     return
                 
         new_entry = {
@@ -322,6 +370,7 @@ class SimulationSession:
             "repeat_count": 1
         }
         self.logs.append(new_entry)
+        self.logs_revision += 1
         if len(self.logs) > MAX_SESSION_LOGS:
             del self.logs[:-MAX_SESSION_LOGS]
 

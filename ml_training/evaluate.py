@@ -11,14 +11,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if BACKEND_DIR not in sys.path:
-    sys.path.insert(0, BACKEND_DIR)
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from elou_tutor.domain.process_limits import FURNACE_TEMP_CRITICAL_LEVEL
 from elou_tutor.ml.predictor import RiskPredictor
 from elou_tutor.ml.settings import FORECAST_HORIZON, OUT_MAX, OUT_MIN, SEQUENCE_LENGTH
-from training.config import DATASET_PATH, REPORT_PATH, RISK_THRESHOLD, TRAIN_SPLIT, VAL_SPLIT
+from ml_training.config import DATASET_PATH, REPORT_PATH, RISK_THRESHOLD, TRAIN_SPLIT, VAL_SPLIT
 
 logger = logging.getLogger("evaluate")
 FEATURE_COLUMNS = ("valve_V1", "valve_V2", "valve_V3", "furnaceTempSp", "furnaceTemp", "columnPres", "columnLevel")

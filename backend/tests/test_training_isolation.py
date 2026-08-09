@@ -9,8 +9,8 @@ def test_package_does_not_import_training():
     offenders = [
         str(path)
         for path in _PACKAGE_ROOT.rglob("*.py")
-        if "import training" in path.read_text(encoding="utf-8")
-        or "from training" in path.read_text(encoding="utf-8")
+        if "import ml_training" in path.read_text(encoding="utf-8")
+        or "from ml_training" in path.read_text(encoding="utf-8")
     ]
 
     assert not offenders, f"пакет не должен зависеть от офлайн-пайплайна: {offenders}"

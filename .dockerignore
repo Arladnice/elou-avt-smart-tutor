@@ -11,4 +11,4 @@ frontend/dist
 *.db
 docs
 Исходные данные
-backend/training
+ml_training

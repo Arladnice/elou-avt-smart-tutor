@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   lint-and-build:
-    name: Lint & Build (frontend)
+    name: Lint & Test (frontend)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -46,6 +46,9 @@ jobs:
 
       - name: Lint (oxlint)
         run: npm run lint
+
+      - name: Tests (vitest)
+        run: npm test
 
       - name: Typecheck & build (tsc + vite)
         run: npm run build

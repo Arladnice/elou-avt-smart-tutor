@@ -21,7 +21,9 @@ elou_tutor = [
 ]
 
 [tool.ruff]
-exclude = [".venv", "training"]
+# Офлайн-пайплайн обучения лежит в ml_training/ в корне репозитория и в область
+# этого конфига не попадает: ruff запускается из backend/.
+exclude = [".venv"]
 line-length = 120
 
 [tool.ruff.lint]

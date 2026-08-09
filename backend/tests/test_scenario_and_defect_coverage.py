@@ -128,3 +128,72 @@ def test_vacuum_failure_raises_k2_pressure_and_temperature() -> None:
 
     assert simulator.sensors["P_vac"] > initial_pressure
     assert simulator.sensors["T_2"] > initial_temperature
+
+
+# ---------------------------------------------------------------
+# Разбор неисправностей
+# ---------------------------------------------------------------
+
+DECLARED_DEFECTS = tuple(ELOUAVTSimulator().defects.keys())
+
+
+@pytest.mark.parametrize("defect_id", DECLARED_DEFECTS)
+def test_every_declared_defect_has_parry_analysis(defect_id: str) -> None:
+    """
+    Каждая объявленная неисправность обязана разбираться тьютором.
+
+    _evaluate_defect_handling возвращает None для неизвестного дефекта, и тогда
+    сессия молча падает в общую LCS-оценку по эталону базового сценария:
+    оператор, правильно отработавший аварию, получает тот же балл, что и
+    полностью её проигнорировавший. Проверяем именно приватный метод — он и
+    есть контракт разбора, снаружи его подмена ничем не отличима.
+    """
+    result = ErrorAnalyzer()._evaluate_defect_handling(
+        ["V1_OPEN"], {defect_id}, "startup", None,
+    )
+
+    assert result is not None, f"неисправность {defect_id} не разбирается тьютором"
+
+
+@pytest.mark.parametrize("defect_id", DECLARED_DEFECTS)
+def test_defect_parry_distinguishes_action_from_inaction(defect_id: str) -> None:
+    """
+    Разбор обязан различать реакцию и бездействие.
+
+    Заглушка, возвращающая один и тот же балл на любой набор действий,
+    формально прошла бы предыдущий тест, но ничему не учила бы.
+    """
+    analyzer = ErrorAnalyzer()
+    idle_score, _, _, _ = analyzer.evaluate_session(
+        ["V1_OPEN"], "startup", defects_triggered={defect_id}, time_elapsed=120,
+    )
+    # Набор со всеми штатными реакциями: какая-то из них верна для любого дефекта
+    reacted_score, _, _, _ = analyzer.evaluate_session(
+        ["V1_OPEN", "SP_DOWN", "V2_OPEN", "V3_OPEN", "V3_CLOSE", "V_ELOU_OPEN", "V_VT_OPEN", "ESD"],
+        "startup", defects_triggered={defect_id}, time_elapsed=120,
+    )
+
+    assert reacted_score > idle_score, (
+        f"разбор {defect_id} не отличает реакцию оператора от бездействия"
+    )
+
+
+def test_defect_parry_ignores_implicit_startup_actions() -> None:
+    """
+    Разбор аварии обязан смотреть на реальные действия оператора.
+
+    При пуске _normalize_startup_actions дописывает в список неявные операции
+    (V1_OPEN, V3_OPEN), чтобы LCS-выравнивание не штрафовало за изначально
+    открытую арматуру. Если этот дополненный список попадёт в разбор
+    неисправностей, оператор получит зачёт за действие, которого не совершал:
+    при срыве отпарного пара засчитывается «открыл дренаж V-3», хотя дренаж
+    дописал анализатор.
+    """
+    analyzer = ErrorAnalyzer()
+
+    score, errors, _, _ = analyzer.evaluate_session(
+        ["V1_OPEN", "SP_UP"], "startup", defects_triggered={"steam_fail"}, time_elapsed=120,
+    )
+
+    assert score < 100, "зачёт выдан за неявное действие, дописанное анализатором"
+    assert errors, "бездействие при срыве пара обязано попасть в разбор"

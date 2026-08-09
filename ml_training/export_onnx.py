@@ -12,15 +12,15 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-# Каталог backend/ — родитель training/. Установленный пакет кладёт в sys.path
-# только backend/src, поэтому «training» приходится добавлять самим.
-BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if BACKEND_DIR not in sys.path:
-    sys.path.insert(0, BACKEND_DIR)
+# Корень репозитория — родитель ml_training/. Установленный пакет кладёт в sys.path
+# только backend/src, поэтому «ml_training» приходится добавлять самим.
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from elou_tutor.ml.settings import ONNX_PATH, MODEL_MANIFEST_PATH
-from training.config import DATASET_VERSION, MODEL_PATH
-from training.train import RiskLSTM
+from ml_training.config import DATASET_VERSION, MODEL_PATH
+from ml_training.train import RiskLSTM
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)

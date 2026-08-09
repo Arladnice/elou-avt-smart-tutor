@@ -7,17 +7,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-# Каталог backend/ — родитель training/. Установленный пакет кладёт в sys.path
-# только backend/src, поэтому «training» приходится добавлять самим.
-BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if BACKEND_DIR not in sys.path:
-    sys.path.insert(0, BACKEND_DIR)
+# Корень репозитория — родитель ml_training/. Установленный пакет кладёт в sys.path
+# только backend/src, поэтому «ml_training» приходится добавлять самим.
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 from elou_tutor.ml.settings import (
     INPUT_DIM, HIDDEN_DIM, NUM_LAYERS, OUTPUT_DIM, DROPOUT,
     SEQUENCE_LENGTH, FORECAST_HORIZON, SCALER_MIN, SCALER_MAX, OUT_MIN, OUT_MAX,
 )
-from training.config import (
+from ml_training.config import (
     RANDOM_SEED, LEARNING_RATE, EPOCHS, BATCH_SIZE,
     TRAIN_SPLIT, VAL_SPLIT, DATASET_PATH, MODEL_PATH, TEST_DATA_PATH, HAZARD_SAMPLE_WEIGHT,
 )

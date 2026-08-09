@@ -98,7 +98,7 @@ npm run build
 ```text
 frontend/                    React/TypeScript интерфейс
 backend/src/elou_tutor/      API, сервисы, симулятор, анализ и ML runtime
-backend/training/            генерация синтетики, обучение и экспорт ONNX
+ml_training/                    генерация синтетики, обучение и экспорт ONNX
 backend/tests/               автоматические проверки backend
 docs/                        актуальная документация и исходные материалы
 docs/presentations/          конкурсная презентация

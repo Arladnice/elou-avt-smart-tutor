@@ -115,8 +115,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
    * все команды объявлены с пустым списком зависимостей и не пересоздаются —
    * иначе контекст действий менялся бы на каждом пакете телеметрии.
    */
-  const stateRef = useRef({ isOnline, valves, timeElapsed });
-  stateRef.current = { isOnline, valves, timeElapsed };
+  const stateRef = useRef({ isOnline, valves, timeElapsed, scenarioId });
+  stateRef.current = { isOnline, valves, timeElapsed, scenarioId };
 
   // -------------------------------------------------------------
   // ДЕЙСТВИЯ
@@ -395,7 +395,10 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsOnline(false);
         return;
       }
-      const wsUrl = `${wsBase}/ws?role=${role}&username=${encodeURIComponent(username)}&scenario=${scenarioId}&token=${token}&session_id=${activeSessionId}`;
+      // Сценарий читается из ref, а не из состояния: иначе он попал бы в
+      // зависимости эффекта и любая смена сценария пересоздавала бы соединение.
+      // Переподключению нужен актуальный сценарий, поэтому ref, а не замыкание.
+      const wsUrl = `${wsBase}/ws?role=${role}&username=${encodeURIComponent(username)}&scenario=${stateRef.current.scenarioId}&token=${token}&session_id=${activeSessionId}`;
 
       ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -437,13 +440,16 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setDefects(data.defects);
         setRiskLevel(data.riskLevel);
         setPredictions(data.predictions);
-        setLogs(data.logs);
         setAccidentReason(data.accidentReason);
-        // Карточка оценки приходит в каждом пакете после завершения сессии и не
-        // меняется — обновляем только при реальном изменении содержимого
-        setScoreCard(prev =>
-          JSON.stringify(prev) === JSON.stringify(data.scoreCard ?? null) ? prev : data.scoreCard,
-        );
+        // Журнал и карточка оценки меняются редко, поэтому сервер шлёт их
+        // только при изменении: отсутствие ключа означает «оставь как есть».
+        // Полный снимок приходит при подключении и после сброса сессии.
+        if (data.logs !== undefined) setLogs(data.logs);
+        if ('scoreCard' in data) {
+          setScoreCard(prev =>
+            JSON.stringify(prev) === JSON.stringify(data.scoreCard ?? null) ? prev : data.scoreCard,
+          );
+        }
         if (data.speedMultiplier !== undefined) setSpeedMultiplier(data.speedMultiplier);
         if (data.isPaused !== undefined) setIsPaused(data.isPaused);
         if (data.hasSnapshot !== undefined) setHasSnapshot(data.hasSnapshot);
@@ -510,7 +516,12 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
       }
     };
-  }, [username, role, scenarioId, activeSessionId]);
+    // scenarioId намеренно не в зависимостях: смена сценария — это команда в
+    // уже открытый сокет, а не новое соединение. Пересоздание рвало сессию, и
+    // сервер на подключении оператора сбрасывал её вместе с вброшенной
+    // неисправностью. Смена session_id — наоборот, другой поток телеметрии,
+    // и переподключение для неё обязательно.
+  }, [username, role, activeSessionId]);
 
   // -------------------------------------------------------------
   // ЛОКАЛЬНЫЙ РЕЗЕРВНЫЙ СИМУЛЯТОР (MOCK-FALLBACK)
