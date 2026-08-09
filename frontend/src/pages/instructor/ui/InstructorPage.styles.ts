@@ -3,7 +3,7 @@ import { Card, Radio, Button, Table, Badge, Select } from 'antd';
 
 export const Container = styled.div`
   display: grid;
-  grid-template-rows: 60px 1fr;
+  grid-template-rows: clamp(48px, 5.5vh, 64px) 1fr;
   height: 100vh;
   width: 100vw;
   background-color: ${props => props.theme.colors.background};
@@ -54,16 +54,34 @@ export const Title = styled.h1`
 
 export const Content = styled.main`
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  grid-template-rows: minmax(0, 1fr) 220px;
-  gap: 16px;
-  padding: 16px;
+  grid-template-columns: minmax(680px, 1fr) minmax(860px, 1.55fr);
+  grid-template-rows: minmax(0, 1fr) clamp(140px, 13vh, 200px);
+  gap: clamp(10px, 0.75vw, 18px);
+  width: min(100%, 2600px);
+  margin: 0 auto;
+  padding: clamp(10px, 0.75vw, 18px);
+  box-sizing: border-box;
   overflow: hidden;
 
   @media (max-height: 950px) {
-    grid-template-rows: minmax(0, 1fr) 190px;
+    grid-template-rows: minmax(0, 1fr) clamp(130px, 15vh, 160px);
     gap: 10px;
     padding: 10px;
+  }
+
+  @media (min-width: 3000px) {
+    width: min(100%, 2920px);
+    grid-template-columns: minmax(720px, 0.9fr) minmax(1100px, 1.7fr);
+  }
+
+  @media (max-width: 1650px) {
+    grid-template-columns: minmax(560px, 0.95fr) minmax(720px, 1.45fr);
+  }
+
+  @media (max-width: 1320px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(520px, 1fr) minmax(430px, 0.9fr) 150px;
+    overflow-y: auto;
   }
 `;
 
@@ -72,6 +90,7 @@ export const PanelColumn = styled.div`
   flex-direction: column;
   gap: 16px;
   height: 100%;
+  min-width: 0;
   overflow: hidden;
 
   @media (max-height: 950px) {
@@ -161,8 +180,8 @@ export const FlexRow = styled.div`
 export const MonitorRow = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: clamp(8px, 0.6vw, 14px);
+  margin-bottom: clamp(10px, 0.8vw, 18px);
 
   @media (max-height: 950px) {
     gap: 8px;
@@ -174,7 +193,7 @@ export const MonitorItem = styled.div`
   background-color: ${props => props.theme.colors.canvas};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 4px;
-  padding: 10px;
+  padding: clamp(7px, 0.55vw, 12px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -295,6 +314,7 @@ export const DefectRow = styled.div`
 export const DefectInfo = styled.div`
   display: flex;
   flex-direction: column;
+  min-width: 0;
 
   .title {
     font-size: 12px;
@@ -323,13 +343,19 @@ export const LogArea = styled.div`
   background-color: ${props => props.theme.colors.canvas};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 4px;
-  padding: 10px;
+  padding: 8px 10px;
   font-family: monospace;
-  font-size: 11px;
+  font-size: 10.5px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  min-height: 0;
+
+  @media (max-height: 950px) {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
 `;
 
 export const LogRow = styled.div<{ type: 'info' | 'warning' | 'error' }>`
@@ -391,9 +417,23 @@ export const InstructorLogCard = styled(StretchCard)`
   grid-column: 1 / -1;
   min-height: 0;
 
+  .ant-card-head {
+    min-height: 34px;
+  }
+
   .ant-card-body {
     min-height: 0;
-    padding: 8px 12px;
+    padding: 8px 12px 10px;
+  }
+
+  @media (max-height: 950px) {
+    .ant-card-head {
+      min-height: 30px;
+    }
+
+    .ant-card-body {
+      padding: 6px 10px 8px;
+    }
   }
 `;
 
@@ -736,7 +776,7 @@ export const TableCardTitle = styled.div`
 
 export const TopCardsRow = styled.div`
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-columns: minmax(330px, 1.15fr) minmax(300px, 0.85fr);
   gap: 16px;
   align-items: stretch;
   flex: 1 1 auto;

@@ -107,6 +107,7 @@ const OperatorPage: React.FC = () => {
               <CollapsibleCard
                 title="Журнал событий и тревог"
                 icon={<Terminal size={14} />}
+                fill
               >
                 <AlarmLog />
               </CollapsibleCard>

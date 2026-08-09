@@ -2,7 +2,7 @@ import styled from 'styled-components';
 
 export const GridContainer = styled.div`
   display: grid;
-  grid-template-rows: 60px 1fr; /* Шапка, Главный экран */
+  grid-template-rows: clamp(48px, 5.5vh, 64px) 1fr; /* Шапка, Главный экран */
   grid-template-columns: 1fr;
   height: 100vh;
   width: 100vw;
@@ -15,16 +15,34 @@ export const GridContainer = styled.div`
 
 export const MainArea = styled.main`
   display: grid;
-  grid-template-columns: minmax(0, 10fr) minmax(0, 4fr); /* Защита от распирания колонок */
-  gap: 10px;
-  padding: 10px;
+  grid-template-columns: minmax(760px, 1fr) clamp(430px, 28vw, 640px); /* Защита от распирания колонок */
+  gap: clamp(8px, 0.55vw, 14px);
+  width: min(100%, 3000px);
+  margin: 0 auto;
+  padding: clamp(8px, 0.55vw, 14px);
+  box-sizing: border-box;
   overflow: hidden;
-  height: calc(100vh - 60px);
+  height: 100%;
+  min-height: 0;
 
   @media (max-height: 950px) {
     gap: 8px;
     padding: 8px;
-    height: calc(100vh - 48px);
+  }
+
+  @media (min-width: 3400px) {
+    width: min(100%, 3320px);
+    grid-template-columns: minmax(1120px, 1fr) clamp(560px, 20vw, 720px);
+  }
+
+  @media (max-width: 1450px) {
+    grid-template-columns: minmax(0, 1fr) clamp(380px, 31vw, 500px);
+  }
+
+  @media (max-width: 1180px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(520px, 1fr) minmax(420px, 0.9fr);
+    overflow-y: auto;
   }
 `;
 
@@ -32,6 +50,7 @@ export const LeftColumn = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-width: 0;
   overflow: hidden;
   gap: 8px;
 `;
@@ -39,11 +58,17 @@ export const LeftColumn = styled.div`
 export const SidebarLogWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
+  flex: 0 0 clamp(150px, 20vh, 230px);
   min-height: 0;
+  overflow: hidden;
 
   > div {
     flex: 1;
+    min-height: 0;
+  }
+
+  @media (max-height: 950px) {
+    flex-basis: clamp(128px, 19vh, 170px);
   }
 `;
 
@@ -53,6 +78,7 @@ export const Sidebar = styled.aside`
   gap: 8px;
   overflow: hidden;
   height: 100%;
+  min-width: 0;
 
   @media (max-height: 950px) {
     gap: 6px;
@@ -66,6 +92,7 @@ export const SidebarStatusBar = styled.div<{ $hasCritical: boolean }>`
   justify-content: space-between;
   gap: 8px;
   min-height: 36px;
+  flex-shrink: 0;
   padding: 0 12px;
   border: 1px solid ${props => props.$hasCritical ? props.theme.colors.danger : props.theme.colors.border};
   border-radius: 5px;
@@ -84,6 +111,7 @@ export const AlarmCounters = styled.div`
   gap: 10px;
   font-size: 10px;
   font-weight: 600;
+  white-space: nowrap;
 `;
 
 export const CriticalCounter = styled.span`
@@ -102,6 +130,7 @@ export const SidebarNavigation = styled.nav`
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 5px;
   background-color: ${props => props.theme.colors.surface};
+  flex-shrink: 0;
 `;
 
 export const SidebarTab = styled.button<{ $active: boolean }>`

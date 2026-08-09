@@ -3,24 +3,11 @@ import styled from 'styled-components';
 export const LogContent = styled.div`
   display: flex;
   flex-direction: column;
-  height: 190px;
-  max-height: 190px;
-  flex: 0 0 190px;
+  height: 100%;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
   color: ${props => props.theme.colors.text};
-
-  @media (max-height: 950px) {
-    height: 160px;
-    max-height: 160px;
-    flex-basis: 160px;
-  }
-
-  @media (max-height: 700px) {
-    height: 130px;
-    max-height: 130px;
-    flex-basis: 130px;
-  }
 `;
 
 export const FilterWrapper = styled.div`
