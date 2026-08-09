@@ -35,6 +35,7 @@ const readPythonConstants = (): Record<string, number> => {
 const MIRRORED: Array<[keyof typeof thresholds, string]> = [
   ['PRES_WARNING', 'COLUMN_PRES_WARNING'],
   ['PRES_CRITICAL', 'COLUMN_PRES_CRITICAL_LEVEL'],
+  ['PRES_ESD', 'COLUMN_PRES_ESD'],
   ['TEMP_WARNING', 'FURNACE_TEMP_WARNING'],
   ['TEMP_CRITICAL', 'FURNACE_TEMP_CRITICAL_LEVEL'],
   ['LEVEL_HIGH', 'COLUMN_LEVEL_HIGH'],

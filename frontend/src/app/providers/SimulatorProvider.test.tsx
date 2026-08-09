@@ -98,6 +98,20 @@ afterEach(() => {
 
 const openSockets = () => FakeWebSocket.instances.filter((ws) => !ws.closed);
 
+/**
+ * Монтирует провайдер и дожидается ФАКТИЧЕСКОГО подключения.
+ *
+ * Ждать одного лишь появления сокета недостаточно: команды уходят через
+ * sendWsAction только когда провайдер уже выставил isOnline, а это происходит
+ * позже — в обработчике onopen. Между конструктором сокета и onopen есть
+ * зазор, и тест, стартовавший в нём, видел пустой список отправленных команд.
+ */
+const connect = async () => {
+  renderProvider();
+  await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+  await waitFor(() => expect(session.isOnline).toBe(true));
+};
+
 test('соединение поднимается один раз при входе оператора', async () => {
   renderProvider();
 
@@ -106,8 +120,7 @@ test('соединение поднимается один раз при вхо�
 });
 
 test('смена сценария не пересоздаёт сокет', async () => {
-  renderProvider();
-  await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+  await connect();
 
   await act(async () => {
     actions.selectScenario('column_shutdown');
@@ -118,8 +131,7 @@ test('смена сценария не пересоздаёт сокет', async
 });
 
 test('смена сценария уходит командой в живой сокет', async () => {
-  renderProvider();
-  await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+  await connect();
 
   await act(async () => {
     actions.selectScenario('column_shutdown');
@@ -130,8 +142,7 @@ test('смена сценария уходит командой в живой с
 });
 
 test('вброс неисправности не теряется из-за переподключения', async () => {
-  renderProvider();
-  await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+  await connect();
 
   // Сначала уводим базовый сценарий в сторону: дефект-сценарий вернёт его
   // к startup, и именно это изменение пересоздавало сокет
@@ -160,8 +171,7 @@ test('вброс неисправности не теряется из-за пе
 });
 
 test('смена сессии по-прежнему переподключает сокет', async () => {
-  renderProvider();
-  await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+  await connect();
 
   await act(async () => {
     actions.switchSession('session-42');
@@ -196,13 +206,8 @@ const deliver = async (payload: Record<string, unknown>) => {
   });
 };
 
-const connected = async () => {
-  renderProvider();
-  await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
-};
-
 test('журнал из пакета попадает в контекст телеметрии', async () => {
-  await connected();
+  await connect();
 
   await deliver(telemetryPacket({
     logs: [{ id: '1', time: '00:05', type: 'warning', message: 'Давление растёт' }],
@@ -213,7 +218,7 @@ test('журнал из пакета попадает в контекст тел
 });
 
 test('пакет без журнала сохраняет уже показанный журнал', async () => {
-  await connected();
+  await connect();
   await deliver(telemetryPacket({
     logs: [{ id: '1', time: '00:05', type: 'warning', message: 'Давление растёт' }],
   }));
@@ -226,7 +231,7 @@ test('пакет без журнала сохраняет уже показан�
 });
 
 test('пакет без карточки оценки не стирает показанную карточку', async () => {
-  await connected();
+  await connect();
   await deliver(telemetryPacket({
     status: 'success',
     scoreCard: { score: 90, grade: 'A', duration: 120, errors: [], recommendations: [] },
@@ -239,7 +244,7 @@ test('пакет без карточки оценки не стирает пок
 });
 
 test('сброс сессии приходит новым журналом и очищает старый', async () => {
-  await connected();
+  await connect();
   await deliver(telemetryPacket({
     logs: [{ id: '1', time: '00:05', type: 'warning', message: 'Давление растёт' }],
   }));

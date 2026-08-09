@@ -88,45 +88,45 @@ def test_interlock_operation_requires_fresh_engineer_authorization():
     controller = InterlockController()
 
     with pytest.raises(PermissionError):
-        controller.set_bypass("LIRSA 1a", True)
+        controller.set_bypass("LRCA 602", True)
 
     controller.authorize_operation()
-    controller.set_bypass("LIRSA 1a", True)
-    assert controller.bypasses["LIRSA 1a"] is True
+    controller.set_bypass("LRCA 602", True)
+    assert controller.bypasses["LRCA 602"] is True
     assert controller.operation_authorized is False
 
     with pytest.raises(PermissionError):
-        controller.set_bypass("LIRSA 1a", False)
+        controller.set_bypass("LRCA 602", False)
 
 
 def test_first_four_interlocks_are_marked_primary():
     rows = InterlockController().rows({"L_1": 50, "L_2": 50, "P_1": 0.25, "T_1": 280, "P_vac": 0.04, "T_2": 350})
 
-    assert [row["tag"] for row in rows[:4]] == ["LIRSA 1a", "LIRSA 2a", "LIRSA 2д", "LIRSA 3a"]
+    assert [row["tag"] for row in rows[:4]] == ["LRCA 602", "LR 602А", "LR 602В", "LRSA 604А"]
     assert all(row["primary"] for row in rows[:4])
     assert not any(row["primary"] for row in rows[4:])
 
 
-def test_pirsa_11a_trips_at_interlock_pressure_not_at_alarm():
+def test_prsa_213_trips_at_interlock_pressure_not_at_alarm():
     """
     Строка ПАЗ обязана зажигаться по порогу блокировки, а не сигнализации.
 
-    По диаграмме PRSA 213 сигнализирует при ≥1,0 кгс/см², а блокировка идёт
-    при >1,5 кгс/см². Панель ПАЗ показывает именно блокировки — остальные
-    её строки (PIRSA 9a, TIRSA 10a, PIRSA 13a) так и устроены. Срабатывание
+    По регламенту PRSA 213 сигнализирует при 1,0 кгс/см², а блокировка идёт
+    при 1,5 кгс/см². Панель ПАЗ показывает именно блокировки — остальные
+    её строки (PRSA 204, TR 55-1, PRSA 204/II) так и устроены. Срабатывание
     по сигнализации учит оператора, что ПАЗ сработал там, где он ещё не сработал.
     """
     base = {"L_1": 50, "L_2": 50, "P_1": 0.25, "T_1": 280, "T_2": 350}
 
     at_alarm = InterlockController().rows({**base, "P_vac": K2_PRESSURE_WARNING})
-    assert next(r for r in at_alarm if r["tag"] == "PIRSA 11a")["alarm"] is False
+    assert next(r for r in at_alarm if r["tag"] == "PRSA 213")["alarm"] is False
 
     at_trip = InterlockController().rows({**base, "P_vac": K2_PRESSURE_CRITICAL})
-    assert next(r for r in at_trip if r["tag"] == "PIRSA 11a")["alarm"] is True
+    assert next(r for r in at_trip if r["tag"] == "PRSA 213")["alarm"] is True
 
 
-def test_lirsa_3a_tracks_low_level_in_k2():
+def test_lrsa_604a_tracks_low_level_in_k2():
     rows = InterlockController().rows({"L_1": 50, "L_2": 7, "P_1": 0.25, "T_1": 280, "P_vac": 0.04, "T_2": 350})
 
-    lirsa_3a = next(row for row in rows if row["tag"] == "LIRSA 3a")
-    assert lirsa_3a["alarm"] is True
+    lrsa_604a = next(row for row in rows if row["tag"] == "LRSA 604А")
+    assert lrsa_604a["alarm"] is True

@@ -505,19 +505,35 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         self.assertLessEqual(state["sensors"]["L_1"], prev_L + 0.1, "После первичного заполнения при падении L < 15% должна сработать блокировка сухого хода")
 
     def test_risk_predictor_aligned_thresholds(self):
-        """Тест-05: Проверка согласованности порогов риска предиктора с конфигом (COLUMN_PRES_WARNING = 0.40 МПа)."""
+        """Тест-05: пороги риск-движка согласованы с COLUMN_PRES_WARNING из домена."""
         import numpy as np
+        from elou_tutor.domain.process_limits import COLUMN_PRES_WARNING
+
         predictor = RiskPredictor()
-        
-        # Окно со стабильным давлением 0.35 МПа (ниже предупреждения 0.40 МПа)
-        window_safe = np.array([[1.0, 0.0, 1.0, 280.0, 280.0, 0.35, 50.0] for _ in range(30)], dtype=np.float32)
+
+        # Пороги берём из домена, а не числами: при переводе уставок регламента
+        # в МПа литералы в тестах протухают молча и начинают проверять не то
+        safe_pressure = COLUMN_PRES_WARNING - 0.09
+        window_safe = np.array(
+            [[1.0, 0.0, 1.0, 280.0, 280.0, safe_pressure, 50.0] for _ in range(30)],
+            dtype=np.float32,
+        )
         _, risk_safe = predictor.predict_risk(window_safe)
-        self.assertEqual(risk_safe, 0.0, "При давлением 0.35 МПа (ниже 0.40 МПа) риск давления должен быть 0%")
-        
-        # Окно с повышающимся давлением до 0.44 МПа (выше 0.40 МПа)
-        window_warn = np.array([[1.0, 0.0, 1.0, 280.0, 320.0, 0.44, 50.0] for _ in range(30)], dtype=np.float32)
+        self.assertEqual(
+            risk_safe, 0.0,
+            f"При давлении {safe_pressure:.3f} МПа (ниже {COLUMN_PRES_WARNING}) риск должен быть 0%",
+        )
+
+        warn_pressure = COLUMN_PRES_WARNING + 0.01
+        window_warn = np.array(
+            [[1.0, 0.0, 1.0, 280.0, 320.0, warn_pressure, 50.0] for _ in range(30)],
+            dtype=np.float32,
+        )
         _, risk_warn = predictor.predict_risk(window_warn)
-        self.assertGreater(risk_warn, 0.0, "При давлении 0.44 МПа (выше 0.40 МПа) риск должен превышать 0%")
+        self.assertGreater(
+            risk_warn, 0.0,
+            f"При давлении {warn_pressure:.3f} МПа (выше {COLUMN_PRES_WARNING}) риск должен превышать 0%",
+        )
 
     def test_escalation_flag_reset(self):
         """Тест-06: Проверка сброса флагов и сессии через session.reset_session()."""

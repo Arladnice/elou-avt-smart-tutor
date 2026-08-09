@@ -10,7 +10,7 @@
 """
 
 from elou_tutor.domain.process_limits import (
-    FURNACE_TEMP_WARNING, COLUMN_PRES_NORMAL_MIN, COLUMN_PRES_NORMAL_MAX,
+    FURNACE_TEMP_WARNING, COLUMN_PRES_NORMAL_MIN, COLUMN_PRES_NORMAL_MAX, COLUMN_PRES_ESD,
     COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_BALANCE_MIN, COLUMN_LEVEL_BALANCE_MAX,
     K2_LEVEL_HIGH, K2_PRESSURE_WARNING, K2_TEMP_WARNING,
 )
@@ -112,7 +112,8 @@ TECH_REGULATIONS = {
         "clause": "Раздел 3.5 / п. 7.10.4",
         "title": "Рост давления в колонне К-1",
         "text": f"Рабочее давление верха колонны К-1 должно составлять от {COLUMN_PRES_NORMAL_MIN} "
-                f"до {COLUMN_PRES_NORMAL_MAX} МПа. Рост давления свыше 0.48 МПа приводит к "
+                f"до {COLUMN_PRES_NORMAL_MAX} МПа. Рост давления свыше {COLUMN_PRES_ESD} МПа "
+                "(4,8 кгс/см² по позиции PRSA 204) приводит к "
                 "автоматическому отсечению топлива (блокировка ПАЗ). Оператор обязан заблаговременно "
                 "открыть регулирующий клапан сброса давления V-2 на факельную линию.",
         "category": "PARAMETER_BREACH",
@@ -211,7 +212,7 @@ TECH_REGULATIONS = {
         "category": "PARAMETER_BREACH",
     },
     "K2_VACUUM_NOT_RESTORED": {
-        "clause": "HAZOP: давление в К-2 / позиция PRSA 213",
+        "clause": "Техрегламент: позиция PRSA 213 (сигнализация 1,0 кгс/см²)",
         "title": "Сессия завершена с сорванным вакуумом в К-2",
         "text": f"Остаточное давление в колонне К-2 превышает порог сигнализации "
                 f"({K2_PRESSURE_WARNING} МПа, 1,0 кгс/см²). Потерянный вакуум ведёт к "
@@ -219,7 +220,7 @@ TECH_REGULATIONS = {
         "category": "PARAMETER_BREACH",
     },
     "K2_BOTTOM_OVERHEAT": {
-        "clause": "HAZOP: температура куба К-2 / позиция TIRSA 12a",
+        "clause": "Учебный порог по термопаре TR 43-9 (блокировки по температуре регламент не содержит)",
         "title": "Перегрев кубовой части К-2",
         "text": f"Температура куба К-2 превысила порог предупреждения ({K2_TEMP_WARNING}°C). "
                 "Перегретый мазут коксуется и подвергается крекингу, что выводит из строя "
@@ -227,7 +228,7 @@ TECH_REGULATIONS = {
         "category": "PARAMETER_BREACH",
     },
     "K2_BOTTOM_FLOODED": {
-        "clause": "HAZOP: уровень куба К-2 / позиции LRCSA 604, LRSA 604A/604B",
+        "clause": "Техрегламент: позиции LRCA 604, LRSA 604А (блокировка менее 15%)",
         "title": "Захлёбывание кубовой части К-2",
         "text": f"Уровень куба К-2 превысил верхнюю сигнализацию ({K2_LEVEL_HIGH}%). "
                 "Дальнейшее заполнение ведёт к перебросу продукта в вышележащие тарелки "

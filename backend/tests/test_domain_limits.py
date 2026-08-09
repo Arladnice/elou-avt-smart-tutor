@@ -6,9 +6,11 @@ import inspect
 def test_process_limits_importable_from_package():
     from elou_tutor.domain import process_limits
 
-    assert process_limits.COLUMN_PRES_ESD == 0.48
+    # Значения дублируют регламент; их соответствие первоисточнику проверяет
+    # test_regulation_conformance.py, здесь важен сам факт импорта из пакета
+    assert process_limits.COLUMN_PRES_ESD == 0.4707
     assert process_limits.FURNACE_TEMP_CRITICAL == 365.0
-    assert process_limits.COLUMN_LEVEL_LOW_INTERLOCK == 12.0
+    assert process_limits.COLUMN_LEVEL_LOW_INTERLOCK == 15.0
     assert process_limits.SESSION_MAX_TIME_SEC == 300
 
 

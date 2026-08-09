@@ -6,6 +6,9 @@ import {
   K2_PRESSURE_WARNING,
   K2_TEMP_WARNING,
   LEVEL_HIGH,
+  LEVEL_LOW,
+  PRES_ESD,
+  PRES_WARNING,
 } from '@/shared/config';
 import type { Defects, Sensors, Setpoints, Valves } from './types';
 
@@ -77,8 +80,8 @@ export const stepMockPhysics = (
 export const evaluateMockRisk = (sensors: Sensors): number => {
   let risk = 5;
   if (sensors.T_1 > 310) risk += 30;
-  if (sensors.P_1 > 0.4) risk += 40;
-  if (sensors.L_1 > LEVEL_HIGH || sensors.L_1 < 15) risk += 25;
+  if (sensors.P_1 > PRES_WARNING) risk += 40;
+  if (sensors.L_1 > LEVEL_HIGH || sensors.L_1 < LEVEL_LOW) risk += 25;
   if (
     sensors.L_2 > K2_LEVEL_HIGH ||
     sensors.L_2 < K2_LEVEL_LOW ||
@@ -92,8 +95,8 @@ export const evaluateMockRisk = (sensors: Sensors): number => {
 
 /** Пределы, за которыми установка в демо-режиме переходит в аварию */
 export const detectMockAccident = (sensors: Sensors): string | null => {
-  if (sensors.P_1 >= 0.48) {
-    return 'Критическое превышение давления в колонне К-1 (более 0.48 МПа). Взрыв колонны!';
+  if (sensors.P_1 >= PRES_ESD) {
+    return `Критическое превышение давления в колонне К-1 (более ${PRES_ESD} МПа). Взрыв колонны!`;
   }
   if (sensors.T_1 >= 380) {
     return 'Критический перегрев печи П-1 (выше 380°C). Прогар змеевика и пожар!';
