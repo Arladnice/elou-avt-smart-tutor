@@ -26,11 +26,20 @@ interface ChatMessage {
   content: string;
 }
 
-const AiAssistant: React.FC = () => {
+interface AiAssistantProps {
+  /** При вынесенной постоянной оценке риска оставляет только рабочие вкладки. */
+  hideRiskTab?: boolean;
+  /** Прогноз тренда вынесен в отдельное окно боковой панели. */
+  hideTrendTab?: boolean;
+}
+
+const AiAssistant: React.FC<AiAssistantProps> = ({ hideRiskTab = false, hideTrendTab = false }) => {
   const theme = useTheme();
   const { riskLevel, sensors, valves, status, setpoints, defects, timeElapsed, predictions } = useTelemetry();
   const { scenarioId, mode: simMode } = useSession();
-  const [activeTab, setActiveTab] = useState<'risk' | 'trend' | 'chat'>('risk');
+  const [activeTab, setActiveTab] = useState<'risk' | 'trend' | 'chat'>(
+    hideRiskTab ? (hideTrendTab ? 'chat' : 'trend') : 'risk',
+  );
   const [mode, setMode] = useState<'auto' | 'rag' | 'llm'>('rag');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -202,14 +211,18 @@ const AiAssistant: React.FC = () => {
   return (
     <S.AssistantContent>
       <S.TabsHeader>
-        <S.TabButton $active={activeTab === 'risk'} onClick={() => setActiveTab('risk')}>
-          <Zap size={12} />
-          Оценка Рисков
-        </S.TabButton>
-        <S.TabButton $active={activeTab === 'trend'} onClick={() => setActiveTab('trend')}>
-          <LineChart size={12} />
-          Прогноз тренда
-        </S.TabButton>
+        {!hideRiskTab && (
+          <S.TabButton $active={activeTab === 'risk'} onClick={() => setActiveTab('risk')}>
+            <Zap size={12} />
+            Оценка рисков
+          </S.TabButton>
+        )}
+        {!hideTrendTab && (
+          <S.TabButton $active={activeTab === 'trend'} onClick={() => setActiveTab('trend')}>
+            <LineChart size={12} />
+            Прогноз тренда
+          </S.TabButton>
+        )}
         <S.TabButton $active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>
           <MessageSquare size={12} />
           Диалог с помощником

@@ -26,9 +26,10 @@ export const TabButton = styled.button<{ $active: boolean }>`
   border: none;
   border-bottom: 2px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
   color: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.textMuted};
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 4px 8px;
+  padding: 7px 10px;
+  white-space: nowrap;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -61,9 +62,10 @@ export const ModeOption = styled.button<{ $active: boolean }>`
   border: 1px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
   color: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.textMuted};
 
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   padding: 2px 6px;
+  white-space: nowrap;
   border-radius: 3px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -185,8 +187,8 @@ export const ChatContainer = styled.div`
 
 export const MessagesBox = styled.div`
   flex: 1;
-  height: 280px;
-  max-height: 280px;
+  height: 320px;
+  max-height: 320px;
   overflow-y: auto;
   padding: 8px;
   display: flex;
@@ -233,8 +235,8 @@ export const MessageBubble = styled.div<{ $isUser: boolean }>`
   color: ${props => props.theme.colors.text};
   border-radius: 8px;
   padding: 6px 10px;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 14px;
+  line-height: 1.45;
   word-break: break-word;
   white-space: pre-wrap;
 
@@ -261,8 +263,9 @@ export const SuggestionChip = styled.button`
   border: 1px solid ${props => props.theme.colors.border};
   color: ${props => props.theme.colors.primary};
   border-radius: 12px;
-  padding: 3px 10px;
-  font-size: 10px;
+  padding: 7px 12px;
+  font-size: 12px;
+  white-space: nowrap;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -283,6 +286,7 @@ export const InputWrapper = styled.div`
     background-color: ${props => props.theme.colors.canvas};
     border-color: ${props => props.theme.colors.border};
     color: ${props => props.theme.colors.text};
+    font-size: 14px;
 
     &:hover, &:focus {
       border-color: ${props => props.theme.colors.primary};

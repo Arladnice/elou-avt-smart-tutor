@@ -16,6 +16,7 @@ from elou_tutor.domain.process_limits import (
     COLUMN_LEVEL_HIGH, COLUMN_LEVEL_LOW, COLUMN_LEVEL_LOW_INTERLOCK,
     COLUMN_LEVEL_HIGH_CRITICAL, COLUMN_LEVEL_LOW_CRITICAL,
     STARTUP_HEATING_THRESHOLD_TEMP, STARTUP_FILLING_TIME_LIMIT_SEC, VALVE_ACTION_TIMEOUT_SEC,
+    ACCIDENT_STARTUP_MAX_TIME_SEC,
     K2_PRESSURE_NORMAL, K2_PRESSURE_WARNING, K2_PRESSURE_CRITICAL,
     K2_TEMP_WARNING, K2_TEMP_CRITICAL,
     K2_LEVEL_LOW, K2_LEVEL_LOW_INTERLOCK, K2_LEVEL_LOW_CRITICAL,
@@ -192,11 +193,26 @@ class RiskPredictor:
         # 3. По уровню в колонне (пределы: < COLUMN_LEVEL_LOW=25% или > COLUMN_LEVEL_HIGH=85%)
         # При пуске (startup) на первых двух минутах колонна естественно пуста и заполняется сырьем
         is_startup_filling = (scenario_id == "startup" and time_elapsed <= STARTUP_FILLING_TIME_LIMIT_SEC)
+        # Согласуем risk engine с физической моделью: при пуске пустой куб
+        # допускается заполнять до 180 с. После 120 с риск должен расти
+        # постепенно, а не скачком в 100% при первом же обновлении.
+        startup_was_filled = bool(np.max(window[:, 6]) >= COLUMN_LEVEL_LOW_INTERLOCK)
+        startup_low_level_grace = (
+            scenario_id == "startup"
+            and not startup_was_filled
+            and time_elapsed <= ACCIDENT_STARTUP_MAX_TIME_SEC
+        )
         
         if risk_level > COLUMN_LEVEL_HIGH:
             risk += (risk_level - COLUMN_LEVEL_HIGH) / (COLUMN_LEVEL_HIGH_CRITICAL - COLUMN_LEVEL_HIGH) * RISK_WEIGHT_LEVEL
         elif risk_level < COLUMN_LEVEL_LOW:
-            if not is_startup_filling:
+            if startup_low_level_grace:
+                progress = (
+                    max(0.0, time_elapsed - STARTUP_FILLING_TIME_LIMIT_SEC)
+                    / max(1.0, ACCIDENT_STARTUP_MAX_TIME_SEC - STARTUP_FILLING_TIME_LIMIT_SEC)
+                )
+                risk += 15.0 + 60.0 * min(1.0, progress)
+            elif not is_startup_filling:
                 if risk_level <= COLUMN_LEVEL_LOW_INTERLOCK:
                     risk += 75.0 + (COLUMN_LEVEL_LOW_INTERLOCK - risk_level) / (COLUMN_LEVEL_LOW_INTERLOCK - COLUMN_LEVEL_LOW_CRITICAL) * 25.0
                 else:
@@ -219,7 +235,7 @@ class RiskPredictor:
         is_critical = (
             last_pres >= COLUMN_PRES_ESD or
             last_temp >= FURNACE_TEMP_CRITICAL or
-            (last_level <= COLUMN_LEVEL_LOW_CRITICAL and not is_startup_filling) or
+            (last_level <= COLUMN_LEVEL_LOW_CRITICAL and not startup_low_level_grace) or
             last_level >= COLUMN_LEVEL_HIGH_CRITICAL or
             k2_is_critical
         )

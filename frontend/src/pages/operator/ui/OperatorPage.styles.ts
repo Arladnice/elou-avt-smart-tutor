@@ -5,7 +5,8 @@ export const GridContainer = styled.div`
   grid-template-rows: clamp(48px, 5.5vh, 64px) 1fr; /* Шапка, Главный экран */
   grid-template-columns: 1fr;
   height: 100vh;
-  width: 100vw;
+  width: 100%;
+  min-width: 0;
   background-color: ${props => props.theme.colors.background};
 
   @media (max-height: 950px) {
@@ -15,7 +16,7 @@ export const GridContainer = styled.div`
 
 export const MainArea = styled.main`
   display: grid;
-  grid-template-columns: minmax(760px, 1fr) clamp(430px, 28vw, 640px); /* Защита от распирания колонок */
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 25vw, 480px);
   gap: clamp(8px, 0.55vw, 14px);
   width: min(100%, 3000px);
   margin: 0 auto;
@@ -30,19 +31,22 @@ export const MainArea = styled.main`
     padding: 8px;
   }
 
-  @media (min-width: 3400px) {
+  @media (min-width: 2600px) {
     width: min(100%, 3320px);
     grid-template-columns: minmax(1120px, 1fr) clamp(560px, 20vw, 720px);
   }
 
   @media (max-width: 1450px) {
-    grid-template-columns: minmax(0, 1fr) clamp(380px, 31vw, 500px);
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 30vw);
   }
 
-  @media (max-width: 1180px) {
+  @media (max-width: 900px) {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(520px, 1fr) minmax(420px, 0.9fr);
+    grid-template-rows: minmax(520px, 62vh) auto;
     overflow-y: auto;
+    height: 100%;
+    min-height: 0;
+    align-content: start;
   }
 `;
 
@@ -53,12 +57,15 @@ export const LeftColumn = styled.div`
   min-width: 0;
   overflow: hidden;
   gap: 8px;
-`;
 
+  > div:last-child {
+    flex: 0 0 clamp(180px, 24vh, 280px);
+  }
+`;
 export const SidebarLogWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  flex: 0 0 clamp(150px, 20vh, 230px);
+  flex: 0 0 clamp(180px, 24vh, 280px);
   min-height: 0;
   overflow: hidden;
 
@@ -68,7 +75,17 @@ export const SidebarLogWrapper = styled.div`
   }
 
   @media (max-height: 950px) {
-    flex-basis: clamp(128px, 19vh, 170px);
+    flex-basis: clamp(160px, 22vh, 230px);
+  }
+
+  > section > div:first-child {
+    min-height: 30px;
+    padding: 0 12px;
+    font-size: 11px;
+  }
+
+  > section > div:last-child {
+    padding: 4px 8px;
   }
 `;
 
@@ -122,9 +139,50 @@ export const WarningCounter = styled.span`
   color: ${props => props.theme.colors.warning};
 `;
 
+export const FixedPanel = styled.section<{ $fill?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 5px;
+  background-color: ${props => props.theme.colors.surface};
+
+  ${props => props.$fill && `height: 100%;`}
+`;
+
+export const FixedPanelHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-bottom: 1px solid ${props => props.theme.colors.border};
+  color: ${props => props.theme.colors.textMuted};
+  font-size: 13px;
+  font-weight: 600;
+
+  @media (max-height: 950px) {
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 11px;
+  }
+`;
+
+export const FixedPanelBody = styled.div<{ $fill?: boolean }>`
+  min-height: 0;
+  padding: 8px 12px;
+  ${props => props.$fill && `flex: 1; overflow-y: auto;`}
+
+  @media (max-height: 950px) {
+    padding: 6px 10px;
+  }
+`;
+
 export const SidebarNavigation = styled.nav`
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
   border: 1px solid ${props => props.theme.colors.border};
@@ -157,13 +215,12 @@ export const SidebarTab = styled.button<{ $active: boolean }>`
 `;
 
 export const SidebarWorkspace = styled.div`
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
-
-  > div {
-    min-height: 100%;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 
   /* Кастомный тонкий скроллбар для SCADA-интерфейса */
   &::-webkit-scrollbar {
@@ -180,4 +237,3 @@ export const SidebarWorkspace = styled.div`
     background: ${props => props.theme.colors.primary};
   }
 `;
-
