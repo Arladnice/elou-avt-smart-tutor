@@ -13,6 +13,7 @@ from elou_tutor.domain.process_limits import (
     SETPOINT_ACCEPTANCE_TOLERANCE,
 )
 from elou_tutor.services.interlocks import InterlockController
+from elou_tutor.simulation.model import ELOUAVTSimulator
 from elou_tutor.simulation.scenarios import get_scenario_by_id
 from elou_tutor.tutor.analyzer import ErrorAnalyzer
 
@@ -21,9 +22,110 @@ def test_startup_scenario_uses_n20_route_and_temperature_tolerance():
     scenario = get_scenario_by_id("startup")
 
     assert "Н-20" in scenario["description"]
-    heating = next(item for item in scenario["checklist"] if item["id"] == "sp_up")
-    assert heating["condition"]["expected"] == 300.0
-    assert heating["condition"]["tolerance"] == SETPOINT_ACCEPTANCE_TOLERANCE
+    heating = next(item for item in scenario["checklist"] if item["id"] == "furnaces_working")
+    temperatures = [
+        condition for condition in heating["condition"]["conditions"]
+        if condition.get("target") in {"T_1", "T_3"}
+    ]
+    assert all(condition["expected"] == 300.0 for condition in temperatures)
+    assert all(condition["tolerance"] == SETPOINT_ACCEPTANCE_TOLERANCE for condition in temperatures)
+
+
+def test_furnaces_have_independent_setpoints_and_temperatures():
+    simulator = ELOUAVTSimulator()
+    simulator.reset("startup")
+
+    simulator.set_setpoint("T_1_Sp", 300.0)
+    simulator.set_setpoint("T_3_Sp", 320.0)
+    simulator.set_valve("FUEL_P1", True)
+    simulator.set_valve("FUEL_P3", True)
+    for _ in range(5):
+        simulator.step()
+
+    assert simulator.setpoints["T_1_Sp"] == 300.0
+    assert simulator.setpoints["T_3_Sp"] == 320.0
+    assert simulator.sensors["T_3"] > simulator.sensors["T_1"]
+
+
+def test_fuel_valves_drive_flame_indication():
+    simulator = ELOUAVTSimulator()
+
+    simulator.set_valve("FUEL_P1", False)
+    simulator.step()
+
+    assert simulator.sensors["Flame_P1"] is False
+    assert simulator.sensors["Flame_P3"] is True
+
+
+def test_shutdown_starts_above_first_cooling_threshold():
+    """Этап охлаждения до 300°C нельзя засчитывать при старте останова."""
+    simulator = ELOUAVTSimulator()
+    simulator.reset("shutdown")
+
+    assert simulator.sensors["T_1"] > 300.0
+    assert simulator.sensors["T_3"] > 300.0
+
+
+def test_recirculation_starts_above_first_cooling_threshold():
+    """Рециркуляция должна требовать реального охлаждения до 300°C."""
+    simulator = ELOUAVTSimulator()
+    simulator.reset("recirculation")
+
+    assert simulator.sensors["T_1"] > 300.0
+    assert simulator.sensors["T_3"] > 300.0
+
+
+def test_elou_salt_breakthrough_requires_operator_to_isolate_elou():
+    """Изоляция ЭЛОУ должна быть действием оператора, а не исходным состоянием."""
+    simulator = ELOUAVTSimulator()
+    simulator.reset("elou_salt_breakthrough")
+
+    assert simulator.valves["V_ELOU"] is True
+
+
+def test_k2_pump_command_respects_low_level_interlock():
+    simulator = ELOUAVTSimulator()
+    simulator.sensors["L_2"] = 10.0
+    simulator.pumps["N_4"] = False
+
+    simulator.set_pump("N_4", True)
+
+    assert simulator.pumps["N_4"] is False
+
+
+def test_training_acceleration_is_exposed_to_operator():
+    state = ELOUAVTSimulator().get_state()
+
+    assert state["trainingAcceleration"] == {
+        "Заполнение и уровень К-2": 4.0,
+        "Давление К-2": 10.0,
+        "Охлаждение К-2": 5.0,
+    }
+
+
+def test_scenarios_do_not_reference_p2():
+    for scenario_id in (
+        "startup", "shutdown", "column_shutdown", "overpressure_relief",
+        "recirculation", "elou_salt_breakthrough", "vt_vacuum_failure",
+    ):
+        scenario = get_scenario_by_id(scenario_id)
+        executable_part = {
+            "initial_state": scenario["initial_state"],
+            "checklist": scenario["checklist"],
+            "golden_sequence": scenario["golden_sequence"],
+        }
+        assert "П-2" not in str(executable_part)
+
+
+def test_extra_actions_are_marked_and_reduce_score():
+    score, errors, recommendations, _ = ErrorAnalyzer().evaluate_session(
+        ["V1_OPEN", "SP_UP", "V2_OPEN", "V2_CLOSE", "V3_OPEN"],
+        "startup",
+    )
+
+    assert score < 100
+    assert any(error["title"] == "Лишние действия оператора" for error in errors)
+    assert any("снижают процент" in item for item in recommendations)
 
 
 def test_level_scales_are_bound_to_column_bottoms():
@@ -75,8 +177,10 @@ def test_pump_running_cut_forces_failed_score():
 
 
 def test_overlimit_setpoint_reduces_score():
+    actions = list(get_scenario_by_id("startup")["golden_sequence"])
+    actions.insert(actions.index("SP_UP") + 1, "SETPOINT_OVERLIMIT")
     score, errors, _, _ = ErrorAnalyzer().evaluate_session(
-        ["V1_OPEN", "SP_UP", "SETPOINT_OVERLIMIT", "V3_OPEN"],
+        actions,
         "startup",
     )
 
@@ -99,12 +203,13 @@ def test_interlock_operation_requires_fresh_engineer_authorization():
         controller.set_bypass("LRCA 602", False)
 
 
-def test_first_four_interlocks_are_marked_primary():
+def test_only_regulation_trip_channels_are_marked_primary():
     rows = InterlockController().rows({"L_1": 50, "L_2": 50, "P_1": 0.25, "T_1": 280, "P_vac": 0.04, "T_2": 350})
 
-    assert [row["tag"] for row in rows[:4]] == ["LRCA 602", "LR 602А", "LR 602В", "LRSA 604А"]
-    assert all(row["primary"] for row in rows[:4])
-    assert not any(row["primary"] for row in rows[4:])
+    assert {row["tag"] for row in rows if row["primary"]} == {
+        "LRCSA 603", "LRSA 603B", "PRSA 204", "LRSA 609В", "PRSA 213", "LRSA 604А",
+    }
+    assert len(rows) == 12
 
 
 def test_prsa_213_trips_at_interlock_pressure_not_at_alarm():
@@ -130,3 +235,13 @@ def test_lrsa_604a_tracks_low_level_in_k2():
 
     lrsa_604a = next(row for row in rows if row["tag"] == "LRSA 604А")
     assert lrsa_604a["alarm"] is True
+
+
+def test_k2_low_level_interlocks_are_quiet_while_startup_prefills():
+    rows = InterlockController().rows(
+        {"L_1": 0, "L_2": 0, "P_1": 0.05, "P_vac": 0.04},
+        startup_k2_prefill=True,
+    )
+
+    assert not next(row for row in rows if row["tag"] == "LRCA 604")["alarm"]
+    assert not next(row for row in rows if row["tag"] == "LRSA 604А")["alarm"]

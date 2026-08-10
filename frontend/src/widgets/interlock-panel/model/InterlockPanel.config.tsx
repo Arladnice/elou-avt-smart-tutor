@@ -17,23 +17,23 @@ export const getInterlockColumns = ({
     title: 'Позиция',
     dataIndex: 'tag',
     key: 'tag',
-    width: 100,
+    width: 72,
     render: (tag: string, row) => (
       <Tag color={row.primary ? 'cyan' : 'default'}>{tag}</Tag>
     ),
   },
   {
-    title: 'Деблокировка',
+    title: 'Дебл.',
     dataIndex: 'bypassed',
     key: 'bypass',
-    width: 112,
+    width: 54,
     render: (bypassed: boolean, row) => (
       <Switch
         size="small"
         checked={bypassed}
         disabled={disabled || !canOperate}
-        checkedChildren="Вкл."
-        unCheckedChildren="Снята"
+        checkedChildren="Вкл"
+        unCheckedChildren="—"
         onChange={state => onToggle(row.tag, state)}
       />
     ),
@@ -42,21 +42,20 @@ export const getInterlockColumns = ({
     title: 'Логика',
     dataIndex: 'logic',
     key: 'logic',
-    width: 72,
+    width: 80,
   },
   {
-    title: 'Исполнительный механизм',
+    title: 'Исп. механизм',
     dataIndex: 'mechanism',
     key: 'mechanism',
-    width: 150,
   },
   {
-    title: 'Статус аварии',
+    title: 'Статус',
     dataIndex: 'alarm',
     key: 'alarm',
-    width: 104,
+    width: 50,
     render: (alarm: boolean) => (
-      <Tag color={alarm ? 'red' : 'green'}>{alarm ? 'Авария' : 'Норма'}</Tag>
+      <Tag color={alarm ? 'red' : 'green'}>{alarm ? 'Авар.' : 'Норма'}</Tag>
     ),
   },
 ];

@@ -5,8 +5,10 @@ export type {
   Sensors,
   Setpoints,
   Valves,
+  Pumps,
   Defects,
   ValveId,
+  PumpId,
   DefectId,
   SimulatorStatus,
   InterlockRow,
@@ -14,6 +16,7 @@ export type {
 export {
   TELEMETRY_HISTORY_LIMIT,
   INITIAL_VALVES,
+  INITIAL_PUMPS,
   INITIAL_SENSORS,
   INITIAL_DEFECTS,
   INITIAL_INTERLOCKS,

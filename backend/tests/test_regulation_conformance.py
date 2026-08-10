@@ -98,15 +98,15 @@ class TestPressureSetpoints:
 
 
 class TestLevelSetpoints:
-    """Уровни: блокировка задана регламентом, сигнализация — учебной моделью."""
+    """Уровни: реальные блокировки отделены от учебных ступеней риска."""
 
-    def test_pump_interlock_matches_regulation(self):
+    def test_shared_15_percent_reference_is_explicit(self):
         """
-        Регламент задаёт единый порог блокировки по уровню — 15%.
+        Регламент задаёт 15% для Е-1, Е-2 и К-2; для К-1 это только ступень риска.
 
         Так описаны Е-1 (LRCSA 603), Е-2 (LRSA 609В), К-2 (LRSA 604А) и все
-        стриппинги. Прежние 12% для К-1 выводились из «240 мм по шкале», но
-        такого числа в регламенте нет.
+        стриппинги. В К-1 блокировки нет, но единое число используется в
+        прогнозе риска и для фиксации первичного заполнения.
         """
         assert limits.COLUMN_LEVEL_LOW_INTERLOCK == 15.0
         assert limits.K2_LEVEL_LOW_INTERLOCK == 15.0
@@ -156,26 +156,25 @@ class TestInterlockPanelDesignations:
 
     def test_regulatory_rows_cover_the_real_trips(self):
         """
-        Реальных блокировок среди моделируемого оборудования ровно три.
+        Панель включает пять защитных функций и регламентные каналы контроля.
 
-        Регламент: PRSA 204 (давление К-1), PRSA 213 (давление К-2) и
-        LRSA 604А (уровень куба К-2, запрет пуска Н-4/Н-4А/Н-32/Н-32А).
-        Блокировки по температуре в регламенте нет ни одной, по уровню куба
-        К-1 — тоже: позиция 602 только регистрирует и сигнализирует.
+        Защиты: совместные каналы Е-1, давление К-1, низкий уровень Е-2,
+        давление К-2 и низкий уровень куба К-2. Температурных блокировок нет.
         """
-        regulatory = {d["tag"] for d in INTERLOCK_DEFINITIONS if d.get("basis") == "регламент"}
+        trips = {d["tag"] for d in INTERLOCK_DEFINITIONS if d.get("primary")}
 
-        assert regulatory == {"PRSA 204", "PRSA 213", "LRSA 604А"}
+        assert trips == {
+            "LRCSA 603", "LRSA 603B", "PRSA 204",
+            "LRSA 609В", "PRSA 213", "LRSA 604А",
+        }
 
-    def test_training_rows_are_marked(self):
-        """Строки без основания в регламенте обязаны быть помечены учебными."""
-        training = [d for d in INTERLOCK_DEFINITIONS if d.get("basis") == "учебная"]
+    def test_panel_contains_no_invented_temperature_trips(self):
+        """После сверки панель не должна содержать учебных температурных ПАЗ."""
+        tags = {definition["tag"] for definition in INTERLOCK_DEFINITIONS}
 
-        assert training, "все позиции объявлены регламентными — так не бывает"
-        for definition in training:
-            assert definition.get("note"), (
-                f"учебная позиция {definition['tag']} не объясняет, почему она учебная"
-            )
+        assert "TR 55-1" not in tags
+        assert "TR 43-9" not in tags
+        assert all(definition["basis"] == "регламент" for definition in INTERLOCK_DEFINITIONS)
 
     def test_tags_are_unique(self):
         tags = [d["tag"] for d in INTERLOCK_DEFINITIONS]

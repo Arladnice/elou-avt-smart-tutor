@@ -103,6 +103,8 @@ class SimulationSession:
         self.logs_revision: int = 0
         self._sent_logs_revision = None
         self._sent_score_card = None
+        self._sent_interlocks = None
+        self._sent_training_acceleration = None
 
     async def broadcast_state(self):
         started = time.perf_counter()
@@ -154,6 +156,16 @@ class SimulationSession:
         else:
             self._sent_score_card = state["scoreCard"]
 
+        if state["interlocks"] == self._sent_interlocks:
+            del state["interlocks"]
+        else:
+            self._sent_interlocks = state["interlocks"]
+
+        if state["trainingAcceleration"] == self._sent_training_acceleration:
+            del state["trainingAcceleration"]
+        else:
+            self._sent_training_acceleration = state["trainingAcceleration"]
+
         return state
 
     def get_full_state(self) -> dict:
@@ -182,6 +194,7 @@ class SimulationSession:
             sim_state["timeElapsed"],
             scenario_id=self.active_scenario,
             k2_sensors=sensors,
+            startup_k2_prefill=sim_state["startupK2Prefill"],
         )
         
         score, errors, recs, recommended_scenario_id = self.analyzer.evaluate_session(
@@ -223,12 +236,14 @@ class SimulationSession:
             "status": sim_state["status"],
             "timeElapsed": sim_state["timeElapsed"],
             "valves": sim_state["valves"],
+            "pumps": sim_state["pumps"],
             "sensors": sim_state["sensors"],
             "setpoints": sim_state["setpoints"],
             "defects": sim_state["defects"],
             "accidentReason": sim_state["accidentReason"],
             "operatorName": self.active_operator_name,
             "scenarioId": self.active_scenario,
+            "startupK2Prefill": sim_state["startupK2Prefill"],
             "riskLevel": risk,
             "predictions": pred_vals,
             # actions в пакет не входит: ни один клиент его не читает, а при
@@ -243,9 +258,13 @@ class SimulationSession:
             "webhookUrl": self.webhook_url,
             "webhookActive": self.webhook_active,
             "mutes": list(self.mutes),
-            "interlocks": self.interlocks.rows(sensors),
+            "interlocks": self.interlocks.rows(
+                sensors,
+                startup_k2_prefill=sim_state["startupK2Prefill"],
+            ),
             "dutyEngineerPhone": DUTY_ENGINEER_PHONE,
             "interlockOperationAuthorized": self.interlocks.operation_authorized,
+            "trainingAcceleration": sim_state["trainingAcceleration"],
         }
 
     def save_completed_session(self):
@@ -323,10 +342,15 @@ class SimulationSession:
         self.operator_reacted_to_critical = False
         self.escalation_warning_sent = False
         self.interlocks.reset()
+        self._sent_interlocks = None
+        self._sent_training_acceleration = None
 
         if scenario == "startup":
             self.add_log("info", "Система инициализирована в холодном состоянии. Требуется пуск.")
-            self.add_log("warning", "ВНИМАНИЕ: Все задвижки перекрыты, печь холодная. Начните технологический пуск.")
+            # Холодная установка с закрытыми задвижками — исходное состояние
+            # сценария, а не технологическая тревога. Иначе ИИ инструктора
+            # немедленно подсвечивает штатный пуск как отклонение.
+            self.add_log("info", "Исходное состояние пуска: все задвижки перекрыты, печь холодная. Начните технологический пуск.")
         else:
             self.add_log("info", "Система перезапущена. Режим работы: Стабильный.")
             self.add_log("info", "Входной клапан V-1 открыт. Подача сырья в норме.")

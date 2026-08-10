@@ -1,4 +1,4 @@
-import type { DefectId, ValveId } from '@/entities/telemetry';
+import type { DefectId, PumpId, ValveId } from '@/entities/telemetry';
 import type { TrainingMode, UserRole } from '@/entities/session';
 
 /**
@@ -13,7 +13,9 @@ export interface SimulatorActions {
   switchSession: (sessionId: string) => void;
   selectMode: (mode: TrainingMode) => void;
   toggleValve: (valveId: ValveId) => void;
-  changeSetpoint: (temp: number) => void;
+  togglePump: (pumpId: PumpId) => void;
+  changeSetpoint: (name: 'T_1_Sp' | 'T_3_Sp', temp: number) => void;
+  changeFeedRate: (percent: number) => void;
   triggerEsd: () => void;
   triggerDefect: (defectId: DefectId, state: boolean) => void;
   resetSession: () => void;

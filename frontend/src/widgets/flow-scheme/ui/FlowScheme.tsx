@@ -216,7 +216,7 @@ const ColumnSymbol: React.FC<ColumnSymbolProps> = ({ x, y, tag, equipmentId, lev
 
 interface ValveSymbolProps {
   valveId: ValveId;
-  equipmentId: Extract<EquipmentId, 'V_1' | 'V_2' | 'V_3' | 'V_ELOU' | 'V_VT'>;
+  equipmentId?: Extract<EquipmentId, 'V_1' | 'V_2' | 'V_3' | 'V_ELOU' | 'V_VT'>;
   transform: string;
   label: string;
   isOpen: boolean;
@@ -224,6 +224,13 @@ interface ValveSymbolProps {
   onToggle: (valveId: ValveId) => void;
   onOpen: (equipmentId: EquipmentId) => void;
 }
+
+const ValveGlyph: React.FC = () => (
+  <>
+    <polygon points="-12,-9 0,0 -12,9" />
+    <polygon points="12,-9 0,0 12,9" />
+  </>
+);
 
 const ValveSymbol: React.FC<ValveSymbolProps> = ({
   valveId,
@@ -236,8 +243,8 @@ const ValveSymbol: React.FC<ValveSymbolProps> = ({
   onOpen,
 }) => (
   <S.ValveGroup $isOpen={isOpen} transform={transform} onClick={() => onToggle(valveId)}>
-    <polygon points="-12,-9 0,0 -12,9 12,-9 0,0 12,9" />
-    <circle cx="0" cy="0" r="3" />
+    <rect className="valve-hitbox" x="-16" y="-13" width="32" height="26" />
+    <ValveGlyph />
     <text
       x={vertical ? 17 : 0}
       y="-15"
@@ -246,13 +253,13 @@ const ValveSymbol: React.FC<ValveSymbolProps> = ({
     >
       {label}
     </text>
-    <EquipmentInfoMarker equipmentId={equipmentId} transform="translate(15, 15)" onOpen={onOpen} />
+    {equipmentId && <EquipmentInfoMarker equipmentId={equipmentId} transform="translate(15, 15)" onOpen={onOpen} />}
   </S.ValveGroup>
 );
 
 const FlowScheme: React.FC = () => {
   const theme = useTheme();
-  const { sensors, valves, status, defects, telemetryHistory, wsLatency } = useTelemetry();
+  const { sensors, valves, pumps, status, defects, telemetryHistory, wsLatency } = useTelemetry();
   const { isOnline } = useSession();
   const { toggleValve } = useSimulatorActions();
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<EquipmentId | null>(null);
@@ -268,11 +275,13 @@ const FlowScheme: React.FC = () => {
   };
 
   const powerFailed = defects.power_fail;
-  const k1FeedActive = valves.V_1 && !defects.pump_fail && !powerFailed;
+  const k1FeedActive = valves.V_1 && pumps.N_20 && !defects.pump_fail && !powerFailed;
   const k1ReliefActive = valves.V_2 && !defects.valve_jam;
-  const k1LoopActive = !powerFailed;
-  const k2FeedActive = valves.V_3 && !powerFailed;
-  const k2OutflowActive = !defects.k2_pump_fail && !powerFailed && sensors.L_2 > K2_LEVEL_LOW_INTERLOCK;
+  const k1LoopActive = valves.V_P3_OUT && valves.V_P3_RETURN && pumps.N_3 && !powerFailed;
+  const k2FeedActive = valves.V_3 && valves.V_P1_IN && pumps.N_2 && !powerFailed;
+  const k2OutflowAvailable = !defects.k2_pump_fail && !powerFailed && sensors.L_2 > K2_LEVEL_LOW_INTERLOCK;
+  const k2Outflow32Active = k2OutflowAvailable && valves.V_K2_OUT_32 && pumps.N_32;
+  const k2Outflow4Active = k2OutflowAvailable && valves.V_K2_OUT_4 && pumps.N_4;
 
   return (
     <>
@@ -310,19 +319,19 @@ const FlowScheme: React.FC = () => {
             onOpen={setSelectedEquipmentId}
           />
 
-          <S.PipeLine d="M 205,24 V 72" $isActive={valves.V_ELOU} />
-          <S.PipeFlow d="M 205,24 V 72" $isActive={valves.V_ELOU} />
+          <S.PipeLine d="M 74,24 V 72" $isActive={valves.V_ELOU} />
+          <S.PipeFlow d="M 74,24 V 72" $isActive={valves.V_ELOU} />
           <ValveSymbol
             valveId="V_ELOU"
             equipmentId="V_ELOU"
-            transform="translate(205,48) rotate(90)"
+            transform="translate(74,48) rotate(90)"
             label="V-ELOU"
             isOpen={valves.V_ELOU}
             vertical
             onToggle={handleValveClick}
             onOpen={setSelectedEquipmentId}
           />
-          <text x="218" y="22" className="utility-label">ДЕЭМУЛЬГАТОР</text>
+          <text x="87" y="22" className="utility-label">ДЕЭМУЛЬГАТОР В ЭЛОУ</text>
 
           <S.PipeLine d="M 138,72 H 250 V 190 H 410" $isActive={k1FeedActive} />
           <S.PipeFlow d="M 138,72 H 250 V 190 H 410" $isActive={k1FeedActive} />
@@ -368,16 +377,15 @@ const FlowScheme: React.FC = () => {
             isAlert={Boolean(defects.valve_jam || powerFailed)}
             onOpen={setSelectedEquipmentId}
           />
+          <text x="680" y="108" textAnchor="middle" className="utility-label">L Е-1: {sensors.L_E1.toFixed(0)}%</text>
           <S.UtilityLine x1="680" y1="93" x2="680" y2="142" />
-          <S.StaticValveGroup transform="translate(680,118) rotate(90)">
-            <polygon points="-11,-8 0,0 -11,8 11,-8 0,0 11,8" />
-          </S.StaticValveGroup>
+          <ValveSymbol valveId="V_E1_DRAIN" transform="translate(680,118) rotate(90)" label="ДРЕН Е-1"
+            isOpen={valves.V_E1_DRAIN} vertical onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <text x="694" y="142" className="utility-label">ДРЕНАЖ</text>
 
           <S.UtilityLine x1="605" y1="235" x2="540" y2="235" />
-          <S.StaticValveGroup transform="translate(575,235)">
-            <polygon points="-11,-8 0,0 -11,8 11,-8 0,0 11,8" />
-          </S.StaticValveGroup>
+          <ValveSymbol valveId="V_STEAM_K1" transform="translate(575,235)" label="ПАР К-1"
+            isOpen={valves.V_STEAM_K1} onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <text x="610" y="228" className="utility-label">ПАР</text>
 
           <S.PipeLine d="M 475,410 V 466 H 352" $isActive={k1LoopActive} />
@@ -393,9 +401,8 @@ const FlowScheme: React.FC = () => {
           />
           <S.PipeLine d="M 302,466 H 220" $isActive={k1LoopActive} />
           <S.PipeFlow d="M 302,466 H 220" $isActive={k1LoopActive} $speed="1s" />
-          <S.StaticValveGroup transform="translate(258,466)">
-            <polygon points="-12,-9 0,0 -12,9 12,-9 0,0 12,9" />
-          </S.StaticValveGroup>
+          <ValveSymbol valveId="V_P3_OUT" transform="translate(258,466)" label="V-П3-1"
+            isOpen={valves.V_P3_OUT} onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <FurnaceSymbol
             x={130}
             y={430}
@@ -406,14 +413,13 @@ const FlowScheme: React.FC = () => {
           />
           <S.PipeLine d="M 130,466 H 72 V 278 H 410" $isActive={k1LoopActive} />
           <S.PipeFlow d="M 130,466 H 72 V 278 H 410" $isActive={k1LoopActive} $speed="1s" />
-          <S.StaticValveGroup transform="translate(290,278)">
-            <polygon points="-12,-9 0,0 -12,9 12,-9 0,0 12,9" />
-          </S.StaticValveGroup>
+          <ValveSymbol valveId="V_P3_RETURN" transform="translate(290,278)" label="V-П3-2"
+            isOpen={valves.V_P3_RETURN} onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <S.UtilityLine x1="175" y1="502" x2="175" y2="548" />
-          <S.StaticValveGroup transform="translate(175,525) rotate(90)">
-            <polygon points="-11,-8 0,0 -11,8 11,-8 0,0 11,8" />
-          </S.StaticValveGroup>
+          <ValveSymbol valveId="FUEL_P3" transform="translate(175,525) rotate(90)" label="ТОПЛ. П-3"
+            isOpen={valves.FUEL_P3} vertical onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <text x="142" y="570" className="utility-label">ТОПЛИВО</text>
+          <text x="205" y="448" className="utility-label">Пламя П-3: {sensors.Flame_P3 ? 'ЕСТЬ' : 'НЕТ'}</text>
           <S.UtilityLine x1="130" y1="446" x2="92" y2="446" />
           <text x="48" y="440" className="utility-label">ПАР</text>
 
@@ -429,6 +435,8 @@ const FlowScheme: React.FC = () => {
           />
           <S.PipeLine d="M 605,466 H 650" $isActive={k2FeedActive} />
           <S.PipeFlow d="M 605,466 H 650" $isActive={k2FeedActive} />
+          <ValveSymbol valveId="V_P1_IN" transform="translate(625,466)" label="V-П1"
+            isOpen={valves.V_P1_IN} onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <FurnaceSymbol
             x={650}
             y={430}
@@ -450,14 +458,11 @@ const FlowScheme: React.FC = () => {
             onOpen={setSelectedEquipmentId}
           />
           <S.UtilityLine x1="695" y1="502" x2="695" y2="548" />
-          <S.StaticValveGroup transform="translate(695,525) rotate(90)">
-            <polygon points="-11,-8 0,0 -11,8 11,-8 0,0 11,8" />
-          </S.StaticValveGroup>
+          <ValveSymbol valveId="FUEL_P1" transform="translate(695,525) rotate(90)" label="ТОПЛ. П-1"
+            isOpen={valves.FUEL_P1} vertical onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <text x="662" y="570" className="utility-label">ТОПЛИВО</text>
+          <text x="705" y="448" className="utility-label">Пламя П-1: {sensors.Flame_P1 ? 'ЕСТЬ' : 'НЕТ'}</text>
           <S.UtilityLine x1="740" y1="446" x2="790" y2="446" />
-          <S.StaticValveGroup transform="translate(765,446)">
-            <polygon points="-11,-8 0,0 -11,8 11,-8 0,0 11,8" />
-          </S.StaticValveGroup>
           <text x="798" y="440" className="utility-label">ПАР</text>
 
           <ColumnSymbol
@@ -472,9 +477,8 @@ const FlowScheme: React.FC = () => {
 
           <S.PipeLine d="M 965,160 V 92 H 1095" />
           <S.PipeLine d="M 965,92 V 28 H 1080" />
-          <S.StaticValveGroup transform="translate(965,56) rotate(90)">
-            <polygon points="-12,-9 0,0 -12,9 12,-9 0,0 12,9" />
-          </S.StaticValveGroup>
+          <ValveSymbol valveId="V_K2_RELIEF" transform="translate(965,56) rotate(90)" label="СБРОС К-2"
+            isOpen={valves.V_K2_RELIEF} vertical onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <text x="995" y="18" className="gas-release-label">СБРОС ГАЗА</text>
           <VesselSymbol
             x={1095}
@@ -484,10 +488,10 @@ const FlowScheme: React.FC = () => {
             isAlert={Boolean(defects.vt_vacuum_loss || powerFailed)}
             onOpen={setSelectedEquipmentId}
           />
-          <S.PipeLine d="M 1155,115 V 164" $isActive={valves.V_VT} />
-          <S.StaticValveGroup transform="translate(1155,139) rotate(90)">
-            <polygon points="-11,-8 0,0 -11,8 11,-8 0,0 11,8" />
-          </S.StaticValveGroup>
+          <text x="1155" y="130" textAnchor="middle" className="utility-label">L Е-2: {sensors.L_E2.toFixed(0)}%</text>
+          <S.PipeLine d="M 1155,115 V 164" $isActive={valves.V_E2_DRAIN} />
+          <ValveSymbol valveId="V_E2_DRAIN" transform="translate(1155,139) rotate(90)" label="ДРЕН Е-2"
+            isOpen={valves.V_E2_DRAIN} vertical onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <text x="1168" y="164" className="utility-label">ДРЕНАЖ</text>
 
           <S.UtilityLine x1="1245" y1="265" x2="1030" y2="265" />
@@ -501,7 +505,11 @@ const FlowScheme: React.FC = () => {
             onOpen={setSelectedEquipmentId}
           />
 
-          <S.PipeLine d="M 965,450 V 492 H 1052" $isActive={k2OutflowActive} />
+          <S.UtilityLine x1="1030" y1="300" x2="900" y2="300" />
+          <ValveSymbol valveId="V_STEAM_K2" transform="translate(1040,300)" label="ПАР К-2"
+            isOpen={valves.V_STEAM_K2} onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
+
+          <S.PipeLine d="M 965,450 V 492 H 1052" $isActive={k2Outflow32Active} />
           <PumpSymbol
             x={1080}
             y={492}
@@ -512,13 +520,12 @@ const FlowScheme: React.FC = () => {
             isAlert={Boolean(defects.k2_pump_fail || powerFailed)}
             onOpen={setSelectedEquipmentId}
           />
-          <S.PipeLine d="M 1102,492 H 1245" $isActive={k2OutflowActive} />
-          <S.PipeFlow d="M 1102,492 H 1245" $isActive={k2OutflowActive} />
-          <S.StaticValveGroup transform="translate(1180,492)">
-            <polygon points="-12,-9 0,0 -12,9 12,-9 0,0 12,9" />
-          </S.StaticValveGroup>
+          <S.PipeLine d="M 1102,492 H 1245" $isActive={k2Outflow32Active} />
+          <S.PipeFlow d="M 1102,492 H 1245" $isActive={k2Outflow32Active} />
+          <ValveSymbol valveId="V_K2_OUT_32" transform="translate(1180,492)" label="V-Н32"
+            isOpen={valves.V_K2_OUT_32} onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
 
-          <S.PipeLine d="M 965,492 V 566 H 1052" $isActive={k2OutflowActive} />
+          <S.PipeLine d="M 965,492 V 566 H 1052" $isActive={k2Outflow4Active} />
           <PumpSymbol
             x={1080}
             y={566}
@@ -529,11 +536,10 @@ const FlowScheme: React.FC = () => {
             isAlert={Boolean(defects.k2_pump_fail || powerFailed)}
             onOpen={setSelectedEquipmentId}
           />
-          <S.PipeLine d="M 1102,566 H 1245" $isActive={k2OutflowActive} />
-          <S.PipeFlow d="M 1102,566 H 1245" $isActive={k2OutflowActive} />
-          <S.StaticValveGroup transform="translate(1180,566)">
-            <polygon points="-12,-9 0,0 -12,9 12,-9 0,0 12,9" />
-          </S.StaticValveGroup>
+          <S.PipeLine d="M 1102,566 H 1245" $isActive={k2Outflow4Active} />
+          <S.PipeFlow d="M 1102,566 H 1245" $isActive={k2Outflow4Active} />
+          <ValveSymbol valveId="V_K2_OUT_4" transform="translate(1180,566)" label="V-Н4"
+            isOpen={valves.V_K2_OUT_4} onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
 
           <g transform="translate(92,170)">
             <S.SensorBox $isWarning={sensors.Sal_1 > 10} $isDanger={sensors.Sal_1 > 25}>
@@ -578,6 +584,13 @@ const FlowScheme: React.FC = () => {
             </S.SensorBox>
             <rect x="-42" y="20" width="84" height="12" className="sparkline-frame" />
             <S.SparklinePath d={generateSparklineD(tempHistory, -42, 20, 84, 12, 240, 380)} $strokeColor={sensors.T_1 > TEMP_WARNING ? theme.colors.warning : theme.colors.primary} />
+          </g>
+          <g transform="translate(175,390)">
+            <S.SensorBox $isWarning={sensors.T_3 > TEMP_WARNING} $isDanger={sensors.T_3 > TEMP_CRITICAL}>
+              <rect className="bg" x="-42" y="-10" width="84" height="26" rx="4" />
+              <text className="value" x="0" y="7" textAnchor="middle">{sensors.T_3}°C</text>
+              <text className="label" x="0" y="-14" textAnchor="middle">T-3 · П-3</text>
+            </S.SensorBox>
           </g>
 
           <g transform="translate(1160,205)">

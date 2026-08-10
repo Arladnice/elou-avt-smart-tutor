@@ -4,9 +4,12 @@ import pytest
 
 from elou_tutor.domain.process_limits import (
     K2_COOLING_FULL_C_PER_SEC,
+    K2_COOLING_TRAINING_ACCELERATION,
     K2_LEVEL_RESPONSE_DELAY_SEC,
     K2_LEVEL_RISE_PCT_PER_SEC,
+    K2_LEVEL_TRAINING_ACCELERATION,
     K2_PRESSURE_RISE_MPA_PER_SEC,
+    K2_PRESSURE_TRAINING_ACCELERATION,
 )
 from elou_tutor.simulation.k2 import K2Dynamics
 from elou_tutor.simulation.model import ELOUAVTSimulator
@@ -38,7 +41,8 @@ def test_k2_level_rises_after_outflow_failure_delay():
     model = K2Dynamics()
     level = 50.0
 
-    for _ in range(K2_LEVEL_RESPONSE_DELAY_SEC):
+    accelerated_delay = int(K2_LEVEL_RESPONSE_DELAY_SEC / K2_LEVEL_TRAINING_ACCELERATION)
+    for _ in range(accelerated_delay):
         level, _, _ = model.step(
             level=level,
             pressure=0.04,
@@ -59,7 +63,7 @@ def test_k2_level_rises_after_outflow_failure_delay():
         vacuum_available=True,
         heat_available=True,
     )
-    assert level == pytest.approx(50.0 + K2_LEVEL_RISE_PCT_PER_SEC)
+    assert level == pytest.approx(50.0 + K2_LEVEL_RISE_PCT_PER_SEC * K2_LEVEL_TRAINING_ACCELERATION)
 
 
 def test_k2_vacuum_loss_uses_physical_pressure_rate():
@@ -74,7 +78,9 @@ def test_k2_vacuum_loss_uses_physical_pressure_rate():
         heat_available=True,
     )
 
-    assert next_pressure == pytest.approx(pressure + K2_PRESSURE_RISE_MPA_PER_SEC)
+    assert next_pressure == pytest.approx(
+        pressure + K2_PRESSURE_RISE_MPA_PER_SEC * K2_PRESSURE_TRAINING_ACCELERATION
+    )
 
 
 def test_k2_cooling_depends_on_liquid_inventory():
@@ -97,8 +103,12 @@ def test_k2_cooling_depends_on_liquid_inventory():
         heat_available=False,
     )
 
-    assert 350.0 - full_temp == pytest.approx(K2_COOLING_FULL_C_PER_SEC)
-    assert 350.0 - half_temp == pytest.approx(K2_COOLING_FULL_C_PER_SEC * 2.0)
+    assert 350.0 - full_temp == pytest.approx(
+        K2_COOLING_FULL_C_PER_SEC * K2_COOLING_TRAINING_ACCELERATION
+    )
+    assert 350.0 - half_temp == pytest.approx(
+        K2_COOLING_FULL_C_PER_SEC * K2_COOLING_TRAINING_ACCELERATION * 2.0
+    )
 
 
 def test_simulator_exposes_k2_level_in_telemetry():
@@ -124,7 +134,8 @@ def test_k2_pump_failure_drives_level_after_transport_delay():
     simulator.set_defect("k2_pump_fail", True)
     initial_level = simulator.sensors["L_2"]
 
-    for _ in range(K2_LEVEL_RESPONSE_DELAY_SEC):
+    accelerated_delay = int(K2_LEVEL_RESPONSE_DELAY_SEC / K2_LEVEL_TRAINING_ACCELERATION)
+    for _ in range(accelerated_delay):
         simulator.step()
     assert simulator.sensors["L_2"] == pytest.approx(initial_level)
 

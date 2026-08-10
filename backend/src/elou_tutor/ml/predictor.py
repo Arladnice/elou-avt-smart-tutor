@@ -91,7 +91,7 @@ class RiskPredictor:
             return None, False
 
     def predict_risk(self, window_data, time_elapsed: int = 100, scenario_id: str = "shutdown",
-                     k2_sensors: dict = None):
+                     k2_sensors: dict = None, startup_k2_prefill: bool = False):
         """
         Принимает window_data: список или numpy array размерности (30, 7):
         каждая строка — [valve_V1, valve_V2, valve_V3, furnaceTempSp,
@@ -207,11 +207,17 @@ class RiskPredictor:
             risk += (risk_level - COLUMN_LEVEL_HIGH) / (COLUMN_LEVEL_HIGH_CRITICAL - COLUMN_LEVEL_HIGH) * RISK_WEIGHT_LEVEL
         elif risk_level < COLUMN_LEVEL_LOW:
             if startup_low_level_grace:
-                progress = (
-                    max(0.0, time_elapsed - STARTUP_FILLING_TIME_LIMIT_SEC)
-                    / max(1.0, ACCIDENT_STARTUP_MAX_TIME_SEC - STARTUP_FILLING_TIME_LIMIT_SEC)
-                )
-                risk += 15.0 + 60.0 * min(1.0, progress)
+                if time_elapsed > STARTUP_FILLING_TIME_LIMIT_SEC:
+                    # После двух минут колонна должна быть заполнена. Риск
+                    # растёт плавно, чтобы оператор успел скорректировать подачу.
+                    progress = (
+                        (time_elapsed - STARTUP_FILLING_TIME_LIMIT_SEC)
+                        / max(1.0, ACCIDENT_STARTUP_MAX_TIME_SEC - STARTUP_FILLING_TIME_LIMIT_SEC)
+                    )
+                    risk += 15.0 + 60.0 * min(1.0, progress)
+                elif time_elapsed > VALVE_ACTION_TIMEOUT_SEC and window[-1, 0] < 0.5:
+                    # Пустая колонна при закрытой подаче — не штатный пуск.
+                    risk += RISK_PENALTY_NO_FEED
             elif not is_startup_filling:
                 if risk_level <= COLUMN_LEVEL_LOW_INTERLOCK:
                     risk += 75.0 + (COLUMN_LEVEL_LOW_INTERLOCK - risk_level) / (COLUMN_LEVEL_LOW_INTERLOCK - COLUMN_LEVEL_LOW_CRITICAL) * 25.0
@@ -221,7 +227,10 @@ class RiskPredictor:
                 risk += RISK_PENALTY_NO_FEED
 
         # 4. Вакуумный блок К-2 по фактическим показаниям
-        k2_risk, k2_is_critical = self._evaluate_k2_risk(k2_sensors)
+        k2_risk, k2_is_critical = self._evaluate_k2_risk(
+            k2_sensors,
+            ignore_low_level=startup_k2_prefill,
+        )
         risk += k2_risk
 
         # Корректируем итоговый процент риска
@@ -245,7 +254,7 @@ class RiskPredictor:
         return [round(float(pred_temp), 2), round(float(pred_pres), 3), round(float(pred_level), 2)], round(float(risk), 1)
 
     @staticmethod
-    def _evaluate_k2_risk(k2_sensors):
+    def _evaluate_k2_risk(k2_sensors, ignore_low_level: bool = False):
         """
         Вклад вакуумного блока К-2 в общий риск по фактическим показаниям.
 
@@ -276,12 +285,15 @@ class RiskPredictor:
             span = K2_TEMP_CRITICAL - K2_TEMP_WARNING
             risk += (temp - K2_TEMP_WARNING) / span * RISK_WEIGHT_K2_TEMP
 
-        # Уровень куба. Ниже блокировки насосов Н-4/Н-32 шкала резко круче:
+        # Уровень куба. В холодном пуске К-2 штатно пуст до первого
+        # заполнения; тогда контролируются вакуум и температура, но не уровень.
+        # После первого набора 20% защита уровня работает без исключений.
+        # Ниже блокировки насосов Н-4/Н-32 шкала резко круче:
         # это уже кавитация и обнажение змеевиков, а не отклонение от нормы.
         if level > K2_LEVEL_HIGH:
             span = K2_LEVEL_HIGH_CRITICAL - K2_LEVEL_HIGH
             risk += (level - K2_LEVEL_HIGH) / span * RISK_WEIGHT_K2_LEVEL
-        elif level < K2_LEVEL_LOW:
+        elif level < K2_LEVEL_LOW and not ignore_low_level:
             if level <= K2_LEVEL_LOW_INTERLOCK:
                 span = K2_LEVEL_LOW_INTERLOCK - K2_LEVEL_LOW_CRITICAL
                 risk += 75.0 + (K2_LEVEL_LOW_INTERLOCK - level) / span * 25.0
@@ -292,7 +304,7 @@ class RiskPredictor:
         is_critical = (
             pressure >= K2_PRESSURE_CRITICAL
             or temp >= K2_TEMP_CRITICAL
-            or level <= K2_LEVEL_LOW_CRITICAL
+            or (level <= K2_LEVEL_LOW_CRITICAL and not ignore_low_level)
             or level >= K2_LEVEL_HIGH_CRITICAL
         )
         return risk, is_critical

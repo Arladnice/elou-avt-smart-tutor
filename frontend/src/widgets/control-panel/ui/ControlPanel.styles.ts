@@ -11,6 +11,16 @@ export const PanelContent = styled.div`
   }
 `;
 
+export const TrainingNotice = styled.div`
+  padding: 7px 9px;
+  color: ${props => props.theme.colors.warning};
+  background: ${props => props.theme.colors.warningMuted};
+  border: 1px solid ${props => props.theme.colors.warning};
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1.35;
+`;
+
 export const ControlGroup = styled.div`
   display: flex;
   flex-direction: column;
@@ -125,5 +135,21 @@ export const SwitchColumn = styled.div`
 
   @media (max-height: 950px) {
     gap: 4px;
+  }
+`;
+
+export const SwitchGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+
+  ${SwitchRow} {
+    min-width: 0;
+  }
+
+  ${SwitchLabel} {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 `;

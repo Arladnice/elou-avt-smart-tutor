@@ -17,14 +17,16 @@ import * as thresholds from './thresholds';
 // модуля из дев-сервера vitest, и file-URL из него не получить.
 const PROCESS_LIMITS = resolve(
   process.cwd(),
-  '../backend/src/elou_tutor/domain/process_limits.py',
+  process.cwd().endsWith('frontend')
+    ? '../backend/src/elou_tutor/domain/process_limits.py'
+    : 'backend/src/elou_tutor/domain/process_limits.py',
 );
 
 /** Разбирает `ИМЯ = 123.4` из питоновского модуля констант. */
 const readPythonConstants = (): Record<string, number> => {
   const source = readFileSync(PROCESS_LIMITS, 'utf8');
   const constants: Record<string, number> = {};
-  for (const line of source.split('\n')) {
+  for (const line of source.split(/\r?\n/)) {
     const match = /^([A-Z][A-Z0-9_]*)\s*=\s*(-?\d+(?:\.\d+)?)\s*(?:#.*)?$/.exec(line);
     if (match) constants[match[1]] = Number(match[2]);
   }

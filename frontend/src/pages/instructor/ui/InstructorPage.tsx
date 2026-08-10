@@ -8,6 +8,7 @@ import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { ThemeToggle } from '@/shared/ui';
 import { K2_LEVEL_HIGH, K2_LEVEL_LOW } from '@/shared/config';
+import { InstructorAiAssistant } from '@/widgets/instructor-ai';
 import {
   fetchTrainingRecords,
   fetchActiveSessions as fetchActiveSessionsApi,
@@ -38,7 +39,7 @@ const InstructorPage: React.FC = () => {
   const theme = useTheme();
   const { message, modal } = App.useApp();
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
-  const { sensors, valves, status, defects, logs, riskLevel, accidentReason, wsLatency } = useTelemetry();
+  const { sensors, valves, status, defects, logs, riskLevel, accidentReason, wsLatency, startupK2Prefill } = useTelemetry();
   const {
     isOnline,
     username,
@@ -71,59 +72,45 @@ const InstructorPage: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   // Оценка сработавших алармов инструктором (GAP-6: Closed Loop Feedback)
   const [feedbackStatus, setFeedbackStatus] = useState<Record<string, 'confirmed' | 'false_alarm'>>({});
-  const [pageSize, setPageSize] = useState(8);
+  const [pageSize, setPageSize] = useState(1);
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const stretchCardRef = useRef<HTMLDivElement>(null);
 
-  // Динамический расчет пагинации точно под высоту контейнера карточки (реагирует на зум и ресайз окна)
   useEffect(() => {
     const calculatePageSize = () => {
-      const wrapper = tableContainerRef.current;
-      if (!wrapper) return;
-      
-      const wrapperHeight = wrapper.clientHeight;
-      if (wrapperHeight > 50) {
-        const tableHeader = wrapper.querySelector('.ant-table-thead') as HTMLElement;
-        const pagination = wrapper.querySelector('.ant-pagination') as HTMLElement;
-        const firstRow = wrapper.querySelector('.ant-table-row') as HTMLElement;
+      const container = tableContainerRef.current;
+      if (!container || container.clientHeight < 80) return;
 
-        const headerHeight = tableHeader ? tableHeader.offsetHeight : 39;
-        // Зарезервируем под пагинацию минимум 48px, даже если она сейчас скрыта
-        const paginationHeight = pagination && pagination.offsetHeight > 0 ? pagination.offsetHeight : 48;
-        const rowHeight = firstRow ? firstRow.offsetHeight : 37;
+      const tableHeader = container.querySelector('.ant-table-thead') as HTMLElement | null;
+      const firstRow = container.querySelector('.ant-table-tbody > tr') as HTMLElement | null;
+      const pagination = container.querySelector('.ant-pagination') as HTMLElement | null;
+      const headerHeight = tableHeader?.offsetHeight ?? 40;
+      const rowHeight = firstRow?.offsetHeight ?? 40;
+      const paginationStyle = pagination ? window.getComputedStyle(pagination) : null;
+      const paginationHeight = pagination
+        ? pagination.offsetHeight
+          + Number.parseFloat(paginationStyle?.marginTop ?? '0')
+          + Number.parseFloat(paginationStyle?.marginBottom ?? '0')
+        : 48;
+      const safetyGap = 10;
+      const availableRowsHeight = container.clientHeight - headerHeight - paginationHeight - safetyGap;
+      const nextPageSize = Math.min(6, Math.max(1, Math.floor(availableRowsHeight / rowHeight)));
 
-        const safetyMargin = 16;
-        const availableRowHeight = wrapperHeight - headerHeight - paginationHeight - safetyMargin;
-        const calculated = Math.max(1, Math.floor(availableRowHeight / rowHeight));
-
-        setPageSize((prev) => (prev !== calculated ? calculated : prev));
-
-      }
+      setPageSize(current => current === nextPageSize ? current : nextPageSize);
     };
 
-    calculatePageSize();
-    const timer = setTimeout(calculatePageSize, 150);
-
-    const observer = new ResizeObserver(() => {
-      calculatePageSize();
-    });
-    if (tableContainerRef.current) {
-      observer.observe(tableContainerRef.current);
-    }
-    if (stretchCardRef.current) {
-      observer.observe(stretchCardRef.current);
-    }
-
+    const frame = requestAnimationFrame(calculatePageSize);
+    const observer = new ResizeObserver(() => requestAnimationFrame(calculatePageSize));
+    if (tableContainerRef.current) observer.observe(tableContainerRef.current);
     window.addEventListener('resize', calculatePageSize);
     window.visualViewport?.addEventListener('resize', calculatePageSize);
 
     return () => {
-      clearTimeout(timer);
+      cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener('resize', calculatePageSize);
       window.visualViewport?.removeEventListener('resize', calculatePageSize);
     };
-  }, []);
+  }, [history.length]);
 
   // Загружаем историю тренировок через API сервис
   const fetchHistory = async () => {
@@ -362,7 +349,7 @@ const InstructorPage: React.FC = () => {
                     ) : (
                       <>
                         <S.ScenarioRadioButton value="startup">Пуск установки ЭЛОУ-АВТ</S.ScenarioRadioButton>
-                        <S.ScenarioRadioButton value="shutdown">Аварийный останов печи П-1</S.ScenarioRadioButton>
+                        <S.ScenarioRadioButton value="shutdown">Аварийный останов печей П-1 и П-3</S.ScenarioRadioButton>
                         <S.ScenarioRadioButton value="column_shutdown">Останов колонны К-1</S.ScenarioRadioButton>
                         <S.ScenarioRadioButton value="overpressure_relief">Ликвидация роста давления</S.ScenarioRadioButton>
                         <S.ScenarioRadioButton value="recirculation" $fullWidth>Перевод на рециркуляцию</S.ScenarioRadioButton>
@@ -494,7 +481,7 @@ const InstructorPage: React.FC = () => {
               <S.DefectRow>
                 <S.DefectInfo>
                   <span className="title">Отказ насосов К-2 Н-4/Н-32 (k2_pump_fail)</span>
-                  <span className="desc">Прекращение откачки мазута. Через 45 секунд уровень L-2 начинает расти с расчётной скоростью.</span>
+                  <span className="desc">Прекращение откачки мазута. Физическое запаздывание 45 с в тренировке ускорено ×4: рост L-2 виден примерно через 11 с.</span>
                 </S.DefectInfo>
                 <Switch size="small" checked={defects.k2_pump_fail} onChange={v => handleDefectChange('k2_pump_fail', v)} />
               </S.DefectRow>
@@ -530,7 +517,7 @@ const InstructorPage: React.FC = () => {
                 <span className="lbl">L-2 (Куб К-2)</span>
                 <S.SensorValue
                   $isAlert={false}
-                  $isWarning={sensors.L_2 > K2_LEVEL_HIGH || sensors.L_2 < K2_LEVEL_LOW}
+                  $isWarning={sensors.L_2 > K2_LEVEL_HIGH || (!startupK2Prefill && sensors.L_2 < K2_LEVEL_LOW)}
                 >
                   {sensors.L_2} %
                 </S.SensorValue>
@@ -579,40 +566,10 @@ const InstructorPage: React.FC = () => {
             )}
           </S.StyledCard>
 
-          {/* Метрики сервера: наблюдаемость и производительность (К1) */}
-          <S.StyledCard title="Состояние серверных служб">
-            {metrics ? (
-              <S.MetricsGrid>
-                <S.MetricItem $isAlert={metrics.cpu_percent > 85}>
-                  <span className="lbl">CPU</span>
-                  <span className="val">{metrics.cpu_percent.toFixed(1)}%</span>
-                </S.MetricItem>
-                <S.MetricItem $isAlert={metrics.memory_percent > 85}>
-                  <span className="lbl">Память</span>
-                  <span className="val">{metrics.memory_percent.toFixed(1)}%</span>
-                  <span className="sub">{metrics.memory_used_mb.toFixed(0)} МБ</span>
-                </S.MetricItem>
-                <S.MetricItem>
-                  <span className="lbl">WS-соединения</span>
-                  <span className="val">{metrics.active_ws_connections}</span>
-                  <span className="sub">событий: {metrics.processed_events_total}</span>
-                </S.MetricItem>
-                <S.MetricItem $isAlert={metrics.avg_ping_latency_ms > 100}>
-                  <span className="lbl">Отклик (ping)</span>
-                  <span className="val">{metrics.avg_ping_latency_ms.toFixed(0)} мс</span>
-                  <span className="sub">БД: {metrics.db_size_kb.toFixed(0)} КБ</span>
-                </S.MetricItem>
-              </S.MetricsGrid>
-            ) : (
-              <S.MetricsUnavailable>
-                Метрики недоступны — нет связи с сервером КТК.
-              </S.MetricsUnavailable>
-            )}
-          </S.StyledCard>
+          <InstructorAiAssistant history={history} metrics={metrics} />
 
           {/* База данных оценок с контролем целостности */}
           <S.StretchCard
-            ref={stretchCardRef}
             title={
               <S.TableCardTitle>
               <span className="main-title">База результатов обучения</span>
@@ -620,9 +577,11 @@ const InstructorPage: React.FC = () => {
               </S.TableCardTitle>
             }
             extra={
-              <Button size="small" type="primary" danger icon={<Trash2 size={12} />} onClick={handleClearHistory}>
-                Очистить
-              </Button>
+              <>
+                <Button size="small" type="primary" danger icon={<Trash2 size={12} />} onClick={handleClearHistory}>
+                  Очистить
+                </Button>
+              </>
             }
           >
             <S.TableWrapper ref={tableContainerRef}>
@@ -631,6 +590,7 @@ const InstructorPage: React.FC = () => {
                 columns={columns}
                 rowKey="id"
                 pagination={{ pageSize, showSizeChanger: false, hideOnSinglePage: true }}
+                tableLayout="fixed"
                 size="small"
                 onRow={(record) => {
                   return {

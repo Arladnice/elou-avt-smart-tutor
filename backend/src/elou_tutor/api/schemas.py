@@ -4,11 +4,19 @@ from typing import List, Dict, Any, Literal, Optional
 # Действия, которые реально порождает обработчик WS-команд. Эталон сценария
 # (golden_sequence) может состоять только из них: шаг, которого оператор не
 # способен выполнить, делает сценарий принципиально неоцениваемым.
-_VALVE_IDS = ("V1", "V2", "V3", "V_ELOU", "V_VT")
+_VALVE_IDS = (
+    "V1", "V2", "V3", "V_ELOU", "V_VT", "V_P3_OUT", "V_P3_RETURN",
+    "V_P1_IN", "V_K2_OUT_32", "V_K2_OUT_4", "HC_P1", "HC_P3",
+    "FUEL_P1", "FUEL_P3", "V_STEAM_K1", "V_STEAM_K2", "V_K2_RELIEF",
+    "V_E1_DRAIN", "V_E2_DRAIN",
+)
+_PUMP_IDS = ("N_20", "N_2", "N_3", "N_4", "N_32")
 PRODUCIBLE_ACTIONS = frozenset(
     [f"{v}_OPEN" for v in _VALVE_IDS]
     + [f"{v}_CLOSE" for v in _VALVE_IDS]
-    + ["SP_UP", "SP_DOWN", "ESD", "CALL_DISPATCHER"]
+    + [f"{pump}_START" for pump in _PUMP_IDS]
+    + [f"{pump}_STOP" for pump in _PUMP_IDS]
+    + ["SP_UP", "SP_DOWN", "SP3_UP", "SP3_DOWN", "FEED_UP", "FEED_DOWN", "ESD", "CALL_DISPATCHER"]
 )
 
 class LoginRequest(BaseModel):

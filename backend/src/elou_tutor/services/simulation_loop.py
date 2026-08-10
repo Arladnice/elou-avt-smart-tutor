@@ -97,6 +97,7 @@ async def _advance_one_second(session):
     k2_level = session.simulator.sensors["L_2"]
     k2_pressure = session.simulator.sensors["P_vac"]
     k2_temp = session.simulator.sensors["T_2"]
+    startup_k2_prefill = session.simulator.get_state()["startupK2Prefill"]
 
     # Формируем автоматические предупреждения по техрегламенту
     if temp > FURNACE_TEMP_WARNING:
@@ -118,7 +119,7 @@ async def _advance_one_second(session):
     if k2_level > K2_LEVEL_HIGH:
         sev = "CRITICAL" if k2_level > K2_LEVEL_HIGH_CRITICAL else "WARNING"
         session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-2 ({k2_level:.1f}%) выше нормы! Проверьте откачку насосами Н-4/Н-32.", severity=sev, fingerprint="k2_level_high")
-    elif k2_level < K2_LEVEL_LOW:
+    elif k2_level < K2_LEVEL_LOW and not startup_k2_prefill:
         sev = "CRITICAL" if k2_level < K2_LEVEL_LOW_CRITICAL else "WARNING"
         session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-2 ({k2_level:.1f}%) опасно низок! Риск кавитации насосов и обнажения змеевиков.", severity=sev, fingerprint="k2_level_low")
 
@@ -137,7 +138,7 @@ async def _advance_one_second(session):
         or level > COLUMN_LEVEL_HIGH_CRITICAL_LEVEL
         or (level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL and not is_startup_filling)
         or k2_level > K2_LEVEL_HIGH_CRITICAL
-        or k2_level < K2_LEVEL_LOW_CRITICAL
+        or (k2_level < K2_LEVEL_LOW_CRITICAL and not startup_k2_prefill)
         or k2_pressure >= K2_PRESSURE_CRITICAL
         or k2_temp >= K2_TEMP_CRITICAL
     )

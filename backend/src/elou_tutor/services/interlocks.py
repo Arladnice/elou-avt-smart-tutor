@@ -3,14 +3,13 @@
 import os
 
 from elou_tutor.domain.process_limits import (
-    COLUMN_LEVEL_HIGH_CRITICAL_LEVEL,
-    COLUMN_LEVEL_LOW_CRITICAL_LEVEL,
+    COLUMN_LEVEL_HIGH,
+    COLUMN_LEVEL_LOW,
     COLUMN_PRES_ESD,
-    COLUMN_PRES_CRITICAL,
-    FURNACE_TEMP_CRITICAL,
+    K2_LEVEL_HIGH,
+    K2_LEVEL_LOW,
     K2_LEVEL_LOW_INTERLOCK,
     K2_PRESSURE_CRITICAL,
-    K2_TEMP_CRITICAL,
 )
 
 
@@ -25,65 +24,69 @@ DUTY_ENGINEER_PHONE = os.environ.get("DUTY_ENGINEER_PHONE", "24-45")
 #                 реальную защиту установки;
 #   «учебная»   — защиты с таким срабатыванием на объекте нет, строка
 #                 добавлена ради учебного эффекта.
-# Реальных блокировок среди моделируемого оборудования ровно три: давление К-1,
-# давление К-2 и уровень куба К-2. Блокировок по температуре регламент не
-# содержит ни одной, по уровню куба К-1 — тоже.
+# Температурных блокировок и голосования 2oo2/2oo3 в регламенте нет. Панель
+# показывает основные и дублирующие каналы Е-1, К-1, Е-2 и К-2 без выдуманной
+# логики объединения.
 INTERLOCK_DEFINITIONS = (
     {
-        "tag": "LRCA 602", "logic": "1oo1", "mechanism": "Контактор КМ-2", "primary": True,
-        "parameter": "Уровень куба К-1, верхний предел",
-        "basis": "учебная",
-        "note": "LRCA 602 регистрирует и сигнализирует; блокировки по уровню К-1 регламент не предусматривает",
+        "tag": "LRCSA 603", "logic": "совместно", "mechanism": "Останов Н-6/Н-6А", "primary": True,
+        "parameter": "Уровень Е-1", "basis": "регламент",
+        "note": "Менее 15% — запрет пуска насосов Н-6/Н-6А",
     },
     {
-        "tag": "LR 602А", "logic": "2oo2", "mechanism": "Контактор КМ-2", "primary": True,
-        "parameter": "Уровень куба К-1, нижний предел",
-        "basis": "учебная",
-        "note": "Дублёр уровнемера К-1; защита насосов куба добавлена как учебная",
+        "tag": "LRSA 603B", "logic": "совместно", "mechanism": "Останов Н-6/Н-6А", "primary": True,
+        "parameter": "Уровень Е-1, дублёр", "basis": "регламент",
+        "note": "Дублирующий канал минимального уровня Е-1",
     },
     {
-        "tag": "LR 602В", "logic": "2oo2", "mechanism": "Контактор КМ-2", "primary": True,
-        "parameter": "Уровень куба К-1, нижний предел (дублёр)",
-        "basis": "учебная",
-        "note": "Второй дублёр уровнемера К-1; защита насосов куба добавлена как учебная",
-    },
-    {
-        # Блокировка идёт по единственному каналу дублёра 604А, схем
-        # голосования регламент не описывает
-        "tag": "LRSA 604А", "logic": "1oo1", "mechanism": "Контактор КМ-2", "primary": True,
-        "parameter": "Уровень куба К-2, нижний предел",
-        "basis": "регламент",
-        "note": "Менее 15% — запрет пуска насосов Н-4, Н-4А, Н-32, Н-32А",
-    },
-    {
-        "tag": "PRSA 204", "logic": "1oo1", "mechanism": "Контактор КМ-2", "primary": False,
-        "parameter": "Давление в колонне К-1",
-        "basis": "регламент",
+        "tag": "PRSA 204", "logic": "1oo1", "mechanism": "Отсечка топлива и пара К-1", "primary": True,
+        "parameter": "Давление в колонне К-1", "basis": "регламент",
         "note": "4,5 кгс/см² — сигнализация, 4,8 кгс/см² — отсечение топлива и пара",
     },
     {
-        "tag": "TR 55-1", "logic": "1oo1", "mechanism": "Контактор КМ-2", "primary": False,
-        "parameter": "Температура на выходе печи П-1",
-        "basis": "учебная",
-        "note": "TR 55-1 — термопара без сигнализации; блокировок по температуре регламент не содержит",
+        "tag": "LRCA 602", "logic": "контроль", "mechanism": "Сигнализация уровня К-1", "primary": False,
+        "parameter": "Уровень куба К-1", "basis": "регламент",
+        "note": "Регистрация и сигнализация по минимуму и максимуму; блокировки нет",
     },
     {
-        "tag": "PRSA 213", "logic": "1oo1", "mechanism": "Контактор КМ-2", "primary": False,
-        "parameter": "Давление в колонне К-2",
-        "basis": "регламент",
+        "tag": "LR 602А", "logic": "контроль", "mechanism": "Дублирующий контроль К-1", "primary": False,
+        "parameter": "Уровень куба К-1, дублёр А", "basis": "регламент",
+        "note": "Дублирующий уровнемер без отдельной блокировки",
+    },
+    {
+        "tag": "LR 602В", "logic": "контроль", "mechanism": "Дублирующий контроль К-1", "primary": False,
+        "parameter": "Уровень куба К-1, дублёр В", "basis": "регламент",
+        "note": "Дублирующий уровнемер без отдельной блокировки",
+    },
+    {
+        "tag": "LRCA 609", "logic": "контроль", "mechanism": "Сигнализация уровня Е-2", "primary": False,
+        "parameter": "Уровень Е-2", "basis": "регламент",
+        "note": "Регистрация и сигнализация по минимуму и максимуму",
+    },
+    {
+        "tag": "LRSA 609В", "logic": "1oo1", "mechanism": "Запрет Н-7/Н-7А", "primary": True,
+        "parameter": "Уровень Е-2, дублёр", "basis": "регламент",
+        "note": "Менее 15% — запрет пуска насосов Н-7/Н-7А",
+    },
+    {
+        "tag": "PRSA 213", "logic": "1oo1", "mechanism": "Отсечка топлива и пара К-2", "primary": True,
+        "parameter": "Давление в колонне К-2", "basis": "регламент",
         "note": "1,0 кгс/см² — сигнализация, 1,5 кгс/см² — отсечение топлива и перегретого пара",
     },
     {
-        "tag": "TR 43-9", "logic": "1oo1", "mechanism": "Контактор КМ-2", "primary": False,
-        "parameter": "Температура низа колонны К-2",
-        "basis": "учебная",
-        "note": "TR 43-9 — термопара без сигнализации; блокировок по температуре регламент не содержит",
+        "tag": "LRCA 604", "logic": "контроль", "mechanism": "Сигнализация уровня К-2", "primary": False,
+        "parameter": "Уровень куба К-2", "basis": "регламент",
+        "note": "Основной канал регистрации и сигнализации",
     },
     {
-        "tag": "PRSA 204/II", "logic": "1oo1", "mechanism": "Контактор КМ-2", "primary": False,
-        "parameter": "Давление в колонне К-1, порог разгерметизации",
-        "basis": "учебная",
-        "note": "Вторая ступень на той же позиции: в регламенте её нет, добавлена как учебная",
+        "tag": "LRSA 604А", "logic": "1oo1", "mechanism": "Запрет Н-4/Н-32", "primary": True,
+        "parameter": "Уровень куба К-2, дублёр А", "basis": "регламент",
+        "note": "Менее 15% — запрет пуска насосов Н-4, Н-4А, Н-32, Н-32А",
+    },
+    {
+        "tag": "LR 604В", "logic": "контроль", "mechanism": "Дублирующий контроль К-2", "primary": False,
+        "parameter": "Уровень куба К-2, дублёр В", "basis": "регламент",
+        "note": "Дублирующий уровнемер без отдельной блокировки",
     },
 )
 
@@ -112,28 +115,28 @@ class InterlockController:
         self.bypasses[tag] = state
         self.operation_authorized = False
 
-    def rows(self, sensors: dict) -> list[dict]:
+    def rows(self, sensors: dict, startup_k2_prefill: bool = False) -> list[dict]:
         """Формирует строки панели ПАЗ с текущим аварийным статусом."""
         level = float(sensors.get("L_1", 0.0))
         pressure = float(sensors.get("P_1", 0.0))
-        furnace_temp = float(sensors.get("T_1", 0.0))
         vacuum_pressure = float(sensors.get("P_vac", 0.0))
-        vacuum_temp = float(sensors.get("T_2", 0.0))
         vacuum_level = float(sensors.get("L_2", 50.0))
+        e1_level = float(sensors.get("L_E1", 50.0))
+        e2_level = float(sensors.get("L_E2", 50.0))
 
         alarms = {
-            "LRCA 602": level >= COLUMN_LEVEL_HIGH_CRITICAL_LEVEL,
-            "LR 602А": level <= COLUMN_LEVEL_LOW_CRITICAL_LEVEL,
-            "LR 602В": level <= COLUMN_LEVEL_LOW_CRITICAL_LEVEL,
-            # Порог блокировки по регламенту — менее 15% (запрет пуска Н-4/Н-32)
-            "LRSA 604А": vacuum_level <= K2_LEVEL_LOW_INTERLOCK,
+            "LRCSA 603": e1_level < 15.0,
+            "LRSA 603B": e1_level < 15.0,
             "PRSA 204": pressure >= COLUMN_PRES_ESD,
-            "TR 55-1": furnace_temp >= FURNACE_TEMP_CRITICAL,
-            # Порог блокировки, а не сигнализации: панель показывает сработавшие
-            # ПАЗ. Сигнализация по ≥1,0 кгс/см² идёт отдельным аларм-сообщением.
+            "LRCA 602": level <= COLUMN_LEVEL_LOW or level >= COLUMN_LEVEL_HIGH,
+            "LR 602А": level <= COLUMN_LEVEL_LOW or level >= COLUMN_LEVEL_HIGH,
+            "LR 602В": level <= COLUMN_LEVEL_LOW or level >= COLUMN_LEVEL_HIGH,
+            "LRCA 609": e2_level <= COLUMN_LEVEL_LOW or e2_level >= COLUMN_LEVEL_HIGH,
+            "LRSA 609В": e2_level < 15.0,
             "PRSA 213": vacuum_pressure >= K2_PRESSURE_CRITICAL,
-            "TR 43-9": vacuum_temp >= K2_TEMP_CRITICAL,
-            "PRSA 204/II": pressure >= COLUMN_PRES_CRITICAL,
+            "LRCA 604": (not startup_k2_prefill and vacuum_level <= K2_LEVEL_LOW) or vacuum_level >= K2_LEVEL_HIGH,
+            "LRSA 604А": not startup_k2_prefill and vacuum_level < K2_LEVEL_LOW_INTERLOCK,
+            "LR 604В": (not startup_k2_prefill and vacuum_level <= K2_LEVEL_LOW) or vacuum_level >= K2_LEVEL_HIGH,
         }
 
         return [

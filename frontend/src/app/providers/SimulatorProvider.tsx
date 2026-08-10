@@ -6,6 +6,7 @@ import {
   TelemetryContext,
   TELEMETRY_HISTORY_LIMIT,
   INITIAL_VALVES,
+  INITIAL_PUMPS,
   INITIAL_SENSORS,
   INITIAL_DEFECTS,
   INITIAL_INTERLOCKS,
@@ -19,8 +20,10 @@ import {
   type Sensors,
   type Setpoints,
   type Valves,
+  type Pumps,
   type Defects,
   type ValveId,
+  type PumpId,
   type DefectId,
   type InterlockRow,
 } from '@/entities/telemetry';
@@ -92,12 +95,14 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [interlocks, setInterlocks] = useState<InterlockRow[]>(INITIAL_INTERLOCKS);
   const [dutyEngineerPhone, setDutyEngineerPhone] = useState('24-45');
   const [interlockOperationAuthorized, setInterlockOperationAuthorized] = useState(false);
+  const [startupK2Prefill, setStartupK2Prefill] = useState(true);
 
   // --- Телеметрия ---
   const [status, setStatus] = useState<SimulatorStatus>('running');
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [valves, setValves] = useState<Valves>(INITIAL_VALVES);
-  const [setpoints, setSetpoints] = useState<Setpoints>({ T_1_Sp: 280 });
+  const [pumps, setPumps] = useState<Pumps>(INITIAL_PUMPS);
+  const [setpoints, setSetpoints] = useState<Setpoints>({ T_1_Sp: 280, T_3_Sp: 280, F_in_Sp: 100 });
   const [sensors, setSensors] = useState<Sensors>(INITIAL_SENSORS);
   const [defects, setDefects] = useState<Defects>(INITIAL_DEFECTS);
   const [riskLevel, setRiskLevel] = useState(5);
@@ -107,6 +112,11 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     { id: '1', time: '00:00', type: 'info', message: 'Система инициализирована в локальном режиме.' },
   ]);
   const [accidentReason, setAccidentReason] = useState('');
+  const [trainingAcceleration, setTrainingAcceleration] = useState<Record<string, number>>({
+    'Заполнение и уровень К-2': 4,
+    'Давление К-2': 10,
+    'Охлаждение К-2': 5,
+  });
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -115,8 +125,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
    * все команды объявлены с пустым списком зависимостей и не пересоздаются —
    * иначе контекст действий менялся бы на каждом пакете телеметрии.
    */
-  const stateRef = useRef({ isOnline, valves, timeElapsed, scenarioId });
-  stateRef.current = { isOnline, valves, timeElapsed, scenarioId };
+  const stateRef = useRef({ isOnline, valves, pumps, timeElapsed, scenarioId });
+  stateRef.current = { isOnline, valves, pumps, timeElapsed, scenarioId };
 
   // -------------------------------------------------------------
   // ДЕЙСТВИЯ
@@ -155,7 +165,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setStatus('running');
     setTimeElapsed(0);
     setValves(INITIAL_VALVES);
-    setSetpoints({ T_1_Sp: 280 });
+    setPumps(INITIAL_PUMPS);
+    setSetpoints({ T_1_Sp: 280, T_3_Sp: 280, F_in_Sp: 100 });
     setSensors(INITIAL_SENSORS);
     setDefects(INITIAL_DEFECTS);
     setRiskLevel(5);
@@ -169,6 +180,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setHasSnapshot(false);
     setInterlocks(INITIAL_INTERLOCKS);
     setInterlockOperationAuthorized(false);
+    setStartupK2Prefill(stateRef.current.scenarioId === 'startup');
   }, [sendWsAction]);
 
   const loginUser = useCallback((name: string, userRole: UserRole) => {
@@ -214,6 +226,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     setScenarioId(scenId);
+    setStartupK2Prefill(scenId === 'startup');
     if (stateRef.current.isOnline) {
       sendWsAction({ type: 'change_scenario', scenario_id: scenId });
     } else {
@@ -239,11 +252,31 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     appendLog('info', `Локальный клик: Клапан ${valveId} -> ${nextState ? 'ОТКРЫТ' : 'ЗАКРЫТ'}`);
   }, [sendWsAction, appendLog]);
 
-  const changeSetpoint = useCallback((temp: number) => {
+  const togglePump = useCallback((pumpId: PumpId) => {
+    const { isOnline: online, pumps: currentPumps } = stateRef.current;
+    const nextState = !currentPumps[pumpId];
+    if (online) {
+      sendWsAction({ type: 'toggle_pump', pump_id: pumpId, state: nextState });
+      return;
+    }
+    setPumps(prev => ({ ...prev, [pumpId]: nextState }));
+    appendLog('info', `Локально: насос ${pumpId.replace('_', '-')} ${nextState ? 'ПУСК' : 'СТОП'}`);
+  }, [sendWsAction, appendLog]);
+
+  const changeSetpoint = useCallback((name: 'T_1_Sp' | 'T_3_Sp', temp: number) => {
     if (stateRef.current.isOnline) {
-      sendWsAction({ type: 'change_setpoint', value: temp });
+      sendWsAction({ type: 'change_setpoint', name, value: temp });
     } else {
-      setSetpoints({ T_1_Sp: temp });
+      setSetpoints(prev => ({ ...prev, [name]: temp }));
+    }
+  }, [sendWsAction]);
+
+  const changeFeedRate = useCallback((percent: number) => {
+    const boundedPercent = Math.max(0, Math.min(100, percent));
+    if (stateRef.current.isOnline) {
+      sendWsAction({ type: 'change_feed_rate', value: boundedPercent });
+    } else {
+      setSetpoints(prev => ({ ...prev, F_in_Sp: boundedPercent }));
     }
   }, [sendWsAction]);
 
@@ -435,12 +468,14 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setStatus(data.status);
         setTimeElapsed(data.timeElapsed);
         setValves(data.valves);
+        if (data.pumps) setPumps(data.pumps);
         setSensors(data.sensors);
         setSetpoints(data.setpoints);
         setDefects(data.defects);
         setRiskLevel(data.riskLevel);
         setPredictions(data.predictions);
         setAccidentReason(data.accidentReason);
+        if (data.trainingAcceleration) setTrainingAcceleration(data.trainingAcceleration);
         // Журнал и карточка оценки меняются редко, поэтому сервер шлёт их
         // только при изменении: отсутствие ключа означает «оставь как есть».
         // Полный снимок приходит при подключении и после сброса сессии.
@@ -463,6 +498,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (data.interlockOperationAuthorized !== undefined) {
           setInterlockOperationAuthorized(Boolean(data.interlockOperationAuthorized));
         }
+        if (data.startupK2Prefill !== undefined) setStartupK2Prefill(Boolean(data.startupK2Prefill));
         if (data.mode) setMode(data.mode);
         if (data.operatorName) setOperatorName(data.operatorName);
         if (data.scenarioId) setScenarioId(data.scenarioId);
@@ -535,21 +571,27 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     if (isOnline || status !== 'running') return;
     const interval = setInterval(() => {
-      setSensors(prev => stepMockPhysics(prev, valves, setpoints, defects));
+      setSensors(prev => stepMockPhysics(prev, valves, setpoints, defects, pumps));
     }, 1000);
     return () => clearInterval(interval);
-  }, [status, valves, setpoints, defects, isOnline]);
+  }, [status, valves, setpoints, defects, pumps, isOnline]);
 
   // Проверка аварийных пределов в mock-режиме
   useEffect(() => {
     if (isOnline || status !== 'running') return;
-    setRiskLevel(evaluateMockRisk(sensors));
+    setRiskLevel(evaluateMockRisk(sensors, startupK2Prefill));
     const reason = detectMockAccident(sensors);
     if (reason) {
       setStatus('accident');
       setAccidentReason(reason);
     }
-  }, [sensors, status, isOnline]);
+  }, [sensors, status, isOnline, startupK2Prefill]);
+
+  useEffect(() => {
+    if (!isOnline && scenarioId === 'startup' && startupK2Prefill && sensors.L_2 >= 20) {
+      setStartupK2Prefill(false);
+    }
+  }, [isOnline, scenarioId, sensors.L_2, startupK2Prefill]);
 
   // -------------------------------------------------------------
   // ИСТОРИЯ ТЕЛЕМЕТРИИ (общая для спарклайнов и предиктивного графика)
@@ -582,6 +624,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     status,
     timeElapsed,
     valves,
+    pumps,
     sensors,
     setpoints,
     defects,
@@ -594,7 +637,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     interlocks,
     dutyEngineerPhone,
     interlockOperationAuthorized,
-  }), [status, timeElapsed, valves, sensors, setpoints, defects, riskLevel, predictions, telemetryHistory, logs, accidentReason, wsLatency, interlocks, dutyEngineerPhone, interlockOperationAuthorized]);
+    startupK2Prefill,
+    trainingAcceleration,
+  }), [status, timeElapsed, valves, pumps, sensors, setpoints, defects, riskLevel, predictions, telemetryHistory, logs, accidentReason, wsLatency, interlocks, dutyEngineerPhone, interlockOperationAuthorized, startupK2Prefill, trainingAcceleration]);
 
   const sessionValue = useMemo<SessionState>(() => ({
     username,
@@ -623,7 +668,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     switchSession,
     selectMode,
     toggleValve,
+    togglePump,
     changeSetpoint,
+    changeFeedRate,
     triggerEsd,
     triggerDefect,
     resetSession,
@@ -639,7 +686,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     toggleInterlockBypass,
     reloadScenarios,
   }), [
-    loginUser, logoutUser, selectScenario, switchSession, selectMode, toggleValve, changeSetpoint,
+    loginUser, logoutUser, selectScenario, switchSession, selectMode, toggleValve, togglePump, changeSetpoint, changeFeedRate,
     triggerEsd, triggerDefect, resetSession, completeSession, changeSpeed, togglePause, saveState,
     loadState, configureWebhook, toggleMute, callDispatcher, callDutyEngineer,
     toggleInterlockBypass, reloadScenarios,

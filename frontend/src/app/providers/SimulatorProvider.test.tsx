@@ -191,13 +191,27 @@ const telemetryPacket = (overrides: Record<string, unknown> = {}) => ({
   status: 'running',
   timeElapsed: 10,
   valves: { V_1: true, V_2: false, V_3: true, V_VT: true },
+  pumps: { N_20: true, N_2: true, N_3: true, N_4: true, N_32: true },
   sensors: { T_1: 280, P_1: 0.25, L_1: 50, L_2: 50, P_vac: 0.04, T_2: 350 },
-  setpoints: { T_1_Sp: 280 },
+  setpoints: { T_1_Sp: 280, T_3_Sp: 280, F_in_Sp: 100 },
   defects: {},
   accidentReason: '',
   riskLevel: 5,
   predictions: [280, 0.25, 50],
   ...overrides,
+});
+
+test('команда насоса уходит по WebSocket с новым состоянием', async () => {
+  await connect();
+  await deliver(telemetryPacket());
+
+  await act(async () => {
+    actions.togglePump('N_20');
+  });
+
+  expect(FakeWebSocket.instances[0].commands()).toContainEqual({
+    type: 'toggle_pump', pump_id: 'N_20', state: false,
+  });
 });
 
 const deliver = async (payload: Record<string, unknown>) => {

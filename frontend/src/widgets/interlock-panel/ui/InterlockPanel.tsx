@@ -50,7 +50,7 @@ const InterlockPanel: React.FC = () => {
         dataSource={interlocks}
         pagination={false}
         size="small"
-        scroll={{ x: 540 }}
+        tableLayout="fixed"
         rowClassName={row => (row.primary ? 'primary-interlock' : '')}
       />
       <S.Note>

@@ -55,7 +55,7 @@ export const Title = styled.h1`
 
 export const Content = styled.main`
   display: grid;
-  grid-template-columns: minmax(680px, 1fr) minmax(860px, 1.55fr);
+  grid-template-columns: minmax(680px, 1fr) minmax(0, 1.15fr);
   grid-template-rows: minmax(0, 1fr) clamp(140px, 13vh, 200px);
   gap: clamp(10px, 0.75vw, 18px);
   width: min(100%, 2600px);
@@ -76,10 +76,10 @@ export const Content = styled.main`
   }
 
   @media (max-width: 1650px) {
-    grid-template-columns: minmax(560px, 0.95fr) minmax(720px, 1.45fr);
+    grid-template-columns: minmax(680px, 1fr) minmax(0, 1.05fr);
   }
 
-  @media (max-width: 1320px) {
+  @media (max-width: 1080px) {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 150px;
     overflow-y: auto;
@@ -96,7 +96,7 @@ export const PanelColumn = styled.div`
   min-width: 0;
   overflow: hidden;
 
-  @media (max-width: 1320px) {
+  @media (max-width: 1080px) {
     height: auto;
     overflow: visible;
   }
@@ -187,13 +187,17 @@ export const FlexRow = styled.div`
 
 export const MonitorRow = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(8px, 0.6vw, 14px);
   margin-bottom: clamp(10px, 0.8vw, 18px);
 
   @media (max-height: 950px) {
     gap: 8px;
     margin-bottom: 8px;
+  }
+
+  @media (max-width: 1240px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 `;
 
@@ -364,6 +368,7 @@ export const LogArea = styled.div`
     padding: 6px 8px;
     font-size: 10px;
   }
+
 `;
 
 export const LogRow = styled.div<{ type: 'info' | 'warning' | 'error' }>`
@@ -567,7 +572,7 @@ export const SensorValue = styled.span<{ $isAlert: boolean; $isWarning?: boolean
 export const LiveTelemetryGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
+  gap: 8px 12px;
   font-size: 12px;
 
   @media (max-height: 950px) {
@@ -585,7 +590,29 @@ export const ColoredValue = styled.strong<{ color: string }>`
 `;
 
 export const AlertContainer = styled.div`
-  margin-top: 12px;
+  margin-top: 10px;
+
+  .ant-alert {
+    padding: 10px 12px;
+  }
+
+  .ant-alert-message {
+    font-size: 13px;
+    margin-bottom: 3px;
+  }
+
+  .ant-alert-description {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  @media (max-height: 950px) {
+    margin-top: 8px;
+
+    .ant-alert {
+      padding: 8px 10px;
+    }
+  }
 `;
 
 export const EllipsisCell = styled.div`
@@ -599,8 +626,6 @@ export const TableWrapper = styled.div`
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
 `;
 
 export const StyledTable = styled(Table)`
@@ -618,6 +643,9 @@ export const StyledTable = styled(Table)`
       color: ${props => props.theme.colors.text};
       border-bottom: 1px solid ${props => props.theme.colors.border};
       white-space: nowrap;
+      padding: 8px 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .ant-table-cell:first-child {
@@ -779,13 +807,17 @@ export const TableCardTitle = styled.div`
     font-weight: 400;
     text-transform: none;
     color: ${props => props.theme.colors.textMuted};
+
+    @media (max-width: 1400px) {
+      display: none;
+    }
   }
 `;
 
 export const TopCardsRow = styled.div`
   display: grid;
-  grid-template-columns: minmax(330px, 1.15fr) minmax(300px, 0.85fr);
-  gap: 16px;
+  grid-template-columns: minmax(320px, 1fr) minmax(340px, 1fr);
+  gap: clamp(10px, 0.75vw, 16px);
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
@@ -804,11 +836,19 @@ export const TopCardsRow = styled.div`
     overflow-y: auto;
   }
 
+  .ant-card-head-title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.25;
+    padding: 9px 0;
+  }
+
   @media (max-height: 950px) {
     gap: 10px;
   }
 
-  @media (max-width: 1100px) {
+  @media (max-width: 720px) {
     display: flex;
     flex-direction: column;
   }

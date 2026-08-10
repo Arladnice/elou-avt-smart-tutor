@@ -121,15 +121,16 @@ export const ValveGroup = styled.g<{ $isOpen: boolean }>`
   cursor: pointer;
 
   polygon {
-    fill: ${props => (props.$isOpen ? props.theme.colors.successMuted : props.theme.colors.surfaceLight)};
+    fill: ${props => props.theme.colors.surface};
     stroke: ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.borderStrong)};
     stroke-width: 2;
+    stroke-linejoin: round;
     transition: ${props => props.theme.transitions.default};
   }
 
-  > circle {
-    fill: ${props => (props.$isOpen ? props.theme.colors.success : props.theme.colors.borderStrong)};
-    transition: ${props => props.theme.transitions.default};
+  .valve-hitbox {
+    fill: transparent;
+    stroke: none;
   }
 
   &:hover polygon {
@@ -263,6 +264,7 @@ export const StaticValveGroup = styled.g`
     fill: ${props => props.theme.colors.surface};
     stroke: ${props => props.theme.colors.text};
     stroke-width: 2;
+    stroke-linejoin: round;
   }
 `;
 

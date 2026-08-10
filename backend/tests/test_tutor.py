@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from elou_tutor.simulation.model import ELOUAVTSimulator
 from elou_tutor.ml.predictor import RiskPredictor
 from elou_tutor.tutor.analyzer import ErrorAnalyzer
+from elou_tutor.simulation.scenarios import get_scenario_by_id
 
 class TestKTKComponents(unittest.TestCase):
     def setUp(self):
@@ -46,8 +47,7 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_error_analyzer_startup_success(self):
         """Проверяет оценку идеального сценария пуска."""
-        # Идеальная последовательность действий для пуска
-        actions = ["V1_OPEN", "SP_UP", "V3_OPEN"]
+        actions = get_scenario_by_id("startup")["golden_sequence"]
         score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup")
         
         self.assertEqual(score, 100)
@@ -68,14 +68,16 @@ class TestKTKComponents(unittest.TestCase):
         self.assertEqual(self.simulator.valves["V_1"], True)
         self.assertEqual(self.simulator.valves["V_2"], False)
         self.assertEqual(self.simulator.valves["V_3"], True)
-        self.assertEqual(self.simulator.sensors["T_1"], 280.0)
+        self.assertEqual(self.simulator.sensors["T_1"], 320.0)
         self.assertEqual(self.simulator.sensors["L_1"], 50.0)
 
     def test_simulator_startup_physics(self):
         """Проверяет корректное заполнение уровня и рост давления при технологическом пуске."""
         self.simulator.reset("startup")
         self.simulator.set_valve("V_1", True)
-        self.simulator.set_setpoint("T_1_Sp", 280.0)
+        self.simulator.set_pump("N_20", True)
+        self.simulator.set_valve("FUEL_P1", True)
+        self.simulator.set_setpoint("T_1_Sp", 300.0)
         
         # Моделируем 60 секунд пуска
         for _ in range(60):
@@ -108,14 +110,14 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_error_analyzer_shutdown_success(self):
         """Проверяет оценку идеального сценария останова печи."""
-        for actions in [["SP_DOWN", "V2_OPEN", "V1_CLOSE"], ["SP_DOWN", "V_2_OPEN", "V_1_CLOSE"]]:
-            score, errors, recs, _ = self.analyzer.evaluate_session(actions, "shutdown")
-            self.assertEqual(score, 100)
-            self.assertEqual(len(errors), 0)
+        actions = get_scenario_by_id("shutdown")["golden_sequence"]
+        score, errors, recs, _ = self.analyzer.evaluate_session(actions, "shutdown")
+        self.assertEqual(score, 100)
+        self.assertEqual(len(errors), 0)
 
     def test_error_analyzer_shutdown_with_sensor_temperatures(self):
         """Проверяет оценку останова печи в зависимости от температуры."""
-        actions = ["SP_DOWN", "V2_OPEN", "V1_CLOSE"]
+        actions = get_scenario_by_id("shutdown")["golden_sequence"]
         
         # 1. Температура остыла до 150°C (нормальный останов)
         score, errors, recs, _ = self.analyzer.evaluate_session(
@@ -133,21 +135,21 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_error_analyzer_column_shutdown_success(self):
         """Проверяет оценку идеального сценария останова колонны."""
-        actions = ["SP_DOWN", "V1_CLOSE", "V3_CLOSE"]
+        actions = get_scenario_by_id("column_shutdown")["golden_sequence"]
         score, errors, recs, _ = self.analyzer.evaluate_session(actions, "column_shutdown")
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
 
     def test_error_analyzer_overpressure_relief_success(self):
         """Проверяет оценку идеального сценария сброса избыточного давления."""
-        actions = ["V2_OPEN", "SP_DOWN"]
+        actions = get_scenario_by_id("overpressure_relief")["golden_sequence"]
         score, errors, recs, _ = self.analyzer.evaluate_session(actions, "overpressure_relief")
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
 
     def test_error_analyzer_recirculation_success(self):
         """Проверяет оценку идеального сценария перевода на рециркуляцию."""
-        actions = ["SP_DOWN", "V3_CLOSE", "V2_OPEN"]
+        actions = get_scenario_by_id("recirculation")["golden_sequence"]
         score, errors, recs, _ = self.analyzer.evaluate_session(actions, "recirculation")
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
@@ -179,8 +181,8 @@ class TestKTKComponents(unittest.TestCase):
         # закрываем V-2, перекрываем дренаж V-3 и открываем его обратно
         actions = ["SP_UP", "V2_OPEN", "V2_CLOSE", "V3_CLOSE", "V3_OPEN"]
         score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup")
-        self.assertEqual(score, 100)
-        self.assertEqual(len(errors), 0)
+        self.assertLess(score, 100)
+        self.assertTrue(any(error["title"] == "Лишние действия оператора" for error in errors))
 
     def test_integration_testcase_2_pump_fail_recovery(self):
         """Интеграционный тест: Тест-кейс 2 (Парирование отказа сырьевого насоса)"""
@@ -276,11 +278,14 @@ class TestKTKComponents(unittest.TestCase):
     def test_adaptive_trajectory_full_chain(self):
         """Проверяет полную цепочку адаптивной прогрессии от пуска до всех дефектов при 100% сдаче."""
         chain = [
-            ("startup", ["V1_OPEN", "SP_UP", "V3_OPEN"], "shutdown"),
-            ("shutdown", ["SP_DOWN", "V2_OPEN", "V1_CLOSE"], "column_shutdown"),
-            ("column_shutdown", ["SP_DOWN", "V1_CLOSE", "V3_CLOSE"], "overpressure_relief"),
-            ("overpressure_relief", ["V2_OPEN", "SP_DOWN"], "recirculation"),
-            ("recirculation", ["SP_DOWN", "V3_CLOSE", "V2_OPEN"], "pump_fail"),
+            (scenario_id, get_scenario_by_id(scenario_id)["golden_sequence"], next_id)
+            for scenario_id, next_id in [
+                ("startup", "shutdown"),
+                ("shutdown", "column_shutdown"),
+                ("column_shutdown", "overpressure_relief"),
+                ("overpressure_relief", "recirculation"),
+                ("recirculation", "pump_fail"),
+            ]
         ]
         for scen, actions, expected_next in chain:
             score, errs, recs, rec_id = self.analyzer.evaluate_session(actions, scen)
@@ -440,8 +445,8 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
     def test_defect_power_fail(self):
         """Тест-01: Проверка эффекта неисправности power_fail (отказ электроснабжения)."""
         sim = ELOUAVTSimulator()
-        sim.reset("shutdown")  # В shutdown V-1 открыт, T_sp = 280
-        self.assertEqual(sim.setpoints["T_1_Sp"], 280.0)
+        sim.reset("shutdown")  # В shutdown V-1 открыт, T_sp = 320
+        self.assertEqual(sim.setpoints["T_1_Sp"], 320.0)
         
         # Активируем отказ электроснабжения
         sim.set_defect("power_fail", True)
@@ -449,7 +454,7 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         
         # Делаем шаг и проверяем, что сырье не подается и начинается остывание
         state = sim.step()
-        self.assertLess(state["sensors"]["T_1"], 280.0, "Температура должна снижаться из-за остановки горелок")
+        self.assertLess(state["sensors"]["T_1"], 320.0, "Температура должна снижаться из-за остановки горелок")
 
     def test_defect_air_fail(self):
         """Тест-02: Проверка эффекта неисправности air_fail (отказ воздуха КИПиА)."""
@@ -469,23 +474,24 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         self.assertFalse(sim.valves["V_1"], "Клапан V-1 не должен открываться без воздуха КИПиА")
         self.assertFalse(sim.valves["V_2"], "Клапан V-2 должен быть заблокирован при air_fail")
 
-    def test_defect_pump_interlock_low_level(self):
-        """Тест-03: Проверка блокировки сухого хода насосов при уровне L-1 < 15%."""
+    def test_k1_low_level_has_alarm_but_no_hidden_pump_interlock(self):
+        """Уровень К-1 ниже 15% не блокирует Н-20: такой ПАЗ в регламенте нет."""
         sim = ELOUAVTSimulator()
         sim.reset("shutdown")
-        sim.sensors["L_1"] = 14.0  # Уровень ниже порога 15%
-        
-        # Делаем шаг симуляции и проверяем, что расход сырья F_in = 0 и кубовый насос V-3 остановлен (защита от сухого хода)
+        sim.sensors["L_1"] = 14.0
+        sim.valves["V_3"] = False
+        sim.pumps["N_20"] = True
+
         prev_L = sim.sensors["L_1"]
         state = sim.step()
-        # При сработке блокировки сухого хода (L < 15%) насосы остановлены (dL = 0), уровень изменяется только в пределах случайного шума (+-0.05%) и не растет от V_1 (+0.5%)
-        self.assertLessEqual(state["sensors"]["L_1"], prev_L + 0.1, "При L-1 < 15% блокируется подача сырья (F_in = 0), поэтому уровень не растет от V_1")
+        self.assertGreater(state["sensors"]["L_1"], prev_L + 0.3)
 
-    def test_startup_pump_interlock_after_filling(self):
-        """Тест-04: Проверка работы блокировки насосов при пуске: разрешено до первого заполнения, блокируется при повторном падении."""
+    def test_startup_low_level_remains_feed_permitted_after_filling(self):
+        """Флаг заполнения управляет аварийной логикой, но не создаёт несуществующий ПАЗ."""
         sim = ELOUAVTSimulator()
         sim.reset("startup")
         sim.set_valve("V_1", True)
+        sim.set_pump("N_20", True)
         
         # 1. До первого заполнения (_startup_filled = False) уровень < 15% позволяет подавать сырье
         self.assertFalse(sim._startup_filled)
@@ -498,11 +504,11 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
         sim.step()
         self.assertTrue(sim._startup_filled, "Флаг _startup_filled должен быть True после L >= 15%")
         
-        # 3. При повторном падении ниже 15% блокировка сухого хода должна активироваться!
+        # 3. После повторного падения подача по-прежнему разрешена.
         sim.sensors["L_1"] = 10.0
         prev_L = sim.sensors["L_1"]
         state = sim.step()
-        self.assertLessEqual(state["sensors"]["L_1"], prev_L + 0.1, "После первичного заполнения при падении L < 15% должна сработать блокировка сухого хода")
+        self.assertGreater(state["sensors"]["L_1"], prev_L + 0.3)
 
     def test_risk_predictor_aligned_thresholds(self):
         """Тест-05: пороги риск-движка согласованы с COLUMN_PRES_WARNING из домена."""

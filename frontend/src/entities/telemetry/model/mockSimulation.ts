@@ -10,7 +10,7 @@ import {
   PRES_ESD,
   PRES_WARNING,
 } from '@/shared/config';
-import type { Defects, Sensors, Setpoints, Valves } from './types';
+import { INITIAL_PUMPS, type Defects, type Pumps, type Sensors, type Setpoints, type Valves } from './types';
 
 /**
  * Резервная физика установки на случай недоступного бэкенда (демо-режим).
@@ -22,13 +22,17 @@ export const stepMockPhysics = (
   valves: Valves,
   setpoints: Setpoints,
   defects: Defects,
+  pumps: Pumps = INITIAL_PUMPS,
 ): Sensors => {
   let nextTemp = prev.T_1;
+  let nextTempP3 = prev.T_3;
   let nextPres = prev.P_1;
   let nextLevel = prev.L_1;
   let nextK2Level = prev.L_2;
 
-  const F_in = valves.V_1 && !defects.pump_fail ? 1.0 : 0.0;
+  const F_in = valves.V_1 && pumps.N_20 && !defects.pump_fail
+    ? setpoints.F_in_Sp / 100
+    : 0.0;
 
   // Печь с автоматической компенсацией охлаждения сырья (feedforward)
   const Q_heat =
@@ -37,6 +41,11 @@ export const stepMockPhysics = (
     (defects.coil_overheat ? 5.0 : 0.0);
   const Q_cool = F_in * (nextTemp - 60.0) * 0.06;
   nextTemp += Q_heat - Q_cool + (Math.random() - 0.5) * 0.5;
+  const p3Flow = valves.V_P3_OUT && valves.V_P3_RETURN && pumps.N_3;
+  const p3Rate = p3Flow || valves.HC_P3 ? 0.12 : 0.04;
+  nextTempP3 += valves.FUEL_P3
+    ? (setpoints.T_3_Sp - nextTempP3) * p3Rate + (Math.random() - 0.5) * 0.3
+    : -Math.max(0.2, (nextTempP3 - 60) * 0.015);
 
   // Колонна (давление)
   nextPres += (nextTemp - 260) * 0.0012 + (nextLevel - 50) * 0.0005;
@@ -54,16 +63,18 @@ export const stepMockPhysics = (
 
   const desaltFailed = defects.elou_desalt_fail || !valves.V_ELOU;
   const vacuumLost = defects.vt_vacuum_loss || !valves.V_VT;
-  const k2Inflow = valves.V_3 ? 0.25 : 0;
+  const k2Inflow = valves.V_3 && valves.V_P1_IN && pumps.N_2 ? 1.0 : 0;
   // Насосы Н-4/Н-32 блокируются на том же уровне, что и на сервере, — порог
   // берём из общего конфига, иначе демо-режим разъезжается с реальными ПАЗ
   const pumpsBlocked =
     defects.power_fail || defects.k2_pump_fail || nextK2Level <= K2_LEVEL_LOW_INTERLOCK;
-  const k2Outflow = pumpsBlocked ? 0 : 0.25;
+  const hasK2Outflow = (valves.V_K2_OUT_32 && pumps.N_32) || (valves.V_K2_OUT_4 && pumps.N_4);
+  const k2Outflow = pumpsBlocked || !hasK2Outflow ? 0 : 1.0;
   nextK2Level = Math.max(0, Math.min(100, nextK2Level + k2Inflow - k2Outflow));
 
   return {
     T_1: Math.round(nextTemp * 100) / 100,
+    T_3: Math.round(nextTempP3 * 100) / 100,
     P_1: Math.round(nextPres * 1000) / 1000,
     L_1: Math.round(nextLevel * 100) / 100,
     Sal_1: desaltFailed ? 42.0 : 4.2,
@@ -73,18 +84,23 @@ export const stepMockPhysics = (
     P_vac: vacuumLost ? K2_PRESSURE_WARNING + 0.01 : K2_PRESSURE_NORMAL,
     T_2: defects.power_fail ? Math.max(150, prev.T_2 - 0.12) : vacuumLost ? Math.min(420, prev.T_2 + 0.02) : 350.0,
     L_2: Math.round(nextK2Level * 100) / 100,
+    L_E1: Math.max(0, prev.L_E1 - (valves.V_E1_DRAIN ? 0.8 : 0)),
+    L_E2: Math.max(0, prev.L_E2 - (valves.V_E2_DRAIN ? 0.8 : 0)),
+    Flame_P1: valves.FUEL_P1 && setpoints.T_1_Sp > 100,
+    Flame_P3: valves.FUEL_P3 && setpoints.T_3_Sp > 100,
+    F_in: Math.round(F_in * 1000) / 10,
   };
 };
 
 /** Оценка риска аварии в демо-режиме (на сервере считает ИИ-модуль) */
-export const evaluateMockRisk = (sensors: Sensors): number => {
+export const evaluateMockRisk = (sensors: Sensors, startupK2Prefill = false): number => {
   let risk = 5;
   if (sensors.T_1 > 310) risk += 30;
   if (sensors.P_1 > PRES_WARNING) risk += 40;
   if (sensors.L_1 > LEVEL_HIGH || sensors.L_1 < LEVEL_LOW) risk += 25;
   if (
     sensors.L_2 > K2_LEVEL_HIGH ||
-    sensors.L_2 < K2_LEVEL_LOW ||
+    (!startupK2Prefill && sensors.L_2 < K2_LEVEL_LOW) ||
     sensors.P_vac > K2_PRESSURE_WARNING ||
     sensors.T_2 > K2_TEMP_WARNING
   ) {

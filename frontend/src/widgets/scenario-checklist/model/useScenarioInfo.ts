@@ -3,7 +3,7 @@ import { useSession } from '@/entities/session';
 
 const scenarioNames: Record<string, string> = {
   startup: 'Пуск установки',
-  shutdown: 'Аварийный останов печи П-1',
+  shutdown: 'Аварийный останов печей П-1 и П-3',
   column_shutdown: 'Останов колонны К-1',
   overpressure_relief: 'Ликвидация роста давления',
   recirculation: 'Перевод на рециркуляцию'

@@ -69,7 +69,7 @@ const ScoreCard: React.FC = () => {
   const getScenarioTitle = (id: string) => {
     switch (id) {
       case 'startup': return 'Пуск установки ЭЛОУ-АВТ';
-      case 'shutdown': return 'Аварийный останов печи П-1';
+      case 'shutdown': return 'Аварийный останов печей П-1 и П-3';
       case 'column_shutdown': return 'Останов колонны К-1';
       case 'overpressure_relief': return 'Ликвидация роста давления';
       case 'recirculation': return 'Перевод на рециркуляцию';

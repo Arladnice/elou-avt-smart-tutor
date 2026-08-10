@@ -17,7 +17,7 @@ export const getScoreDetails = (score: number, status: string) => {
 
 export const SCENARIO_NAMES: Record<string, string> = {
   startup: 'Пуск установки ЭЛОУ-АВТ',
-  shutdown: 'Аварийный останов печи П-1',
+  shutdown: 'Аварийный останов печей П-1 и П-3',
   column_shutdown: 'Останов колонны К-1',
   overpressure_relief: 'Ликвидация роста давления',
   recirculation: 'Перевод на рециркуляцию',
@@ -40,12 +40,14 @@ export const getTableColumns = (): ColumnsType<TrainingRecord> => [
     title: 'Оператор',
     dataIndex: 'operator_name',
     key: 'operator_name',
+    width: '15%',
     render: (v: string) => <EllipsisCell title={v}>{v}</EllipsisCell>
   },
   {
     title: 'Сценарий',
     dataIndex: 'scenario_id',
     key: 'scenario_id',
+    width: '34%',
     render: (v: string) => {
       const name = SCENARIO_NAMES[v] || v;
       return <EllipsisCell title={name}>{name}</EllipsisCell>;
@@ -55,12 +57,14 @@ export const getTableColumns = (): ColumnsType<TrainingRecord> => [
     title: 'Время (с)',
     dataIndex: 'duration_sec',
     key: 'duration_sec',
+    width: '14%',
     render: (v: number) => <NowrapSpan>{formatDuration(v)}</NowrapSpan>
   },
   {
     title: 'Оценка (LCS)',
     dataIndex: 'score',
     key: 'score',
+    width: '17%',
     render: (v: number, record: TrainingRecord) => {
       const { color, grade } = getScoreDetails(v, record.status);
       return <ScoreText color={color}>{grade} ({v}%)</ScoreText>;
@@ -70,6 +74,7 @@ export const getTableColumns = (): ColumnsType<TrainingRecord> => [
     title: 'ИБ Контроль (ГОСТ)',
     dataIndex: 'integrity_valid',
     key: 'integrity_valid',
+    width: '20%',
     render: (valid: boolean) => valid ? (
       <StatusText color="#23734d">
         <ShieldCheck size={14} /> OK

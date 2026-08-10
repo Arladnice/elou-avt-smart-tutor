@@ -35,9 +35,11 @@ def _mentions(errors, *keywords):
     return any(word.lower() in blob for word in keywords)
 
 
-def test_pressure_relief_is_credited():
-    """Сброс на факел парирует бросок давления от вскипания воды."""
-    score, errors, recs, _ = _evaluate(["V_ELOU_OPEN", "V2_OPEN"])
+def test_regulation_sequence_is_credited():
+    """Изоляция ЭЛОУ, останов подачи и горячая циркуляция парируют проскок."""
+    score, errors, recs, _ = _evaluate([
+        "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "SP_DOWN", "SP3_DOWN",
+    ])
 
     assert score == 100
     assert errors == []

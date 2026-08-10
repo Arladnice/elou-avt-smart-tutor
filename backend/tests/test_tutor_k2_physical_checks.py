@@ -18,9 +18,10 @@ from elou_tutor.domain.process_limits import (
     K2_TEMP_WARNING,
 )
 from elou_tutor.tutor.analyzer import ErrorAnalyzer
+from elou_tutor.simulation.scenarios import get_scenario_by_id
 
 # Безупречный пуск: эталонная последовательность и здоровый контур К-1
-PERFECT_STARTUP = ["V1_OPEN", "SP_UP", "V3_OPEN"]
+PERFECT_STARTUP = get_scenario_by_id("startup")["golden_sequence"]
 
 
 def _sensors(**overrides):
@@ -88,7 +89,7 @@ def test_low_k2_level_is_not_penalised_on_column_shutdown():
     прекращается, а насосы Н-4/Н-32 продолжают откачку — уровень штатно падает.
     Штраф за это наказывал бы за правильно выполненный регламент.
     """
-    perfect_shutdown = ["SP_DOWN", "V1_CLOSE", "V3_CLOSE"]
+    perfect_shutdown = get_scenario_by_id("column_shutdown")["golden_sequence"]
     sensors = _sensors(T_1=200.0, L_2=K2_LEVEL_LOW - 5.0)
 
     score, errors, _ = _score(sensors, actions=perfect_shutdown, scenario_id="column_shutdown")

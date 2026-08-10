@@ -4,12 +4,15 @@ from dataclasses import dataclass
 
 from elou_tutor.domain.process_limits import (
     K2_COOLING_FULL_C_PER_SEC,
+    K2_COOLING_TRAINING_ACCELERATION,
     K2_LEVEL_LOW_INTERLOCK,
     K2_LEVEL_RESPONSE_DELAY_SEC,
     K2_LEVEL_RISE_PCT_PER_SEC,
+    K2_LEVEL_TRAINING_ACCELERATION,
     K2_PRESSURE_MAX_LIMIT,
     K2_PRESSURE_NORMAL,
     K2_PRESSURE_RISE_MPA_PER_SEC,
+    K2_PRESSURE_TRAINING_ACCELERATION,
     K2_TEMP_MAX_LIMIT,
     K2_TEMP_MIN_LIMIT,
     K2_TEMP_NORMAL,
@@ -20,9 +23,9 @@ from elou_tutor.domain.process_limits import (
 class K2Dynamics:
     """Рассчитывает уровень (%), давление (МПа) и температуру (°C) К-2.
 
-    Базовые скорости взяты из расчёта инженера АСУ ТП Андрея. Ускорение
-    учебного процесса выполняется общим ``speed_multiplier`` сессии, поэтому
-    внутри модели физические соотношения не искажаются отдельными множителями.
+    Базовые скорости взяты из расчёта инженера АСУ ТП Андрея. Для укладывания
+    тренировки в пятиминутную сессию уровень, давление и охлаждение ускоряются
+    именованными коэффициентами, которые передаются в UI вместе с телеметрией.
     """
 
     outflow_failure_seconds: int = 0
@@ -41,39 +44,52 @@ class K2Dynamics:
         outflow_available: bool,
         vacuum_available: bool,
         heat_available: bool,
+        relief_open: bool = False,
     ) -> tuple[float, float, float]:
         """Выполняет одну физическую секунду модели К-2.
 
         Уровень задаётся в процентах шкалы 4000 мм, давление — в МПа,
         температура — в °C. При низком уровне откачка блокируется согласно
-        HAZOP, а при потере откачки рост уровня появляется через 45 секунд.
+        HAZOP. Физическое запаздывание 45 секунд в учебной сессии сокращено
+        коэффициентом ×4 примерно до 11 секунд.
         """
-        inflow = K2_LEVEL_RISE_PCT_PER_SEC if feed_open else 0.0
+        level_rate = K2_LEVEL_RISE_PCT_PER_SEC * K2_LEVEL_TRAINING_ACCELERATION
+        inflow = level_rate if feed_open else 0.0
         pumps_permitted = outflow_available and level > K2_LEVEL_LOW_INTERLOCK
-        outflow = K2_LEVEL_RISE_PCT_PER_SEC if pumps_permitted else 0.0
+        outflow = level_rate if pumps_permitted else 0.0
 
         if feed_open and not outflow_available:
             self.outflow_failure_seconds += 1
-            if self.outflow_failure_seconds <= K2_LEVEL_RESPONSE_DELAY_SEC:
+            accelerated_delay = K2_LEVEL_RESPONSE_DELAY_SEC / K2_LEVEL_TRAINING_ACCELERATION
+            if self.outflow_failure_seconds <= accelerated_delay:
                 inflow = 0.0
         else:
             self.outflow_failure_seconds = 0
 
         next_level = max(0.0, min(100.0, level + inflow - outflow))
 
-        if vacuum_available:
-            recovery_rate = K2_PRESSURE_RISE_MPA_PER_SEC * 2.0
+        pressure_rate = K2_PRESSURE_RISE_MPA_PER_SEC * K2_PRESSURE_TRAINING_ACCELERATION
+        if relief_open:
+            # Открытие газового сброса соединяет вакуумную систему с линией
+            # повышенного давления и быстро ухудшает остаточное давление.
+            next_pressure = min(K2_PRESSURE_MAX_LIMIT, pressure + pressure_rate * 2.0)
+        elif vacuum_available:
+            recovery_rate = pressure_rate * 2.0
             next_pressure = max(K2_PRESSURE_NORMAL, pressure - recovery_rate)
         else:
             next_pressure = min(
                 K2_PRESSURE_MAX_LIMIT,
-                pressure + K2_PRESSURE_RISE_MPA_PER_SEC,
+                pressure + pressure_rate,
             )
 
         if not heat_available:
             # При половине куба скорость охлаждения вдвое выше, чем при полном.
             inventory_fraction = max(0.5, next_level / 100.0)
-            cooling_rate = K2_COOLING_FULL_C_PER_SEC / inventory_fraction
+            cooling_rate = (
+                K2_COOLING_FULL_C_PER_SEC
+                * K2_COOLING_TRAINING_ACCELERATION
+                / inventory_fraction
+            )
             next_temperature = temperature - cooling_rate
         elif not vacuum_available:
             # Потеря вакуума ухудшает испарение и медленно перегревает мазут.

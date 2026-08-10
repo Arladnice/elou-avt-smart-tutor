@@ -48,6 +48,8 @@ def test_every_builtin_scenario_loads_its_initial_state(scenario_id: str) -> Non
     for key, expected in scenario["initial_state"].items():
         if key in state["valves"]:
             assert state["valves"][key] == expected
+        elif key in state["pumps"]:
+            assert state["pumps"][key] == expected
         elif key in state["setpoints"]:
             assert state["setpoints"][key] == expected
         else:

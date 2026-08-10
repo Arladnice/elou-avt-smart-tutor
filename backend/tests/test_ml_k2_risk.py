@@ -93,6 +93,16 @@ def test_k2_critical_low_level_is_maximum_risk(predictor):
     assert risk == 100.0
 
 
+def test_empty_k2_is_safe_until_first_startup_fill(predictor):
+    """Пустая К-2 — штатная фаза холодного пуска, а не авария."""
+    _, risk = predictor.predict_risk(
+        _calm_window(), time_elapsed=0, scenario_id="startup",
+        k2_sensors=_k2(level=0.0), startup_k2_prefill=True,
+    )
+
+    assert risk < 100.0
+
+
 def test_k2_flooding_is_maximum_risk(predictor):
     """Захлёбывание куба К-2 — переброс продукта, критическая ступень."""
     _, risk = predictor.predict_risk(

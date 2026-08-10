@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTelemetry, type Sensors, type Valves } from '@/entities/telemetry';
+import { useTelemetry, type Pumps, type Sensors, type Setpoints, type Valves } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import type { ScenarioCondition } from '@/entities/scenario';
 import { CheckCircle2, Circle, PlayCircle } from 'lucide-react';
@@ -13,7 +13,13 @@ interface TaskInfo {
 }
 
 /** Проверка условия завершения шага чек-листа по текущему состоянию установки */
-const evalCondition = (cond: ScenarioCondition | undefined, valves: Valves, sensors: Sensors): boolean => {
+const evalCondition = (
+  cond: ScenarioCondition | undefined,
+  valves: Valves,
+  pumps: Pumps,
+  sensors: Sensors,
+  setpoints: Setpoints,
+): boolean => {
   if (!cond) return false;
   const valve = valves[cond.target as keyof Valves];
   const sensor = sensors[cond.target as keyof Sensors];
@@ -21,20 +27,30 @@ const evalCondition = (cond: ScenarioCondition | undefined, valves: Valves, sens
   if (cond.type === 'valve_is') {
     return valve === cond.expected;
   }
+  if (cond.type === 'pump_is') {
+    return pumps[cond.target as keyof Pumps] === cond.expected;
+  }
   if (cond.type === 'sensor_gte') {
-    return (sensor ?? 0) >= Number(cond.expected) - (cond.tolerance ?? 0);
+    return Number(sensor ?? 0) >= Number(cond.expected) - (cond.tolerance ?? 0);
   }
   if (cond.type === 'sensor_lte') {
-    return (sensor ?? 999) <= Number(cond.expected) + (cond.tolerance ?? 0);
+    return Number(sensor ?? 999) <= Number(cond.expected) + (cond.tolerance ?? 0);
+  }
+  const setpoint = setpoints[cond.target as keyof Setpoints];
+  if (cond.type === 'setpoint_gte') {
+    return (setpoint ?? 0) >= Number(cond.expected) - (cond.tolerance ?? 0);
+  }
+  if (cond.type === 'setpoint_lte') {
+    return (setpoint ?? 999) <= Number(cond.expected) + (cond.tolerance ?? 0);
   }
   if (cond.type === 'composite_and') {
-    return (cond.conditions || []).every(c => evalCondition(c, valves, sensors));
+    return (cond.conditions || []).every(c => evalCondition(c, valves, pumps, sensors, setpoints));
   }
   return false;
 };
 
 const ScenarioChecklist: React.FC = () => {
-  const { valves, sensors, setpoints, defects, status } = useTelemetry();
+  const { valves, pumps, sensors, setpoints, defects, status } = useTelemetry();
   const { scenarioId, mode, scenarios } = useSession();
   const isExam = mode === 'exam';
 
@@ -124,7 +140,7 @@ const ScenarioChecklist: React.FC = () => {
         id: item.id,
         title: item.title,
         hint: isExam ? item.hint_exam : item.hint_training,
-        isDone: evalCondition(item.condition, valves, sensors),
+        isDone: evalCondition(item.condition, valves, pumps, sensors, setpoints),
       }));
     }
 

@@ -47,7 +47,7 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
     вызывающий код превращает их в сообщение об ошибке, не разрывая соединение.
     """
     if role == "operator" and action_type in (
-        "toggle_valve", "change_setpoint", "trigger_esd", "call_dispatcher",
+        "toggle_valve", "toggle_pump", "change_setpoint", "change_feed_rate", "trigger_esd", "call_dispatcher",
         "call_duty_engineer", "toggle_interlock_bypass",
     ):
         session.operator_reacted_to_critical = True
@@ -60,6 +60,7 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
             and not state
             and session.active_scenario == "startup"
             and session.simulator.valves.get("V_1", False)
+            and session.simulator.pumps.get("N_20", False)
             and not session.simulator.defects.get("pump_fail", False)
             and not session.simulator.defects.get("power_fail", False)
         )
@@ -75,20 +76,53 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         session.add_log("info", f"Оператор переключил клапан {valve_id} в состояние: {'ОТКРЫТ' if state else 'ЗАКРЫТ'}")
         await log_audit_event_async(session.active_operator_name, "VALVE_TOGGLE", f"Клапан {valve_id} -> {state}")
 
+    elif action_type == "toggle_pump":
+        pump_id = str(cmd.get("pump_id", ""))
+        if pump_id not in session.simulator.pumps:
+            raise ValueError(f"неизвестный насос: {pump_id}")
+        state = bool(cmd.get("state"))
+        session.simulator.set_pump(pump_id, state)
+        actual_state = session.simulator.pumps[pump_id]
+        session.record_action(f"{pump_id}_{'START' if actual_state else 'STOP'}")
+        session.add_log(
+            "info",
+            f"Оператор {'пустил' if actual_state else 'остановил'} насос {pump_id.replace('_', '-')}",
+        )
+        await log_audit_event_async(
+            session.active_operator_name,
+            "PUMP_TOGGLE",
+            f"Насос {pump_id} -> {actual_state}",
+        )
+
     elif action_type == "change_setpoint":
         temp = float(cmd["value"])
+        setpoint_name = str(cmd.get("name", "T_1_Sp"))
+        if setpoint_name not in {"T_1_Sp", "T_3_Sp"}:
+            raise ValueError(f"неизвестная уставка: {setpoint_name}")
         if not (FURNACE_TEMP_MIN_LIMIT <= temp <= FURNACE_TEMP_MAX_LIMIT):
             raise ValueError(
                 f"уставка {temp} вне диапазона шкалы КИПиА "
                 f"{FURNACE_TEMP_MIN_LIMIT}..{FURNACE_TEMP_MAX_LIMIT} °C"
             )
-        old_temp = session.simulator.setpoints["T_1_Sp"]
-        session.simulator.set_setpoint("T_1_Sp", temp)
-        session.record_action("SP_UP" if temp > old_temp else "SP_DOWN")
+        old_temp = session.simulator.setpoints[setpoint_name]
+        session.simulator.set_setpoint(setpoint_name, temp)
+        action_prefix = "SP3" if setpoint_name == "T_3_Sp" else "SP"
+        session.record_action(f"{action_prefix}_{'UP' if temp > old_temp else 'DOWN'}")
         if temp > FURNACE_TEMP_WARNING:
             session.record_action("SETPOINT_OVERLIMIT")
-        session.add_log("info", f"Оператор изменил уставку температуры П-1 на: {temp}°C")
-        await log_audit_event_async(session.active_operator_name, "SETPOINT_CHANGE", f"Уставка T-1 -> {temp}")
+        furnace = "П-1" if setpoint_name == "T_1_Sp" else "П-3"
+        session.add_log("info", f"Оператор изменил уставку температуры {furnace} на: {temp}°C")
+        await log_audit_event_async(session.active_operator_name, "SETPOINT_CHANGE", f"Уставка {setpoint_name} -> {temp}")
+
+    elif action_type == "change_feed_rate":
+        value = float(cmd["value"])
+        if not 0.0 <= value <= 100.0:
+            raise ValueError("уставка расхода должна быть в диапазоне 0..100%")
+        old_value = session.simulator.setpoints["F_in_Sp"]
+        session.simulator.set_setpoint("F_in_Sp", value)
+        session.record_action(f"FEED_{'UP' if value > old_value else 'DOWN'}")
+        session.add_log("info", f"Оператор изменил расход сырья на {value:.0f}%")
+        await log_audit_event_async(session.active_operator_name, "FEED_RATE_CHANGE", f"Расход -> {value}%")
 
     elif action_type == "trigger_esd":
         session.simulator.status = "esd"

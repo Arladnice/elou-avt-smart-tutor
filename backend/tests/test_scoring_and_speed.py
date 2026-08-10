@@ -20,15 +20,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 
 from elou_tutor.tutor.analyzer import ErrorAnalyzer
 from elou_tutor.simulation.scenarios import load_scenarios
-
-# Имена действий, которые реально порождает обработчик команд (backend/routes/ws.py)
-# после нормализации в ErrorAnalyzer (V_1 -> V1, V_2 -> V2, V_3 -> V3).
-VALVE_IDS = ["V1", "V2", "V3", "V_ELOU", "V_VT"]
-PRODUCIBLE_ACTIONS = (
-    {f"{v}_OPEN" for v in VALVE_IDS}
-    | {f"{v}_CLOSE" for v in VALVE_IDS}
-    | {"SP_UP", "SP_DOWN", "ESD", "CALL_DISPATCHER"}
-)
+from elou_tutor.api.schemas import PRODUCIBLE_ACTIONS
 
 
 class TestGoldenSequenceReferencesRealActions(unittest.TestCase):

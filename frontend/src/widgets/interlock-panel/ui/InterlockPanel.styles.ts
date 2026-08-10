@@ -29,7 +29,7 @@ export const ContactText = styled.div`
 
   span {
     color: ${props => props.theme.colors.textMuted};
-    font-size: 11px;
+    font-size: 10px;
   }
 `;
 
@@ -51,10 +51,12 @@ export const InterlockTable = styled(Table<InterlockRow>)`
 
   && .ant-table-container {
     border-color: ${props => props.theme.colors.border};
+    overflow: hidden;
+    margin-right: 8px;
   }
 
   && .ant-table-thead > tr > th {
-    padding: 6px;
+    padding: 4px 3px;
     background: ${props => props.theme.colors.surfaceLight};
     color: ${props => props.theme.colors.text};
     border-color: ${props => props.theme.colors.border};
@@ -62,7 +64,7 @@ export const InterlockTable = styled(Table<InterlockRow>)`
   }
 
   && .ant-table-tbody > tr > td {
-    padding: 5px 6px;
+    padding: 4px 3px;
     background: ${props => props.theme.colors.surface};
     color: ${props => props.theme.colors.textMuted};
     border-color: ${props => props.theme.colors.border};
@@ -74,6 +76,39 @@ export const InterlockTable = styled(Table<InterlockRow>)`
 
   && .ant-table-tbody > tr:hover > td {
     background: ${props => props.theme.colors.surfaceLight};
+  }
+
+  && .ant-table-thead > tr > th:nth-child(1),
+  && .ant-table-tbody > tr > td:nth-child(1) {
+    width: 72px;
+    white-space: nowrap;
+  }
+
+  && .ant-table-thead > tr > th:nth-child(2),
+  && .ant-table-tbody > tr > td:nth-child(2) {
+    width: 54px;
+  }
+
+  && .ant-table-thead > tr > th:nth-child(3),
+  && .ant-table-tbody > tr > td:nth-child(3) {
+    width: 80px;
+    white-space: nowrap;
+  }
+
+  && .ant-table-thead > tr > th:nth-child(5),
+  && .ant-table-tbody > tr > td:nth-child(5) {
+    width: 50px;
+  }
+
+  && .ant-table-cell {
+    overflow-wrap: anywhere;
+  }
+
+  && .ant-tag {
+    margin-inline-end: 0;
+    padding-inline: 4px;
+    white-space: nowrap;
+    font-size: 10px;
   }
 `;
 

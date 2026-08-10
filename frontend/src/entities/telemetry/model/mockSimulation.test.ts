@@ -38,7 +38,7 @@ describe('stepMockPhysics: вакуумный блок', () => {
     const next = stepMockPhysics(
       sensors(),
       valves(),
-      { T_1_Sp: 280 },
+      { T_1_Sp: 280, T_3_Sp: 280, F_in_Sp: 100 },
       defects({ vt_vacuum_loss: true }),
     );
 
@@ -46,7 +46,7 @@ describe('stepMockPhysics: вакуумный блок', () => {
   });
 
   test('исправный вакуум держит давление ниже порога сигнализации', () => {
-    const next = stepMockPhysics(sensors(), valves(), { T_1_Sp: 280 }, defects());
+    const next = stepMockPhysics(sensors(), valves(), { T_1_Sp: 280, T_3_Sp: 280, F_in_Sp: 100 }, defects());
 
     expect(next.P_vac).toBeLessThan(K2_PRESSURE_WARNING);
   });
@@ -54,14 +54,14 @@ describe('stepMockPhysics: вакуумный блок', () => {
   test('откачка куба К-2 останавливается на пороге блокировки насосов', () => {
     const atInterlock = sensors({ L_2: K2_LEVEL_LOW_INTERLOCK });
     // V_3 закрыт: притока нет, уровень меняется только откачкой
-    const next = stepMockPhysics(atInterlock, valves({ V_3: false }), { T_1_Sp: 280 }, defects());
+    const next = stepMockPhysics(atInterlock, valves({ V_3: false }), { T_1_Sp: 280, T_3_Sp: 280, F_in_Sp: 100 }, defects());
 
     expect(next.L_2).toBe(K2_LEVEL_LOW_INTERLOCK);
   });
 
   test('выше порога блокировки откачка работает', () => {
     const aboveInterlock = sensors({ L_2: K2_LEVEL_LOW_INTERLOCK + 10 });
-    const next = stepMockPhysics(aboveInterlock, valves({ V_3: false }), { T_1_Sp: 280 }, defects());
+    const next = stepMockPhysics(aboveInterlock, valves({ V_3: false }), { T_1_Sp: 280, T_3_Sp: 280, F_in_Sp: 100 }, defects());
 
     expect(next.L_2).toBeLessThan(K2_LEVEL_LOW_INTERLOCK + 10);
   });
@@ -70,7 +70,7 @@ describe('stepMockPhysics: вакуумный блок', () => {
     const next = stepMockPhysics(
       sensors({ L_2: 50 }),
       valves({ V_3: false }),
-      { T_1_Sp: 280 },
+      { T_1_Sp: 280, T_3_Sp: 280, F_in_Sp: 100 },
       defects({ k2_pump_fail: true }),
     );
 
