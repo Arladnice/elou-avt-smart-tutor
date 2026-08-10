@@ -1,8 +1,8 @@
 import styled, { keyframes } from 'styled-components';
 
 export const flowAnimation = keyframes`
-  0% { stroke-dashoffset: 24; }
-  100% { stroke-dashoffset: 0; }
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -24; }
 `;
 
 export const SchemeContainer = styled.div`
@@ -29,12 +29,22 @@ export const SchemeHeader = styled.div`
   color: ${props => props.theme.colors.textMuted};
 `;
 
-export const SVGCanvas = styled.svg`
+export const SchemeViewport = styled.div`
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 380px;
+  overflow: hidden;
+`;
+
+export const SVGCanvas = styled.svg<{ $isPanning: boolean }>`
   flex: 1;
   width: 100%;
   height: 100%;
-  min-height: 380px;
   background-color: ${props => props.theme.colors.canvas};
+  cursor: ${props => props.$isPanning ? 'grabbing' : 'grab'};
+  touch-action: none;
+  user-select: none;
 
   .flow-arrow-head {
     fill: ${props => props.theme.colors.accent};
@@ -119,6 +129,7 @@ export const SensorBox = styled.g<{ $isWarning?: boolean; $isDanger?: boolean }>
 // Стилизованные интерактивные клапаны
 export const ValveGroup = styled.g<{ $isOpen: boolean }>`
   cursor: pointer;
+  outline: none;
 
   polygon {
     fill: ${props => props.theme.colors.surface};
@@ -131,9 +142,15 @@ export const ValveGroup = styled.g<{ $isOpen: boolean }>`
   .valve-hitbox {
     fill: transparent;
     stroke: none;
+    pointer-events: all;
   }
 
   &:hover polygon {
+    stroke-width: 3;
+  }
+
+  &:focus-visible polygon {
+    stroke: ${props => props.theme.colors.primary};
     stroke-width: 3;
   }
 `;
@@ -233,6 +250,78 @@ export const EquipmentGroup = styled.g<{ $isAlert: boolean }>`
   }
 `;
 
+export const ZoomControls = styled.div`
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid ${props => props.theme.colors.borderStrong};
+  border-radius: 5px;
+  background-color: ${props => props.theme.colors.surface};
+  box-shadow: 0 2px 8px ${props => props.theme.colors.shadow};
+`;
+
+export const ZoomButton = styled.button`
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid ${props => props.theme.colors.border};
+  background: transparent;
+  color: ${props => props.theme.colors.textMuted};
+  cursor: pointer;
+
+  &:first-child {
+    border-left: 0;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: ${props => props.theme.colors.primaryMuted};
+    color: ${props => props.theme.colors.primary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${props => props.theme.colors.primary};
+    outline-offset: -2px;
+  }
+
+  &:disabled {
+    color: ${props => props.theme.colors.borderStrong};
+    cursor: not-allowed;
+  }
+`;
+
+export const ZoomValue = styled.span`
+  display: grid;
+  width: 46px;
+  height: 30px;
+  place-items: center;
+  border-left: 1px solid ${props => props.theme.colors.border};
+  color: ${props => props.theme.colors.text};
+  font-family: ${props => props.theme.fonts.mono};
+  font-size: 11px;
+  font-weight: 700;
+`;
+
+export const ZoomHint = styled.span`
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  padding: 4px 7px;
+  border-radius: 3px;
+  background-color: ${props => props.theme.colors.surface};
+  color: ${props => props.theme.colors.textMuted};
+  font-size: 10px;
+  pointer-events: none;
+
+  @media (max-width: 900px) {
+    display: none;
+  }
+`;
+
 // Потоки трубопроводов
 export const PipeLine = styled.path<{ $isActive?: boolean }>`
   stroke: ${props => (isActivePipe(props.$isActive) ? props.theme.colors.borderStrong : props.theme.colors.border)};
@@ -248,6 +337,7 @@ export const PipeFlow = styled.path<{ $isActive?: boolean; $speed?: string }>`
   stroke: ${props => (isActivePipe(props.$isActive) ? props.theme.colors.accent : 'transparent')};
   stroke-width: 2;
   stroke-dasharray: 8, 16;
+  stroke-dashoffset: 0;
   fill: none;
   marker-end: ${props => (isActivePipe(props.$isActive) ? 'url(#flow-arrow)' : 'none')};
   animation: ${flowAnimation} ${props => props.$speed || '1.5s'} linear infinite;

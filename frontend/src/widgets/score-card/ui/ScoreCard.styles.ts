@@ -297,18 +297,22 @@ export const TimelineStepBox = styled.div<{ $hasError: boolean }>`
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  min-width: 74px;
+  flex: 0 0 116px;
+  min-width: 116px;
   padding: 6px 6px 5px;
   border-radius: 4px;
   background: ${props => (props.$hasError ? props.theme.colors.dangerMuted : props.theme.colors.surfaceLight)};
   border: 1px solid ${props => (props.$hasError ? props.theme.colors.danger : props.theme.colors.border)};
 
   .action {
+    width: 100%;
     font-family: ${props => props.theme.fonts.mono};
     font-size: 10px;
     font-weight: 700;
     color: ${props => (props.$hasError ? props.theme.colors.danger : props.theme.colors.text)};
-    white-space: nowrap;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    text-align: center;
   }
 
   .at {

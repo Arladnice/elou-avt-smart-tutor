@@ -56,13 +56,26 @@ export const GlobalStyle = createGlobalStyle<{ theme: ScadaThemeType }>`
     box-shadow: 0 0 0 3px ${props => props.theme.colors.focusRing};
   }
 
-  div.ant-modal-content,
-  div.ant-modal-confirm-body-wrapper {
+  div.ant-modal-content {
     color: ${props => props.theme.colors.text};
     background: ${props => props.theme.colors.surface};
     border: 1px solid ${props => props.theme.colors.border};
     border-radius: 6px;
     box-shadow: 0 16px 48px ${props => props.theme.colors.shadow};
+  }
+
+  /* Confirm-модалка уже находится внутри .ant-modal-content: отдельная
+     рамка у body-wrapper создаёт заметную двойную обводку. */
+  div.ant-modal-confirm-body-wrapper {
+    color: ${props => props.theme.colors.text};
+    background: ${props => props.theme.colors.surface};
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .ant-modal-confirm-btns .ant-btn:focus-visible {
+    box-shadow: none;
   }
 
   div.ant-modal-header {
