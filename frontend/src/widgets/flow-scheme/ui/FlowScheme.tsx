@@ -251,7 +251,7 @@ const ColumnSymbol: React.FC<ColumnSymbolProps> = ({ x, y, tag, equipmentId, lev
 
 interface ValveSymbolProps {
   valveId: ValveId;
-  equipmentId?: Extract<EquipmentId, 'V_1' | 'V_2' | 'V_3' | 'V_ELOU' | 'V_VT'>;
+  equipmentId?: Extract<EquipmentId, 'V_1' | 'V_2' | 'V_3' | 'V_ELOU'>;
   transform: string;
   label: string;
   isOpen: boolean;
@@ -632,24 +632,10 @@ const FlowScheme: React.FC = () => {
           <text x="1168" y="144" className="utility-label">ДРЕН Е-2</text>
           <text x="1168" y="164" className="utility-label">ДРЕНАЖ</text>
 
-          <S.UtilityLine x1="1245" y1="265" x2="1030" y2="265" />
-          <ValveSymbol
-            valveId="V_VT"
-            equipmentId="V_VT"
-            transform="translate(1140,265)"
-            label="V-VT"
-            isOpen={valves.V_VT}
-            hideLabel
-            onToggle={handleValveClick}
-            onOpen={setSelectedEquipmentId}
-          />
-          <text x="1140" y="232" textAnchor="middle" className="utility-label">РАБОЧИЙ ПАР → ВТ</text>
-          <text x="1175" y="295" className="valve-tag">V-VT</text>
-
-          <S.UtilityLine x1="1030" y1="300" x2="900" y2="300" />
-          <ValveSymbol valveId="V_STEAM_K2" transform="translate(1040,300)" label="ПАР К-2"
+          <S.UtilityLine x1="1245" y1="265" x2="900" y2="265" />
+          <ValveSymbol valveId="V_STEAM_K2" transform="translate(1140,265)" label="ПАР К-2"
             isOpen={valves.V_STEAM_K2} hideLabel onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
-          <text x="965" y="248" textAnchor="middle" className="utility-label">ОТПАРНОЙ ПАР</text>
+          <text x="1140" y="232" textAnchor="middle" className="utility-label">ОТПАРНОЙ ПАР К-2</text>
 
           <S.PipeLine d="M 965,450 V 492 H 1052" $isActive={k2Outflow32Active} />
           <PumpSymbol

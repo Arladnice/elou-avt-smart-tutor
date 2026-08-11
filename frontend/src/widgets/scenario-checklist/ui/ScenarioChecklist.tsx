@@ -63,17 +63,25 @@ const ScenarioChecklist: React.FC = () => {
 
     // При возникновении нештатных ситуаций (дефектов) — выдаем приоритетные аварийные задачи
     if (defects?.pump_fail) {
+      const heatReduced = (setpoints?.T_1_Sp ?? 280) <= 200 && (setpoints?.T_3_Sp ?? 280) <= 200;
+      const feedPumpStopped = !pumps.N_20;
       emergencyTasks.push({
         id: 'pump_fail_reduce_heat',
-        title: 'Отказ Н-1: снижение уставок обеих печей',
+        title: 'Отказ Н-20: снижение уставок обеих печей',
         hint: 'Понизьте уставки П-1 и П-3 ниже 200°C, чтобы исключить сухой перегрев змеевиков.',
-        isDone: (setpoints?.T_1_Sp ?? 280) <= 200 && (setpoints?.T_3_Sp ?? 280) <= 200,
+        isDone: heatReduced,
+      });
+      emergencyTasks.push({
+        id: 'pump_fail_stop_feed_pump',
+        title: 'Отказ Н-20: отключение насоса',
+        hint: 'После снижения уставок остановите сырьевой насос Н-20.',
+        isDone: heatReduced && feedPumpStopped,
       });
       emergencyTasks.push({
         id: 'pump_fail_close_feed',
-        title: 'Отказ Н-1: перекрытие подачи сырья',
-        hint: 'После снижения уставок закройте входной клапан V-1.',
-        isDone: !valves.V_1,
+        title: 'Отказ Н-20: перекрытие подачи сырья',
+        hint: 'После снижения уставок и остановки Н-20 закройте входной клапан V-1.',
+        isDone: heatReduced && feedPumpStopped && !valves.V_1,
       });
     }
 
@@ -120,12 +128,15 @@ const ScenarioChecklist: React.FC = () => {
     }
 
     if (defects?.air_fail) {
-      const limitTemp = 245;
+      const limitTemp = scenarioId === 'startup' ? 240 : 245;
       emergencyTasks.push({
         id: 'air_fail_action',
         title: 'Отказ воздуха КИПиА: снижение уставок П-1 и П-3',
-        hint: 'При отказе сжатого воздуха арматура отсеклась. Снизьте уставки обеих печей ниже 245°C.',
-        isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp && (setpoints?.T_3_Sp ?? 280) < limitTemp,
+        hint: `При отказе сжатого воздуха арматура отсеклась. Снизьте уставки обеих печей ниже ${limitTemp}°C и дождитесь остывания фактических T-1/T-3 до ${limitTemp}°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C / ${sensors?.T_3?.toFixed(1) ?? '...'}°C).`,
+        isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp
+          && (setpoints?.T_3_Sp ?? 280) < limitTemp
+          && (sensors?.T_1 ?? 999) <= limitTemp
+          && (sensors?.T_3 ?? 999) <= limitTemp,
       });
     }
 
@@ -166,8 +177,11 @@ const ScenarioChecklist: React.FC = () => {
       emergencyTasks.push({
         id: 'elou_desalt_heat',
         title: 'Проскок ЭЛОУ: снижение нагрева',
-        hint: 'Снизьте уставки обеих печей ниже 200°C.',
-        isDone: (setpoints?.T_1_Sp ?? 280) <= 200 && (setpoints?.T_3_Sp ?? 280) <= 200,
+        hint: `Снизьте уставки обеих печей до 200°C или ниже и дождитесь остывания фактических T-1/T-3 до 200°C (сейчас: ${sensors?.T_1?.toFixed(1) ?? '...'}°C / ${sensors?.T_3?.toFixed(1) ?? '...'}°C).`,
+        isDone: (setpoints?.T_1_Sp ?? 280) <= 200
+          && (setpoints?.T_3_Sp ?? 280) <= 200
+          && (sensors?.T_1 ?? 999) <= 200
+          && (sensors?.T_3 ?? 999) <= 200,
       });
     }
 
@@ -203,6 +217,12 @@ const ScenarioChecklist: React.FC = () => {
         title: 'Отказ Н-4/Н-32: прекращение подачи в К-2',
         hint: 'Закройте V-3, чтобы прекратить поступление кубового остатка в К-2.',
         isDone: !valves.V_3,
+      });
+      emergencyTasks.push({
+        id: 'k2_pump_fail_stop_raw_feed',
+        title: 'Отказ Н-4/Н-32: останов подачи сырья',
+        hint: 'Остановите Н-20 и закройте V-1.',
+        isDone: !pumps.N_20 && !valves.V_1,
       });
     }
 

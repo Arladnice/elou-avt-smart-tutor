@@ -32,7 +32,7 @@ export const useScenarioInfo = () => {
 
   const getEmergencyTitle = (): string => {
     const list: string[] = [];
-    if (defects?.pump_fail) list.push('Отказ Н-1');
+    if (defects?.pump_fail) list.push('Отказ Н-20');
     if (defects?.coil_overheat) list.push('Прогар П-1');
     if (defects?.valve_jam) list.push('Зависание V-2');
     if (defects?.power_fail) list.push('Обесточивание');

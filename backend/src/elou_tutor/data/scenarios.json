@@ -170,13 +170,12 @@
         },
         {
           "id": "steam_stop",
-          "title": "5. Останов пара и вентиляции",
-          "hint_training": "Закройте пар в К-1 и К-2, остановите подачу рабочего пара на вакуумную систему.",
-          "hint_exam": "После охлаждения прекратить подачу технологического и эжекторного пара.",
+          "title": "5. Останов пара К-1 и К-2",
+          "hint_training": "Закройте пар в К-1 и К-2.",
+          "hint_exam": "После охлаждения прекратить подачу технологического пара.",
           "condition": { "type": "composite_and", "conditions": [
             { "type": "valve_is", "target": "V_STEAM_K1", "expected": false },
-            { "type": "valve_is", "target": "V_STEAM_K2", "expected": false },
-            { "type": "valve_is", "target": "V_VT", "expected": false }
+            { "type": "valve_is", "target": "V_STEAM_K2", "expected": false }
           ] }
         },
         {
@@ -192,7 +191,7 @@
           ] }
         }
       ],
-      "golden_sequence": ["FUEL_P1_CLOSE", "FUEL_P3_CLOSE", "V1_CLOSE", "V3_CLOSE", "V_P1_IN_CLOSE", "V_P3_OUT_CLOSE", "V_P3_RETURN_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "V_STEAM_K2_CLOSE", "V_VT_CLOSE", "N_2_STOP", "N_3_STOP"]
+      "golden_sequence": ["FUEL_P1_CLOSE", "FUEL_P3_CLOSE", "V1_CLOSE", "V3_CLOSE", "V_P1_IN_CLOSE", "V_P3_OUT_CLOSE", "V_P3_RETURN_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "V_STEAM_K2_CLOSE", "N_2_STOP", "N_3_STOP"]
     },
     {
       "id": "column_shutdown",
@@ -213,13 +212,13 @@
         {
           "id": "reduce_heat",
           "title": "1. Снижение подачи и нагрева",
-            "hint_training": "Снизьте уставки П-1 и П-3 до 140°C (ниже 240°C), дождитесь T-1 и T-3 не выше 300°C; затем остановите Н-20 и закройте V-1.",
+            "hint_training": "Понизьте уставку и дождитесь остывания Т-1 ниже 150°C. Также убедитесь, что Т-3 не выше 150°C; затем остановите Н-20 и закройте V-1.",
           "hint_exam": "Плавно уменьшить нагрузку, затем прекратить подачу сырья после охлаждения П-3.",
           "condition": { "type": "composite_and", "conditions": [
-              { "type": "setpoint_lte", "target": "T_1_Sp", "expected": 140.0 },
-              { "type": "setpoint_lte", "target": "T_3_Sp", "expected": 140.0 },
-              { "type": "sensor_lte", "target": "T_1", "expected": 300.0 },
-              { "type": "sensor_lte", "target": "T_3", "expected": 300.0 },
+              { "type": "setpoint_lte", "target": "T_1_Sp", "expected": 150.0 },
+              { "type": "setpoint_lte", "target": "T_3_Sp", "expected": 150.0 },
+              { "type": "sensor_lte", "target": "T_1", "expected": 150.0 },
+              { "type": "sensor_lte", "target": "T_3", "expected": 150.0 },
             { "type": "pump_is", "target": "N_20", "expected": false },
             { "type": "valve_is", "target": "V_1", "expected": false }
           ] }
@@ -227,15 +226,14 @@
         {
           "id": "column_circulation",
           "title": "2. Горячая циркуляция К-1",
-          "hint_training": "Оставьте Н-2 и Н-3 в работе, включите горячую циркуляцию П-1/П-3, закройте пар К-1 и V-VT.",
+          "hint_training": "Оставьте Н-2 и Н-3 в работе, включите горячую циркуляцию П-1/П-3 и закройте пар К-1.",
           "hint_exam": "Перевести К-1 на горячую циркуляцию и прекратить подачу пара.",
           "condition": { "type": "composite_and", "conditions": [
             { "type": "pump_is", "target": "N_2", "expected": true },
             { "type": "pump_is", "target": "N_3", "expected": true },
             { "type": "valve_is", "target": "HC_P1", "expected": true },
             { "type": "valve_is", "target": "HC_P3", "expected": true },
-            { "type": "valve_is", "target": "V_STEAM_K1", "expected": false },
-            { "type": "valve_is", "target": "V_VT", "expected": false }
+            { "type": "valve_is", "target": "V_STEAM_K1", "expected": false }
           ] }
         },
         {
@@ -269,7 +267,7 @@
           ] }
         }
       ],
-      "golden_sequence": ["SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "V_VT_CLOSE", "FUEL_P1_CLOSE", "FUEL_P3_CLOSE", "N_2_STOP", "N_3_STOP", "V3_CLOSE"]
+      "golden_sequence": ["SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "FUEL_P1_CLOSE", "FUEL_P3_CLOSE", "N_2_STOP", "N_3_STOP", "V3_CLOSE"]
     },
     {
       "id": "overpressure_relief",
@@ -502,8 +500,8 @@
         {
           "id": "preserve_vacuum",
           "title": "2. Закрытие «Пар К-2» без открытия газового сброса",
-          "hint_training": "Во вкладке «Управление» выключите переключатель «Пар К-2». «Пар К-1» и V-VT не трогайте. «Газовый сброс К-2» не нажимайте: он должен остаться в положении «ЗАКР».",
-          "hint_exam": "Закрыть «Пар К-2», не отключая «Пар К-1», не открывая газовый сброс К-2 и не изменяя V-VT.",
+          "hint_training": "Во вкладке «Управление» выключите переключатель «Пар К-2». «Пар К-1» не отключайте. «Газовый сброс К-2» не нажимайте: он должен остаться в положении «ЗАКР».",
+          "hint_exam": "Закрыть «Пар К-2», не отключая «Пар К-1» и не открывая газовый сброс К-2.",
           "condition": { "type": "composite_and", "conditions": [
             { "type": "valve_is", "target": "V_STEAM_K2", "expected": false },
             { "type": "valve_is", "target": "V_K2_RELIEF", "expected": false }

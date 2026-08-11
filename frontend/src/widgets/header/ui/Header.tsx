@@ -26,7 +26,7 @@ const Header: React.FC = () => {
       case 'column_shutdown': return 'Останов колонны К-1';
       case 'overpressure_relief': return 'Ликвидация роста давления';
       case 'recirculation': return 'Перевод на рециркуляцию';
-      case 'pump_fail': return 'Отказ сырьевого насоса Н-1';
+      case 'pump_fail': return 'Отказ сырьевого насоса Н-20';
       case 'coil_overheat': return 'Прогар змеевика печи П-1';
       case 'valve_jam': return 'Зависание клапана сброса V-2';
       case 'power_fail': return 'Отказ электроснабжения';

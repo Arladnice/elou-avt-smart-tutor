@@ -44,6 +44,33 @@ def test_regulation_sequence_is_credited():
     assert recs
 
 
+def test_regulation_sequence_requires_actual_furnace_cooling():
+    """Сниженные уставки не дают зачёт, пока фактические печи горячие."""
+    actions = [
+        "V_ELOU_CLOSE", "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN",
+        "SP_DOWN", "SP3_DOWN",
+    ]
+    analyzer = ErrorAnalyzer()
+
+    hot_score, hot_errors, _, _ = analyzer.evaluate_session(
+        actions,
+        "elou_salt_breakthrough",
+        defects_triggered={"elou_desalt_fail"},
+        final_sensors={"T_1": 260.0, "T_3": 240.0},
+    )
+    cooled_score, cooled_errors, _, _ = analyzer.evaluate_session(
+        actions,
+        "elou_salt_breakthrough",
+        defects_triggered={"elou_desalt_fail"},
+        final_sensors={"T_1": 200.0, "T_3": 200.0},
+    )
+
+    assert hot_score < 100
+    assert hot_errors
+    assert cooled_score == 100
+    assert cooled_errors == []
+
+
 def test_emergency_stop_is_credited():
     score, errors, _, _ = _evaluate(["ESD"])
 
@@ -114,18 +141,12 @@ def test_power_fail_inaction_is_not_credited_at_startup():
     assert errors
 
 
-def test_power_fail_requires_heat_reduction():
-    """
-    Снижение нагрева обязано влиять на оценку.
+def test_power_fail_does_not_require_duplicate_heat_reduction():
+    """При power_fail модель уже сняла нагрев, достаточно отсечь подачу."""
+    score, errors, _, _ = _power_fail(["V1_OPEN", "V1_CLOSE"])
 
-    Условие было записано как `"SP_DOWN" in actions or "power_fail" in
-    defects_triggered`. Внутри ветки по power_fail второе слагаемое истинно
-    всегда, поэтому требование снижения нагрева не проверялось ни разу.
-    """
-    without_heat_cut, _, _, _ = _power_fail(["V1_OPEN", "V1_CLOSE"])
-    with_heat_cut, _, _, _ = _power_fail(["V1_OPEN", "SP_DOWN", "V1_CLOSE"])
-
-    assert with_heat_cut > without_heat_cut
+    assert score == 100
+    assert errors == []
 
 
 def test_power_fail_correct_response_still_scores_full():
@@ -134,3 +155,27 @@ def test_power_fail_correct_response_still_scores_full():
 
     assert score == 100
     assert errors == []
+
+
+def test_air_fail_requires_actual_furnace_cooling():
+    """Уставки снижены, но горячие печи ещё не означают успешную ликвидацию."""
+    analyzer = ErrorAnalyzer()
+    actions = ["SP_DOWN", "SP3_DOWN"]
+
+    hot_score, hot_errors, _, _ = analyzer.evaluate_session(
+        actions,
+        "shutdown",
+        defects_triggered={"air_fail"},
+        final_sensors={"T_1": 280.0, "T_3": 275.0},
+    )
+    cooled_score, cooled_errors, _, _ = analyzer.evaluate_session(
+        actions,
+        "shutdown",
+        defects_triggered={"air_fail"},
+        final_sensors={"T_1": 245.0, "T_3": 245.0},
+    )
+
+    assert hot_score < 100
+    assert hot_errors
+    assert cooled_score == 100
+    assert cooled_errors == []

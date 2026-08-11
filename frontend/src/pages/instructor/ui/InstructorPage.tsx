@@ -417,7 +417,7 @@ const InstructorPage: React.FC = () => {
             <S.StyledCard title="Внедрение нештатных ситуаций">
               <S.DefectRow>
                 <S.DefectInfo>
-                  <span className="title">Отказ сырьевого насоса Н-1</span>
+                  <span className="title">Отказ сырьевого насоса Н-20</span>
                   <span className="desc">Прекращает подачу сырья. Угроза коксования печи П-1 (п. 7.9.1 техрегламента).</span>
                 </S.DefectInfo>
                 <Switch size="small" checked={defects.pump_fail} onChange={v => handleDefectChange('pump_fail', v)} />

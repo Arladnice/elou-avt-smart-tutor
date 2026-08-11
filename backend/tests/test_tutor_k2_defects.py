@@ -89,12 +89,21 @@ class TestK2PumpFailParry:
     """Отказ насосов откачки куба К-2 Н-4/Н-32: куб заполняется, идёт захлёбывание."""
 
     def test_cutting_feed_to_k2_is_credited(self):
-        """Закрытие V-3 прекращает подачу кубового остатка К-1 в К-2."""
-        score, errors, recs, _ = _evaluate(["V3_CLOSE"], "k2_pump_fail")
+        """V-3, Н-20 и V-1 останавливают поступление продукта в К-2."""
+        score, errors, recs, _ = _evaluate(
+            ["V3_CLOSE", "N_20_STOP", "V1_CLOSE"], "k2_pump_fail"
+        )
 
         assert score == 100
         assert errors == []
         assert recs
+
+    def test_raw_feed_shutdown_is_required(self):
+        """Одна отсечка V-3 без остановки Н-20 и V-1 не засчитывается."""
+        score, errors, _, _ = _evaluate(["V3_CLOSE"], "k2_pump_fail")
+
+        assert score < 100
+        assert errors
 
     def test_emergency_stop_is_credited(self):
         score, errors, _, _ = _evaluate(["ESD"], "k2_pump_fail")

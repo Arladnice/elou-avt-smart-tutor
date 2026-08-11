@@ -186,12 +186,23 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_integration_testcase_2_pump_fail_recovery(self):
         """Интеграционный тест: Тест-кейс 2 (Парирование отказа сырьевого насоса)"""
-        # Инструктор активировал отказ насоса, оператор снижает обе уставки и закрывает V-1.
-        actions = ["SP_DOWN", "SP3_DOWN", "V1_CLOSE"]
+        # Инструктор активировал отказ Н-20; после снижения уставок оператор
+        # останавливает насос и только затем закрывает V-1.
+        actions = ["SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE"]
         score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"pump_fail"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
         self.assertTrue(any("отказ сырьевого насоса" in r.lower() for r in recs))
+
+    def test_pump_fail_requires_setpoint_reduction_and_pump_stop_before_v1_close(self):
+        """Раннее закрытие V-1 при отказе Н-20 не засчитывается."""
+        actions = ["V1_CLOSE", "SP_DOWN", "SP3_DOWN", "N_20_STOP"]
+        score, errors, _, rec_id = self.analyzer.evaluate_session(
+            actions, "startup", defects_triggered={"pump_fail"}
+        )
+        self.assertLess(score, 100)
+        self.assertTrue(errors)
+        self.assertEqual(rec_id, "shutdown")
 
     def test_integration_testcase_3_jammed_vent_esd(self):
         """Интеграционный тест: Тест-кейс 3 (Заклинивание клапана V-2 и ESD)"""
@@ -295,7 +306,7 @@ class TestKTKComponents(unittest.TestCase):
     def test_adaptive_defect_progression_chain(self):
         """Проверяет переход между нештатными ситуациями при успешной их ликвидации."""
         defect_chain = [
-            ({"pump_fail"}, ["SP_DOWN", "SP3_DOWN", "V1_CLOSE"], "coil_overheat"),
+            ({"pump_fail"}, ["SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE"], "coil_overheat"),
             ({"coil_overheat"}, ["SP_DOWN", "V2_OPEN", "FUEL_P1_CLOSE", "V_P1_IN_CLOSE", "V3_CLOSE"], "valve_jam"),
             ({"valve_jam"}, ["SP_UP", "V2_OPEN", "ESD"], "power_fail"),
             ({"power_fail"}, ["SP_DOWN", "V1_CLOSE"], "air_fail"),

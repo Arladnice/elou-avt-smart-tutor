@@ -40,7 +40,7 @@ def test_shutdown_does_not_penalize_order_of_independent_operations() -> None:
     actions = [
         "FUEL_P3_CLOSE", "FUEL_P1_CLOSE", "V_1_CLOSE", "V_3_CLOSE",
         "V_P1_IN_CLOSE", "V_P3_OUT_CLOSE", "V_P3_RETURN_CLOSE",
-        "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "V_VT_CLOSE",
+        "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE",
         "V_STEAM_K2_CLOSE", "N_3_STOP", "N_2_STOP",
     ]
 
@@ -54,7 +54,7 @@ def test_column_shutdown_does_not_require_hidden_call_or_pump_stop_order() -> No
     """Останов К-1 принимает полную последовательность из чек-листа оператора."""
     actions = [
         "SP_DOWN", "SP3_DOWN", "SP_DOWN", "SP3_DOWN", "N_20_STOP", "V_1_CLOSE",
-        "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "V_VT_CLOSE",
+        "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE",
         "FUEL_P1_CLOSE", "FUEL_P3_CLOSE", "N_3_STOP", "N_2_STOP", "V_3_CLOSE",
     ]
 
@@ -257,7 +257,7 @@ def test_vacuum_loss_response_prevents_k1_overfill_during_cooling() -> None:
 DECLARED_DEFECTS = tuple(ELOUAVTSimulator().defects.keys())
 
 DEFECT_REACTIONS = {
-    "pump_fail": ["SP_DOWN", "SP3_DOWN", "V1_CLOSE"],
+    "pump_fail": ["SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE"],
     "coil_overheat": ["SP_DOWN", "V2_OPEN", "FUEL_P1_CLOSE", "V_P1_IN_CLOSE", "V3_CLOSE"],
     "valve_jam": ["ESD"],
     "power_fail": ["SP_DOWN", "V1_CLOSE"],
@@ -265,7 +265,7 @@ DEFECT_REACTIONS = {
     "steam_fail": ["V3_OPEN"],
     "elou_desalt_fail": ["V_ELOU_CLOSE", "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "SP_DOWN", "SP3_DOWN"],
     "vt_vacuum_loss": ["SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "V_STEAM_K2_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN"],
-    "k2_pump_fail": ["V3_CLOSE"],
+    "k2_pump_fail": ["V3_CLOSE", "N_20_STOP", "V1_CLOSE"],
 }
 
 

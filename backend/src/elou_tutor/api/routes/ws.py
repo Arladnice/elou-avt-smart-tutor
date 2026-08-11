@@ -182,6 +182,10 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         session.simulator.set_defect(defect_id, state)
         if state:
             session.defects_triggered.add(defect_id)
+        else:
+            # В журнале остаётся факт переключения, но снятая инструктором
+            # неисправность не должна участвовать в итоговой оценке.
+            session.defects_triggered.discard(defect_id)
         status_ru = "АКТИВИРОВАНА" if state else "ДЕАКТИВИРОВАНА"
         session.add_log("error" if state else "info", f"ИНСТРУКТОР: Неисправность '{DEFECT_NAMES_RU.get(defect_id, defect_id)}' {status_ru}!")
         await log_audit_event_async(username, "DEFECT_TRIGGER", f"Неисправность {defect_id} -> {state}")

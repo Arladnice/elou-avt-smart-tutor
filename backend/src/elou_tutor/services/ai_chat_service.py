@@ -117,7 +117,7 @@ def get_scenario_checklist_progress(telemetry: Dict[str, Any]) -> str:
             ]
         else:
             tasks = [
-                ("1. Снижение нагрева печи П-1 (Понизить уставку, Т-1 <= 245°C)", t1 <= 245.0),
+                ("1. Снижение нагрева печи П-1 (Понизить уставку, Т-1 <= 150°C)", t1 <= 150.0),
                 ("2. Сброс давления в колонне K-1 (Открыть сброс V-2)", v2),
                 ("3. Перекрытие подачи сырья (Закрыть V-1)", not v1)
             ]
@@ -233,11 +233,11 @@ def generate_legacy_rag_fallback(user_query: str, telemetry: Dict[str, Any]) -> 
     kb_content = ""
     matched_articles = []
     
-    if any(k in query_lower for k in ["насос", "н-1", "н1"]):
+    if any(k in query_lower for k in ["насос", "н-20", "н20"]):
         content = load_kb_file("pump_failure.md")
         if content:
             kb_content += content + "\n\n"
-            matched_articles.append("Отказ сырьевого насоса Н-1 (п. 7.9.1)")
+            matched_articles.append("Отказ сырьевого насоса Н-20 (п. 7.9.1)")
 
     if any(k in query_lower for k in ["пуск", "разогре", "нагре", "прогре"]) and any(k in query_lower for k in ["печ", "змеевик", "п-1", "п1"]):
         content = load_kb_file("furnace_startup.md")
@@ -360,7 +360,7 @@ def generate_legacy_rag_fallback(user_query: str, telemetry: Dict[str, Any]) -> 
     elif any(k in query_lower for k in ["неисправ", "дефект", "полом", "отказ"]):
         active = [k for k, v in defects.items() if v]
         if active:
-            defect_names = {"pump_fail": "отказ сырьевого насоса Н-1", "coil_overheat": "перегрев змеевика печи П-1", "valve_jam": "заклинивание задвижки"}
+            defect_names = {"pump_fail": "отказ сырьевого насоса Н-20", "coil_overheat": "перегрев змеевика печи П-1", "valve_jam": "заклинивание задвижки"}
             desc = ", ".join(defect_names.get(d, d) for d in active)
             answer = f"⚠️ Активные неисправности: **{desc}**. Обратитесь к регламенту аварийных действий."
         else:
