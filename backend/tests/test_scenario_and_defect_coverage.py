@@ -35,6 +35,99 @@ def test_every_builtin_scenario_accepts_its_golden_sequence(scenario_id: str) ->
     assert errors == []
 
 
+def test_shutdown_does_not_penalize_order_of_independent_operations() -> None:
+    """Чек-лист аварийного останова допускает обратный порядок парных операций."""
+    actions = [
+        "FUEL_P3_CLOSE", "FUEL_P1_CLOSE", "V_1_CLOSE", "V_3_CLOSE",
+        "V_P1_IN_CLOSE", "V_P3_OUT_CLOSE", "V_P3_RETURN_CLOSE",
+        "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "V_VT_CLOSE",
+        "V_STEAM_K2_CLOSE", "N_3_STOP", "N_2_STOP",
+    ]
+
+    score, errors, _, _ = ErrorAnalyzer().evaluate_session(actions, "shutdown")
+
+    assert score == 100
+    assert errors == []
+
+
+def test_column_shutdown_does_not_require_hidden_call_or_pump_stop_order() -> None:
+    """Останов К-1 принимает полную последовательность из чек-листа оператора."""
+    actions = [
+        "SP_DOWN", "SP3_DOWN", "SP_DOWN", "SP3_DOWN", "N_20_STOP", "V_1_CLOSE",
+        "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "V_VT_CLOSE",
+        "FUEL_P1_CLOSE", "FUEL_P3_CLOSE", "N_3_STOP", "N_2_STOP", "V_3_CLOSE",
+    ]
+
+    score, errors, _, _ = ErrorAnalyzer().evaluate_session(actions, "column_shutdown")
+
+    assert score == 100
+    assert errors == []
+
+
+def test_overpressure_relief_feed_stop_does_not_overheat_p1() -> None:
+    """Снижение нагрузки П-3 не требует скрытого снижения уставки П-1."""
+    random.seed(20260811)
+    simulator = ELOUAVTSimulator()
+    simulator.reset("overpressure_relief")
+    simulator.set_valve("V_E1_DRAIN", True)
+    simulator.set_setpoint("T_3_Sp", 140.0)
+    simulator.sensors["T_3"] = 250.0
+    simulator.set_pump("N_20", False)
+    simulator.set_valve("V_1", False)
+    simulator.set_valve("V_2", True)
+
+    for _ in range(20):
+        simulator.step()
+
+    assert simulator.status == "running"
+    assert simulator.sensors["T_1"] < 340.0
+
+
+@pytest.mark.parametrize(
+    "actions",
+    (
+        ["V_E1_DRAIN_OPEN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE"],
+        ["V_E1_DRAIN_OPEN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "V2_OPEN"],
+    ),
+)
+def test_overpressure_relief_accepts_v2_only_when_needed(actions: list[str]) -> None:
+    """Сброс V-2 в сценарии является допустимой, но не обязательной реакцией."""
+    score, errors, _, _ = ErrorAnalyzer().evaluate_session(actions, "overpressure_relief")
+
+    assert score == 100
+    assert errors == []
+
+
+def test_recirculation_does_not_penalize_intermediate_feed_adjustment() -> None:
+    """Промежуточные движения ползунка Н-20 не являются лишними действиями."""
+    actions = [
+        "FEED_DOWN", "FEED_UP", "SP_DOWN", "SP3_DOWN", "FUEL_P1_CLOSE", "V1_CLOSE",
+        "V3_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "FUEL_P3_CLOSE",
+    ]
+
+    score, errors, _, _ = ErrorAnalyzer().evaluate_session(actions, "recirculation")
+
+    assert score == 100
+    assert errors == []
+
+
+def test_recirculation_does_not_overheat_p1_after_feed_isolation() -> None:
+    """Закрытие V-1 после снижения уставки должно охлаждать П-1, а не разгонять её."""
+    random.seed(20260811)
+    simulator = ELOUAVTSimulator()
+    simulator.reset("recirculation")
+    simulator.set_setpoint("T_1_Sp", 298.0)
+    simulator.set_setpoint("T_3_Sp", 299.0)
+    simulator.set_valve("V_1", False)
+    simulator.set_valve("V_3", False)
+
+    for _ in range(20):
+        simulator.step()
+
+    assert simulator.status == "running"
+    assert simulator.sensors["T_1"] < 320.0
+
+
 @pytest.mark.parametrize("scenario_id", BUILTIN_SCENARIO_IDS)
 def test_every_builtin_scenario_loads_its_initial_state(scenario_id: str) -> None:
     """Сброс симулятора должен воспроизводить начальные условия сценария."""
@@ -132,11 +225,48 @@ def test_vacuum_failure_raises_k2_pressure_and_temperature() -> None:
     assert simulator.sensors["T_2"] > initial_temperature
 
 
+def test_vacuum_loss_response_prevents_k1_overfill_during_cooling() -> None:
+    """Ожидание охлаждения при срыве вакуума безопасно только после отсечки сырья."""
+    simulator = ELOUAVTSimulator()
+    simulator.reset("vt_vacuum_failure")
+    initial_level = simulator.sensors["L_1"]
+    simulator.set_defect("vt_vacuum_loss", True)
+    simulator.set_setpoint("T_1_Sp", 200.0)
+    simulator.set_setpoint("T_3_Sp", 200.0)
+    simulator.set_pump("N_20", False)
+    simulator.set_valve("V_1", False)
+    simulator.set_valve("V_STEAM_K2", False)
+    simulator.set_valve("HC_P1", True)
+    simulator.set_valve("HC_P3", True)
+
+    for _ in range(60):
+        simulator.step()
+
+    assert simulator.status == "running"
+    assert simulator.sensors["L_1"] < initial_level
+    assert simulator.sensors["T_1"] <= 200.0
+    assert simulator.sensors["T_3"] <= 201.0
+    assert simulator.sensors["P_vac"] < 0.098
+    assert simulator.sensors["T_2"] < 360.0
+
+
 # ---------------------------------------------------------------
 # Разбор неисправностей
 # ---------------------------------------------------------------
 
 DECLARED_DEFECTS = tuple(ELOUAVTSimulator().defects.keys())
+
+DEFECT_REACTIONS = {
+    "pump_fail": ["SP_DOWN", "SP3_DOWN", "V1_CLOSE"],
+    "coil_overheat": ["SP_DOWN", "V2_OPEN", "FUEL_P1_CLOSE", "V_P1_IN_CLOSE", "V3_CLOSE"],
+    "valve_jam": ["ESD"],
+    "power_fail": ["SP_DOWN", "V1_CLOSE"],
+    "air_fail": ["SP_DOWN", "SP3_DOWN"],
+    "steam_fail": ["V3_OPEN"],
+    "elou_desalt_fail": ["V_ELOU_CLOSE", "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "SP_DOWN", "SP3_DOWN"],
+    "vt_vacuum_loss": ["SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "V_STEAM_K2_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN"],
+    "k2_pump_fail": ["V3_CLOSE"],
+}
 
 
 @pytest.mark.parametrize("defect_id", DECLARED_DEFECTS)
@@ -169,9 +299,10 @@ def test_defect_parry_distinguishes_action_from_inaction(defect_id: str) -> None
     idle_score, _, _, _ = analyzer.evaluate_session(
         ["V1_OPEN"], "startup", defects_triggered={defect_id}, time_elapsed=120,
     )
-    # Набор со всеми штатными реакциями: какая-то из них верна для любого дефекта
+    # Для каждого дефекта используем его утверждённую реакцию, а не общий
+    # «мешок» команд: требования к П-1/П-3 и арматуре различаются.
     reacted_score, _, _, _ = analyzer.evaluate_session(
-        ["V1_OPEN", "SP_DOWN", "V2_OPEN", "V3_OPEN", "V3_CLOSE", "V_ELOU_OPEN", "V_VT_OPEN", "ESD"],
+        DEFECT_REACTIONS[defect_id],
         "startup", defects_triggered={defect_id}, time_elapsed=120,
     )
 

@@ -100,6 +100,24 @@ class TestLowLevelAlertSeverity(unittest.TestCase):
         """6 % — ниже порога эскалации: сухой ход уже близко."""
         self.assertEqual("CRITICAL", self._severity_for_level(6.0))
 
+    def test_k2_low_level_interlock_explains_automatic_outflow_block(self):
+        """На пороге ПАЗ К-2 подсказка не должна предлагать включить откачку."""
+        from elou_tutor.services.connection_manager import SimulationSession
+        from elou_tutor.services.simulation_loop import step_session
+
+        session = SimulationSession("k2_low_interlock_message")
+        session.operator_sockets.add(_FakeWS())
+        session.active_scenario = "recirculation"
+        session.simulator.sensors["L_2"] = 15.0
+        session.simulator.valves["V_1"] = False
+        session.simulator.valves["V_3"] = False
+
+        asyncio.run(step_session(session))
+
+        entries = [log for log in session.logs if log.get("fingerprint") == "k2_level_low"]
+        self.assertTrue(entries)
+        self.assertIn("автоматически заблокирована", entries[-1]["message"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -153,11 +153,15 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         tag = str(cmd.get("tag", ""))
         state = bool(cmd.get("state", False))
         try:
-            session.interlocks.set_bypass(tag, state)
-        except PermissionError:
+            session.interlocks.set_bypass(
+                tag,
+                state,
+                trip_active=session.interlocks.is_trip_active(tag, session.simulator.sensors),
+            )
+        except (PermissionError, ValueError) as exc:
             await websocket.send_json({
                 "type": "error",
-                "message": "Перед включением или снятием деблокировки позвоните дежурному инженеру.",
+                "message": str(exc),
             })
             return False
         session.record_action(f"INTERLOCK_{tag}_{'BYPASS_ON' if state else 'BYPASS_OFF'}")

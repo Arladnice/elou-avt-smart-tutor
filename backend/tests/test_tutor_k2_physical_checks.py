@@ -90,7 +90,7 @@ def test_low_k2_level_is_not_penalised_on_column_shutdown():
     Штраф за это наказывал бы за правильно выполненный регламент.
     """
     perfect_shutdown = get_scenario_by_id("column_shutdown")["golden_sequence"]
-    sensors = _sensors(T_1=200.0, L_2=K2_LEVEL_LOW - 5.0)
+    sensors = _sensors(T_1=150.0, T_3=150.0, L_2=K2_LEVEL_LOW - 5.0)
 
     score, errors, _ = _score(sensors, actions=perfect_shutdown, scenario_id="column_shutdown")
 

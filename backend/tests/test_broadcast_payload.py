@@ -155,6 +155,26 @@ def test_actions_are_not_broadcast():
     assert "actions" not in ws.last()
 
 
+def test_completed_checklist_step_is_latched_on_server_and_reset_with_session():
+    """Шаг сценария остаётся выполненным после штатного изменения режима."""
+    session = SimulationSession("payload_checklist_latch")
+    session.reset_session(username="probe", scenario="shutdown")
+
+    session.simulator.set_valve("HC_P1", True)
+    session.simulator.set_valve("HC_P3", True)
+    completed = session.get_full_state()["completedChecklistSteps"]
+    assert "hot_circulation" in completed
+
+    # На последнем шаге останова Н-2/Н-3 штатно выключаются. Это не должно
+    # отменять факт ранее выполненной горячей циркуляции.
+    session.simulator.set_pump("N_2", False)
+    session.simulator.set_pump("N_3", False)
+    assert "hot_circulation" in session.get_full_state()["completedChecklistSteps"]
+
+    session.reset_session(scenario="shutdown")
+    assert session.get_full_state()["completedChecklistSteps"] == []
+
+
 def test_steady_state_packet_is_small():
     """
     Такт без событий обязан быть на порядок легче полного снимка.

@@ -1,5 +1,5 @@
 export interface ScenarioCondition {
-  type: 'valve_is' | 'pump_is' | 'sensor_gte' | 'sensor_lte' | 'setpoint_gte' | 'setpoint_lte' | 'composite_and';
+  type: 'valve_is' | 'pump_is' | 'sensor_gte' | 'sensor_lte' | 'setpoint_gte' | 'setpoint_lte' | 'composite_and' | 'composite_or';
   target?: string;
   expected?: boolean | number;
   /** Допуск зачёта измеряемого параметра, например ±2°C для температуры */

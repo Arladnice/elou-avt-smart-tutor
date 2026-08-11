@@ -14,48 +14,53 @@ export const getInterlockColumns = ({
   onToggle,
 }: ColumnOptions): ColumnsType<InterlockRow> => [
   {
-    title: 'Позиция',
+    title: 'Объект',
     dataIndex: 'tag',
     key: 'tag',
-    width: 72,
+    width: 128,
     render: (tag: string, row) => (
-      <Tag color={row.primary ? 'cyan' : 'default'}>{tag}</Tag>
+      <div className="interlock-object">
+        <span>{tag}</span>
+        <div className="interlock-object__controls">
+          <Tag color={row.paz_active ? 'red' : row.signal ? 'orange' : 'green'}>
+            {row.paz_active ? 'ПАЗ' : row.trip ? 'Дебл.' : row.signal ? 'Сигн.' : 'Норма'}
+          </Tag>
+          <span className="interlock-object__bypass-label">Дебл.</span>
+          <Switch
+            size="small"
+            checked={row.bypassed}
+            disabled={disabled || !canOperate || (row.trip && !row.bypassed)}
+            checkedChildren="Вкл"
+            unCheckedChildren="—"
+            onChange={state => onToggle(row.tag, state)}
+          />
+        </div>
+      </div>
     ),
   },
   {
-    title: 'Дебл.',
-    dataIndex: 'bypassed',
-    key: 'bypass',
-    width: 54,
-    render: (bypassed: boolean, row) => (
-      <Switch
-        size="small"
-        checked={bypassed}
-        disabled={disabled || !canOperate}
-        checkedChildren="Вкл"
-        unCheckedChildren="—"
-        onChange={state => onToggle(row.tag, state)}
-      />
-    ),
+    title: 'Датчик',
+    dataIndex: 'sensors',
+    key: 'sensors',
+    width: 142,
+    render: (sensors: string[]) => sensors.map(sensor => <div key={sensor}>{sensor}</div>),
   },
   {
-    title: 'Логика',
+    title: 'Конфигурация',
     dataIndex: 'logic',
     key: 'logic',
-    width: 80,
+    width: 102,
   },
   {
-    title: 'Исп. механизм',
-    dataIndex: 'mechanism',
-    key: 'mechanism',
+    title: 'Сигнализация',
+    dataIndex: 'signalization',
+    key: 'signalization',
+    width: 124,
   },
   {
-    title: 'Статус',
-    dataIndex: 'alarm',
-    key: 'alarm',
-    width: 50,
-    render: (alarm: boolean) => (
-      <Tag color={alarm ? 'red' : 'green'}>{alarm ? 'Авар.' : 'Норма'}</Tag>
-    ),
+    title: 'Авария',
+    dataIndex: 'trip_threshold',
+    key: 'trip_threshold',
+    width: 124,
   },
 ];

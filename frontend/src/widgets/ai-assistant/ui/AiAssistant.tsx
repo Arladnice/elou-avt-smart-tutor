@@ -44,7 +44,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ hideRiskTab = false, hideTren
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: 'Система поддержки готова к работе. Можно уточнить порядок действий при перегреве П-1, отказе насоса Н-1 или росте давления в колонне К-1.'
+      content: 'Система поддержки готова. Я знаю актуальные сценарии, мнемосхему, ПАЗ и нештатные ситуации. Спросите, например, как пустить Н-2 или что делать при срыве вакуума ВТ.'
     }
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -201,12 +201,17 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ hideRiskTab = false, hideTren
     handleSendMessage(suggestionText);
   };
 
-  const suggestions = [
-    defects?.power_fail ? 'Что делать при обесточивании?' : 'Отказ насоса Н-1',
-    defects?.air_fail ? 'Действия при отказе КИПиА' : 'Превышение давления в К-1',
-    defects?.steam_fail ? 'Как устранить срыв пара?' : 'Как избежать перегрева П-1?',
-    'Рекомендации регламента'
-  ];
+  const suggestions = defects?.pump_fail
+    ? ['Что делать при отказе Н-1?', 'Как снизить уставки обеих печей?', 'Нужно ли закрывать V-1?', 'Порядок действий по сценарию']
+    : defects?.coil_overheat
+      ? ['Прогар змеевика П-1: что делать?', 'Какие клапаны изолировать?', 'Как перекрыть топливо П-1?', 'Порядок действий по сценарию']
+      : defects?.air_fail
+        ? ['Отказ воздуха КИПиА: что делать?', 'Как снизить уставки обеих печей?', 'Что происходит с V-1 и V-3?', 'Порядок действий по сценарию']
+        : defects?.vt_vacuum_loss
+          ? ['Срыв вакуума ВТ: что делать?', 'Как перевести на горячую циркуляцию?', 'Что делать с паром К-2?', 'Порядок действий по сценарию']
+          : defects?.k2_pump_fail
+            ? ['Отказ Н-4/Н-32: что делать?', 'Как перевести на рециркуляцию?', 'Что делать с К-2?', 'Порядок действий по сценарию']
+            : ['Как пустить Н-2?', 'Пуск установки: порядок действий', 'Срыв вакуума ВТ: что делать?', 'ПАЗ: пороги и деблокировки'];
 
   return (
     <S.AssistantContent>
@@ -313,20 +318,25 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ hideRiskTab = false, hideTren
           </S.SuggestionsBox>
 
           <S.InputWrapper>
-            <Input 
+            <Input.TextArea
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
-              onPressEnter={() => handleSendMessage(inputValue)}
+              onPressEnter={event => {
+                if (!event.shiftKey) {
+                  event.preventDefault();
+                  handleSendMessage(inputValue);
+                }
+              }}
               placeholder="Введите вопрос по регламенту..."
               disabled={isTyping}
-              size="small"
+              autoSize={{ minRows: 3, maxRows: 6 }}
             />
             <Button 
               type="primary" 
               onClick={() => handleSendMessage(inputValue)}
               disabled={isTyping || !inputValue.trim()}
               icon={<Send size={12} />}
-              size="small"
+              size="middle"
             />
           </S.InputWrapper>
         </S.ChatContainer>

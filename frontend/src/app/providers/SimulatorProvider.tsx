@@ -37,7 +37,17 @@ import {
 import { SimulatorActionsContext, type SimulatorActions } from '@/entities/simulator';
 
 /** Сценарии, которые на самом деле являются инъекцией неисправности поверх базового сценария */
-const DEFECT_SCENARIOS: DefectId[] = ['pump_fail', 'coil_overheat', 'valve_jam', 'power_fail', 'air_fail', 'steam_fail'];
+const DEFECT_SCENARIOS: DefectId[] = [
+  'pump_fail', 'coil_overheat', 'valve_jam', 'power_fail', 'air_fail', 'steam_fail',
+  'elou_desalt_fail', 'vt_vacuum_loss', 'k2_pump_fail',
+];
+
+const DEFECT_BASE_SCENARIOS: Partial<Record<DefectId, string>> = {
+  valve_jam: 'overpressure_relief',
+  elou_desalt_fail: 'elou_salt_breakthrough',
+  vt_vacuum_loss: 'vt_vacuum_failure',
+  k2_pump_fail: 'recirculation',
+};
 
 let logSequence = 0;
 
@@ -111,6 +121,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [logs, setLogs] = useState<LogEntry[]>([
     { id: '1', time: '00:00', type: 'info', message: 'Система инициализирована в локальном режиме.' },
   ]);
+  const [completedChecklistSteps, setCompletedChecklistSteps] = useState<string[]>([]);
   const [accidentReason, setAccidentReason] = useState('');
   const [trainingAcceleration, setTrainingAcceleration] = useState<Record<string, number>>({
     'Заполнение и уровень К-2': 4,
@@ -173,6 +184,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setPredictions([280, 0.25, 50]);
     setTelemetryHistory([]);
     setLogs([{ id: '1', time: '00:00', type: 'info', message: 'Система перезапущена локально.' }]);
+    setCompletedChecklistSteps([]);
     setScoreCard(null);
     setAccidentReason('');
     setIsPaused(false);
@@ -213,14 +225,15 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const isDefectScenario = (DEFECT_SCENARIOS as string[]).includes(scenId);
 
     if (isDefectScenario) {
-      const baseScenario = scenId === 'valve_jam' ? 'overpressure_relief' : 'startup';
+      const defectId = scenId as DefectId;
+      const baseScenario = DEFECT_BASE_SCENARIOS[defectId] || 'startup';
       setScenarioId(baseScenario);
       if (stateRef.current.isOnline) {
         sendWsAction({ type: 'change_scenario', scenario_id: baseScenario });
-        sendWsAction({ type: 'trigger_defect', defect_id: scenId, state: true });
+        sendWsAction({ type: 'trigger_defect', defect_id: defectId, state: true });
       } else {
         resetSession();
-        setDefects(prev => ({ ...prev, [scenId]: true }));
+        setDefects(prev => ({ ...prev, [defectId]: true }));
       }
       return;
     }
@@ -480,6 +493,9 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // только при изменении: отсутствие ключа означает «оставь как есть».
         // Полный снимок приходит при подключении и после сброса сессии.
         if (data.logs !== undefined) setLogs(data.logs);
+        if (Array.isArray(data.completedChecklistSteps)) {
+          setCompletedChecklistSteps(data.completedChecklistSteps);
+        }
         if ('scoreCard' in data) {
           setScoreCard(prev =>
             JSON.stringify(prev) === JSON.stringify(data.scoreCard ?? null) ? prev : data.scoreCard,
@@ -606,6 +622,8 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const point: TelemetryPoint = {
         timeElapsed,
         T_1: sensors.T_1,
+        T_2: sensors.T_2,
+        T_3: sensors.T_3,
         P_1: sensors.P_1,
         L_1: sensors.L_1,
         L_2: sensors.L_2,
@@ -632,6 +650,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     predictions,
     telemetryHistory,
     logs,
+    completedChecklistSteps,
     accidentReason,
     wsLatency,
     interlocks,
@@ -639,7 +658,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     interlockOperationAuthorized,
     startupK2Prefill,
     trainingAcceleration,
-  }), [status, timeElapsed, valves, pumps, sensors, setpoints, defects, riskLevel, predictions, telemetryHistory, logs, accidentReason, wsLatency, interlocks, dutyEngineerPhone, interlockOperationAuthorized, startupK2Prefill, trainingAcceleration]);
+  }), [status, timeElapsed, valves, pumps, sensors, setpoints, defects, riskLevel, predictions, telemetryHistory, logs, completedChecklistSteps, accidentReason, wsLatency, interlocks, dutyEngineerPhone, interlockOperationAuthorized, startupK2Prefill, trainingAcceleration]);
 
   const sessionValue = useMemo<SessionState>(() => ({
     username,

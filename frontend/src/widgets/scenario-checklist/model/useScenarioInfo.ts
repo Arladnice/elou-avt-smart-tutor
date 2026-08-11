@@ -6,7 +6,9 @@ const scenarioNames: Record<string, string> = {
   shutdown: 'Аварийный останов печей П-1 и П-3',
   column_shutdown: 'Останов колонны К-1',
   overpressure_relief: 'Ликвидация роста давления',
-  recirculation: 'Перевод на рециркуляцию'
+  recirculation: 'Перевод на рециркуляцию',
+  elou_salt_breakthrough: 'Проскок солей и воды из ЭЛОУ',
+  vt_vacuum_failure: 'Срыв вакуума вакуумного блока ВТ',
 };
 
 /**
@@ -22,7 +24,10 @@ export const useScenarioInfo = () => {
     defects?.valve_jam ||
     defects?.power_fail ||
     defects?.air_fail ||
-    defects?.steam_fail
+    defects?.steam_fail ||
+    defects?.elou_desalt_fail ||
+    defects?.vt_vacuum_loss ||
+    defects?.k2_pump_fail
   );
 
   const getEmergencyTitle = (): string => {
@@ -33,6 +38,9 @@ export const useScenarioInfo = () => {
     if (defects?.power_fail) list.push('Обесточивание');
     if (defects?.air_fail) list.push('Отказ КИПиА');
     if (defects?.steam_fail) list.push('Срыв отпарки');
+    if (defects?.elou_desalt_fail) list.push('Проскок ЭЛОУ');
+    if (defects?.vt_vacuum_loss) list.push('Срыв вакуума ВТ');
+    if (defects?.k2_pump_fail) list.push('Отказ Н-4/Н-32');
     return `Авария: ${list.join(' + ')}`;
   };
 

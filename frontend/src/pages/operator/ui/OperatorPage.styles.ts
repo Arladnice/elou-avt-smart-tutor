@@ -237,3 +237,17 @@ export const SidebarWorkspace = styled.div`
     background: ${props => props.theme.colors.primary};
   }
 `;
+
+/**
+ * Поддержка остаётся смонтированной при переключении рабочих вкладок: так
+ * история диалога и незавершённый ввод не теряются до конца сессии.
+ */
+export const PersistedPanel = styled.div<{ $visible: boolean }>`
+  display: ${props => props.$visible ? 'flex' : 'none'};
+  flex: 1;
+  min-height: 0;
+
+  > section {
+    flex: 1;
+  }
+`;

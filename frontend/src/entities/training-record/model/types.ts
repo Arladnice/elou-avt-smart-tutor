@@ -11,6 +11,10 @@ export interface TrainingRecord {
     title: string;
     clause: string;
     text: string;
+    /** Время и действие, на котором зафиксировано нарушение. */
+    at_second?: number | null;
+    action_index?: number | null;
+    action?: string | null;
   }>;
   session_logs?: Array<{
     id: number;

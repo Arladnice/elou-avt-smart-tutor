@@ -1,4 +1,6 @@
-"""Регрессии физической модели вакуумной колонны К-2."""
+"""Регрессии физической модели вакуумной колонны К-2 и останова К-1."""
+
+import random
 
 import pytest
 
@@ -153,3 +155,112 @@ def test_power_failure_stops_both_k2_feed_and_outflow():
         simulator.step()
 
     assert simulator.sensors["L_2"] == pytest.approx(initial_level)
+
+
+def test_startup_k2_working_pump_stabilizes_level_after_filling():
+    """После заполнения К-2 рабочая откачка Н-4 не даёт уровню уйти к 100%."""
+    simulator = ELOUAVTSimulator()
+    simulator.reset("startup")
+    simulator.sensors["L_2"] = 20.0
+    simulator.valves["V_3"] = True
+    simulator.valves["V_P1_IN"] = True
+    simulator.pumps["N_2"] = True
+    simulator.valves["V_K2_OUT_4"] = True
+    simulator.set_pump("N_4", True)
+
+    for _ in range(90):
+        simulator.step()
+
+    assert simulator.sensors["L_2"] == pytest.approx(20.0)
+
+
+def test_startup_transfer_keeps_k1_level_stable_with_n20_and_n2_running():
+    """Штатная передача в К-2 не должна опустошать куб К-1 ниже 20%."""
+    simulator = ELOUAVTSimulator()
+    simulator.reset("startup")
+    simulator.sensors["L_1"] = 20.0
+    simulator.valves["V_1"] = True
+    simulator.pumps["N_20"] = True
+    simulator.valves["V_3"] = True
+    simulator.valves["V_P1_IN"] = True
+    simulator.pumps["N_2"] = True
+
+    for _ in range(120):
+        simulator.step()
+
+    assert simulator.sensors["L_1"] >= 20.0
+
+
+def test_shutdown_sequence_keeps_column_in_safe_range_until_pump_stop():
+    """Корректный останов печей не должен сам приводить к переполнению К-1/К-2."""
+    simulator = ELOUAVTSimulator()
+    simulator.reset("shutdown")
+
+    for valve_id in ("FUEL_P1", "FUEL_P3", "V_1", "V_3", "V_P1_IN", "V_P3_OUT", "V_P3_RETURN"):
+        simulator.set_valve(valve_id, False)
+    simulator.set_valve("HC_P1", True)
+    simulator.set_valve("HC_P3", True)
+    for valve_id in ("V_STEAM_K1", "V_STEAM_K2", "V_VT"):
+        simulator.set_valve(valve_id, False)
+
+    for _ in range(90):
+        simulator.step()
+
+    assert simulator.status == "running"
+    assert simulator.sensors["L_1"] < 85.0
+    assert simulator.sensors["L_2"] >= 20.0
+
+
+def test_column_shutdown_final_isolation_holds_k1_level_in_target_range():
+    """Финальный останов К-1 не должен самопроизвольно повышать L-1."""
+    random.seed(20260811)
+    simulator = ELOUAVTSimulator()
+    simulator.reset("column_shutdown")
+    simulator.sensors["L_1"] = 18.0
+
+    for valve_id in ("V_1", "V_3", "FUEL_P1", "FUEL_P3", "V_STEAM_K1"):
+        simulator.set_valve(valve_id, False)
+    simulator.set_pump("N_2", False)
+    simulator.set_pump("N_3", False)
+
+    for _ in range(20):
+        simulator.step()
+
+    assert 16.0 <= simulator.sensors["L_1"] <= 20.0
+
+
+def test_column_shutdown_circulation_keeps_draining_with_vacuum_steam_closed():
+    """Закрытие V-VT не должно поднимать L-1 до финального закрытия V-3."""
+    random.seed(20260811)
+    simulator = ELOUAVTSimulator()
+    simulator.reset("column_shutdown")
+    simulator.sensors["L_1"] = 25.0
+    simulator.sensors["P_vac"] = 0.08
+
+    for valve_id in ("V_1", "FUEL_P1", "FUEL_P3", "V_STEAM_K1", "V_VT"):
+        simulator.set_valve(valve_id, False)
+    simulator.set_valve("V_3", True)
+    simulator.set_pump("N_2", True)
+
+    for _ in range(10):
+        simulator.step()
+
+    assert simulator.sensors["L_1"] < 22.0
+
+
+def test_recirculation_isolates_k1_from_n2_drain():
+    """После закрытия V-3 Н-2 не должен опустошать куб К-1 на рециркуляции."""
+    random.seed(20260811)
+    simulator = ELOUAVTSimulator()
+    simulator.reset("recirculation")
+
+    for valve_id in ("V_1", "V_3", "FUEL_P1", "FUEL_P3"):
+        simulator.set_valve(valve_id, False)
+    simulator.set_valve("HC_P1", True)
+    simulator.set_valve("HC_P3", True)
+
+    for _ in range(120):
+        simulator.step()
+
+    assert simulator.status == "running"
+    assert simulator.sensors["L_1"] >= 45.0

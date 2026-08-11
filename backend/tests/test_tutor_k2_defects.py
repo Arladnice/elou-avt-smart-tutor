@@ -40,7 +40,8 @@ class TestVacuumLossParry:
 
     def test_heat_reduction_is_credited(self):
         score, errors, recs, _ = _evaluate([
-            "SP_DOWN", "SP3_DOWN", "V_STEAM_K2_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN",
+            "SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "V_STEAM_K2_CLOSE",
+            "HC_P1_OPEN", "HC_P3_OPEN",
         ], "vt_vacuum_loss")
 
         assert score == 100

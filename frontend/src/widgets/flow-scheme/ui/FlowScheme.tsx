@@ -328,8 +328,10 @@ const FlowScheme: React.FC = () => {
 
   const sparklineWindow = telemetryHistory.slice(-15);
   const tempHistory = sparklineWindow.map(point => point.T_1);
+  const tempP3History = sparklineWindow.map(point => point.T_3);
   const pressureHistory = sparklineWindow.map(point => point.P_1);
   const k1LevelHistory = sparklineWindow.map(point => point.L_1);
+  const k2TempHistory = sparklineWindow.map(point => point.T_2);
   const k2LevelHistory = sparklineWindow.map(point => point.L_2);
 
   const handleValveClick = (valveId: ValveId) => {
@@ -518,7 +520,7 @@ const FlowScheme: React.FC = () => {
           <S.UtilityLine x1="605" y1="235" x2="540" y2="235" />
           <ValveSymbol valveId="V_STEAM_K1" transform="translate(575,235)" label="ПАР К-1"
             isOpen={valves.V_STEAM_K1} onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
-          <text x="610" y="228" className="utility-label">ПАР</text>
+          <text x="532" y="228" textAnchor="end" className="utility-label">ПАР</text>
 
           <S.PipeLine d="M 475,410 V 466 H 352" $isActive={k1LoopActive} />
           <S.PipeFlow d="M 475,410 V 466 H 352" $isActive={k1LoopActive} $speed="1s" />
@@ -635,16 +637,19 @@ const FlowScheme: React.FC = () => {
             valveId="V_VT"
             equipmentId="V_VT"
             transform="translate(1140,265)"
-            label="V-VT · ПАР"
+            label="V-VT"
             isOpen={valves.V_VT}
+            hideLabel
             onToggle={handleValveClick}
             onOpen={setSelectedEquipmentId}
           />
+          <text x="1140" y="232" textAnchor="middle" className="utility-label">РАБОЧИЙ ПАР → ВТ</text>
+          <text x="1175" y="295" className="valve-tag">V-VT</text>
 
           <S.UtilityLine x1="1030" y1="300" x2="900" y2="300" />
           <ValveSymbol valveId="V_STEAM_K2" transform="translate(1040,300)" label="ПАР К-2"
             isOpen={valves.V_STEAM_K2} hideLabel onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
-          <text x="1040" y="278" textAnchor="middle" className="utility-label">ПАР К-2</text>
+          <text x="965" y="248" textAnchor="middle" className="utility-label">ОТПАРНОЙ ПАР</text>
 
           <S.PipeLine d="M 965,450 V 492 H 1052" $isActive={k2Outflow32Active} />
           <PumpSymbol
@@ -728,23 +733,27 @@ const FlowScheme: React.FC = () => {
               <text className="value" x="0" y="7" textAnchor="middle">{sensors.T_3}°C</text>
               <text className="label" x="0" y="-14" textAnchor="middle">T-3 · П-3</text>
             </S.SensorBox>
+            <rect x="-42" y="20" width="84" height="12" className="sparkline-frame" />
+            <S.SparklinePath d={generateSparklineD(tempP3History, -42, 20, 84, 12, 240, 380)} $strokeColor={sensors.T_3 > TEMP_WARNING ? theme.colors.warning : theme.colors.primary} />
           </g>
 
-          <g transform="translate(1160,205)">
+          <g transform="translate(1100,205)">
             <S.SensorBox $isWarning={sensors.P_vac > K2_PRESSURE_WARNING} $isDanger={sensors.P_vac >= K2_PRESSURE_CRITICAL}>
               <rect className="bg" x="-48" y="-10" width="96" height="26" rx="4" />
               <text className="value" x="0" y="7" textAnchor="middle">{sensors.P_vac.toFixed(3)} МПа</text>
               <text className="label" x="0" y="-14" textAnchor="middle">P-vac · К-2</text>
             </S.SensorBox>
           </g>
-          <g transform="translate(1160,335)">
+          <g transform="translate(1100,335)">
             <S.SensorBox $isWarning={sensors.T_2 > K2_TEMP_WARNING} $isDanger={sensors.T_2 >= K2_TEMP_CRITICAL}>
               <rect className="bg" x="-42" y="-10" width="84" height="26" rx="4" />
               <text className="value" x="0" y="7" textAnchor="middle">{sensors.T_2.toFixed(1)}°C</text>
               <text className="label" x="0" y="-14" textAnchor="middle">T-2 · К-2</text>
             </S.SensorBox>
+            <rect x="-42" y="20" width="84" height="12" className="sparkline-frame" />
+            <S.SparklinePath d={generateSparklineD(k2TempHistory, -42, 20, 84, 12, 180, 420)} $strokeColor={sensors.T_2 > K2_TEMP_WARNING ? theme.colors.warning : theme.colors.primary} />
           </g>
-          <g transform="translate(1160,410)">
+          <g transform="translate(1100,410)">
             <S.SensorBox $isWarning={sensors.L_2 > K2_LEVEL_HIGH || sensors.L_2 < K2_LEVEL_LOW} $isDanger={sensors.L_2 > K2_LEVEL_HIGH_CRITICAL || sensors.L_2 < K2_LEVEL_LOW_CRITICAL}>
               <rect className="bg" x="-62" y="-10" width="124" height="26" rx="4" />
               <text className="value" x="0" y="7" textAnchor="middle">

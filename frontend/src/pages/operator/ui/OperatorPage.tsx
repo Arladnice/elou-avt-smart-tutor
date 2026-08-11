@@ -103,12 +103,12 @@ const OperatorPage: React.FC = () => {
                   <S.FixedPanelBody $fill><InterlockPanel /></S.FixedPanelBody>
                 </S.FixedPanel>
               )}
-              {activePanel === 'support' && (
+              <S.PersistedPanel $visible={activePanel === 'support'}>
                 <S.FixedPanel $fill>
                   <S.FixedPanelHeader><Brain size={14} /> Система поддержки оператора</S.FixedPanelHeader>
                   <S.FixedPanelBody $fill><AiAssistant hideRiskTab hideTrendTab /></S.FixedPanelBody>
                 </S.FixedPanel>
-              )}
+              </S.PersistedPanel>
               {activePanel === 'trend' && (
                 <S.FixedPanel $fill>
                   <S.FixedPanelHeader><LineChart size={14} /> Прогноз тренда</S.FixedPanelHeader>

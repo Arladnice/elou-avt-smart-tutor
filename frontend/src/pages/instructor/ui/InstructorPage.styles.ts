@@ -728,6 +728,14 @@ export const ViolationHeader = styled.div`
   margin-bottom: 2px;
 `;
 
+export const ViolationMoment = styled.div`
+  color: ${props => props.theme.colors.warning};
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+`;
+
 export const ViolationText = styled.div`
   font-size: 11px;
   color: ${props => props.theme.colors.text};

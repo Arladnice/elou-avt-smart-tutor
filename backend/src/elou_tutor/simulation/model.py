@@ -216,6 +216,12 @@ class ELOUAVTSimulator:
                     self.pumps[pump_id] = False
                 self.valves["FUEL_P1"] = False
                 self.valves["FUEL_P3"] = False
+            # Отказ Н-4/Н-32 останавливает обе ветви откачки. Оператор видит
+            # сам отказ сразу, а рост уровня К-2 появляется после физического
+            # запаздывания при продолжающейся подаче из К-1.
+            if defect_id == "k2_pump_fail" and state:
+                self.pumps["N_4"] = False
+                self.pumps["N_32"] = False
             # Отказ воздуха КИПиА: регулирующие клапаны V-1 и V-3 переходят в закрытое состояние (безопасное положение)
             if defect_id == "air_fail" and state:
                 self.valves["V_1"] = False
@@ -250,7 +256,9 @@ class ELOUAVTSimulator:
         # -------------------------------------------------------------
         sal_target = 4.2
         w_target = 0.15
-        if self.defects.get("elou_desalt_fail", False) or not V_ELOU:
+        # При активном дефекте проскок сохраняется только пока поток из ЭЛОУ
+        # не изолирован. Закрытие V_ELOU — действие оператора по локализации.
+        if self.defects.get("elou_desalt_fail", False) and V_ELOU:
             sal_target = 42.0  # Проскок солей до 42 мг/л
             w_target = 3.2     # Проскок влаги до 3.2%
         
@@ -262,6 +270,10 @@ class ELOUAVTSimulator:
         # -------------------------------------------------------------
         # 0.1. Физическая модель К-2 по расчёту инженера АСУ ТП Андрея
         # -------------------------------------------------------------
+        # После изоляции V-3 в сценарии останова прекращается передача в К-2.
+        # Учебная противоразгонная защита удерживает имеющийся объём в кубе,
+        # чтобы Н-4/Н-32 не опустошали его до следующего шага оператора.
+        shutdown_k2_inventory_hold = self.scenario_id == "shutdown" and not V_3
         next_L_2, next_P_vac, next_T_2 = self.k2_dynamics.step(
             level=self.sensors["L_2"],
             pressure=self.sensors["P_vac"],
@@ -276,6 +288,7 @@ class ELOUAVTSimulator:
             outflow_available=(
                 not self.defects["power_fail"]
                 and not self.defects["k2_pump_fail"]
+                and not shutdown_k2_inventory_hold
                 and (
                     (self.valves["V_K2_OUT_32"] and self.pumps["N_32"])
                     or (self.valves["V_K2_OUT_4"] and self.pumps["N_4"])
@@ -305,11 +318,19 @@ class ELOUAVTSimulator:
         if F_in > 0.0 and fuel_p1:
             Q_heat = (T_sp - T) * 0.15 + F_in * (T_sp - 60.0) * 0.05
             Q_cool = F_in * (T - 60.0) * 0.05
+        elif fuel_p1:
+            # При прекращении подачи сырья в печи остаётся только
+            # минимальное горение. Регулятор не может разгонять печь, когда
+            # фактическая температура уже выше сниженной уставки: иначе
+            # закрытие V-1 в штатном сценарии искусственно создавало бы
+            # перегрев вместо охлаждения на циркуляции.
+            Q_heat = max(0.0, (T_sp - T) * 0.05)
+            Q_cool = (T - 60.0) * 0.01
         else:
-            Q_heat = max(0.0, (T_sp - STARTUP_SETPOINT_TEMP) * 0.18) if fuel_p1 else 0.0
+            Q_heat = 0.0
             Q_cool = (T - 60.0) * 0.01 + ( (T - STARTUP_INITIAL_TEMP) * 0.02 if self.defects["power_fail"] else 0.0 )
 
-        if self.defects["coil_overheat"]:
+        if self.defects["coil_overheat"] and fuel_p1:
             Q_heat += 4.5
         
         dT = Q_heat - Q_cool + (random.random() - 0.5) * 0.4
@@ -331,14 +352,27 @@ class ELOUAVTSimulator:
         if F_in > 0.0:
             dL += 0.5
         if V_3 and self.pumps["N_2"] and not self.defects["power_fail"]:
-            dL -= 0.6
+            # В штатном пуске расход Н-2 из куба К-1 уравновешивает подачу
+            # Н-20 через V-1. Небольшой запас 0.01 %/с компенсирует шум
+            # измерения, чтобы при штатной передаче не уйти ниже 20 %.
+            dL -= 0.49
             
         steam_k1_available = self.valves["V_STEAM_K1"] and not self.defects["steam_fail"]
-        if not steam_k1_available:
+        # В контролируемом останове после прекращения подачи и отсечки
+        # топлива куб К-1 разгружается Н-2 через V-3. Закрытый пар К-1 и
+        # рабочий пар ВТ не должны создавать в учебной модели искусственный
+        # приток, который перекрывает эту откачку и поднимает L-1.
+        controlled_shutdown_isolation = (
+            self.scenario_id in {"shutdown", "column_shutdown"}
+            and not V_1
+            and not fuel_p1
+            and not fuel_p3
+        )
+        if not steam_k1_available and not controlled_shutdown_isolation:
             dL += 0.25
             
         # Межблочная связь ВТ -> АТ: потеря вакуума в К-2 вызывает подпор куба К-1
-        if next_P_vac > 0.07:
+        if next_P_vac > 0.07 and not controlled_shutdown_isolation:
             dL += 0.35
 
         next_L = L + dL + (random.random() - 0.5) * 0.1
@@ -360,7 +394,7 @@ class ELOUAVTSimulator:
         if V_2 and not self.defects["valve_jam"]:
             dP -= 0.009
             
-        if not steam_k1_available:
+        if not steam_k1_available and not controlled_shutdown_isolation:
             dP += 0.006
             
         # Межблочная связь ЭЛОУ -> АТ: вскипание влаги и солей вызывают рост давления dP
@@ -391,11 +425,11 @@ class ELOUAVTSimulator:
         self.sensors["F_in"] = round(F_in * 100.0, 1)
 
         # Регламентные действия ПАЗ: по высокому давлению отсечь топливо и пар.
-        if next_P >= COLUMN_PRES_ESD:
+        if next_P > COLUMN_PRES_ESD:
             self.valves["FUEL_P1"] = False
             self.valves["FUEL_P3"] = False
             self.valves["V_STEAM_K1"] = False
-        if next_P_vac >= K2_PRESSURE_CRITICAL:
+        if next_P_vac > K2_PRESSURE_CRITICAL:
             self.valves["FUEL_P1"] = False
             self.valves["V_STEAM_K2"] = False
 
@@ -407,7 +441,7 @@ class ELOUAVTSimulator:
         # Срабатывание сигнализации по высокому давлению: 4.5 кгс/см² (0.4413 МПа)
         # Срабатывание ПАЗ (блокировка горелок, отсечка сырья и бутана): 4.8 кгс/см² (0.4707 МПа)
         
-        if next_P >= COLUMN_PRES_ESD:
+        if next_P > COLUMN_PRES_ESD:
             self.status = "accident"
             self.accident_reason = f"Критическое превышение давления в колонне К-1 (более {COLUMN_PRES_ESD} МПа). Взрыв колонны и выброс нефтепродуктов!"
         elif next_T >= FURNACE_TEMP_CRITICAL:

@@ -46,11 +46,14 @@ const evalCondition = (
   if (cond.type === 'composite_and') {
     return (cond.conditions || []).every(c => evalCondition(c, valves, pumps, sensors, setpoints));
   }
+  if (cond.type === 'composite_or') {
+    return (cond.conditions || []).some(c => evalCondition(c, valves, pumps, sensors, setpoints));
+  }
   return false;
 };
 
 const ScenarioChecklist: React.FC = () => {
-  const { valves, pumps, sensors, setpoints, defects, status } = useTelemetry();
+  const { valves, pumps, sensors, setpoints, defects, status, completedChecklistSteps } = useTelemetry();
   const { scenarioId, mode, scenarios } = useSession();
   const isExam = mode === 'exam';
 
@@ -61,10 +64,16 @@ const ScenarioChecklist: React.FC = () => {
     // При возникновении нештатных ситуаций (дефектов) — выдаем приоритетные аварийные задачи
     if (defects?.pump_fail) {
       emergencyTasks.push({
-        id: 'pump_fail_recovery',
-        title: 'Отказ сырьевого насоса Н-1',
-        hint: 'Снизьте уставку печи ниже 200°C для предотвращения сухого прогара змеевиков печи П-1.',
-        isDone: (setpoints?.T_1_Sp ?? 280) <= 200,
+        id: 'pump_fail_reduce_heat',
+        title: 'Отказ Н-1: снижение уставок обеих печей',
+        hint: 'Понизьте уставки П-1 и П-3 ниже 200°C, чтобы исключить сухой перегрев змеевиков.',
+        isDone: (setpoints?.T_1_Sp ?? 280) <= 200 && (setpoints?.T_3_Sp ?? 280) <= 200,
+      });
+      emergencyTasks.push({
+        id: 'pump_fail_close_feed',
+        title: 'Отказ Н-1: перекрытие подачи сырья',
+        hint: 'После снижения уставок закройте входной клапан V-1.',
+        isDone: !valves.V_1,
       });
     }
 
@@ -83,6 +92,12 @@ const ScenarioChecklist: React.FC = () => {
         title: 'Сброс давления из колонны К-1',
         hint: 'Откройте регулирующий клапан сброса V-2 в положение ОТКРЫТО для стравливания газов.',
         isDone: valves.V_2,
+      });
+      emergencyTasks.push({
+        id: 'coil_overheat_isolate',
+        title: 'Локализация П-1: отсечение топлива и контура',
+        hint: 'Закройте топливо П-1, вход П-1 (V-П1) и выход контура V-3.',
+        isDone: !valves.FUEL_P1 && !valves.V_P1_IN && !valves.V_3,
       });
     }
 
@@ -108,9 +123,9 @@ const ScenarioChecklist: React.FC = () => {
       const limitTemp = 245;
       emergencyTasks.push({
         id: 'air_fail_action',
-        title: 'Отказ воздуха КИПиА: Снижение нагрева печи П-1 / ПАЗ',
-        hint: 'При отказе сжатого воздуха арматура отсеклась. Снизьте уставку печи П-1 ниже 245°C или активируйте кнопкой ESD.',
-        isDone: status === 'esd' || ((setpoints?.T_1_Sp ?? 280) < limitTemp && (sensors?.T_1 ?? 999) <= limitTemp),
+        title: 'Отказ воздуха КИПиА: снижение уставок П-1 и П-3',
+        hint: 'При отказе сжатого воздуха арматура отсеклась. Снизьте уставки обеих печей ниже 245°C.',
+        isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp && (setpoints?.T_3_Sp ?? 280) < limitTemp,
       });
     }
 
@@ -129,6 +144,68 @@ const ScenarioChecklist: React.FC = () => {
       });
     }
 
+    if (defects?.elou_desalt_fail) {
+      emergencyTasks.push({
+        id: 'elou_desalt_isolate',
+        title: 'Проскок ЭЛОУ: изоляция блока',
+        hint: 'Закройте V-ЭЛОУ, чтобы прекратить поступление обводнённого и засоленного сырья.',
+        isDone: !valves.V_ELOU,
+      });
+      emergencyTasks.push({
+        id: 'elou_desalt_stop_feed',
+        title: 'Проскок ЭЛОУ: останов подачи сырья',
+        hint: 'Остановите Н-20 и закройте V-1.',
+        isDone: !pumps.N_20 && !valves.V_1,
+      });
+      emergencyTasks.push({
+        id: 'elou_desalt_circulation',
+        title: 'Проскок ЭЛОУ: горячая циркуляция',
+        hint: 'Включите горячую циркуляцию П-1 и П-3.',
+        isDone: valves.HC_P1 && valves.HC_P3,
+      });
+      emergencyTasks.push({
+        id: 'elou_desalt_heat',
+        title: 'Проскок ЭЛОУ: снижение нагрева',
+        hint: 'Снизьте уставки обеих печей ниже 200°C.',
+        isDone: (setpoints?.T_1_Sp ?? 280) <= 200 && (setpoints?.T_3_Sp ?? 280) <= 200,
+      });
+    }
+
+    if (defects?.vt_vacuum_loss) {
+      emergencyTasks.push({
+        id: 'vt_vacuum_reduce_heat',
+        title: 'Срыв вакуума: снижение нагрузки и прекращение подачи',
+        hint: 'Снизьте уставки П-1/П-3 до 200°C, остановите Н-20 и закройте V-1. Затем дождитесь фактических T-1/T-3 не выше 200°C.',
+        isDone: (setpoints?.T_1_Sp ?? 280) <= 200
+          && (setpoints?.T_3_Sp ?? 280) <= 200
+          && !pumps.N_20
+          && !valves.V_1
+          && (sensors?.T_1 ?? 999) <= 200
+          && (sensors?.T_3 ?? 999) <= 200,
+      });
+      emergencyTasks.push({
+        id: 'vt_vacuum_stop_steam',
+        title: 'Срыв вакуума: останов пара К-2',
+        hint: 'Во вкладке «Управление» выключите «Пар К-2». «Пар К-1» и V-VT не трогайте; газовый сброс К-2 не открывайте.',
+        isDone: !valves.V_STEAM_K2 && !valves.V_K2_RELIEF,
+      });
+      emergencyTasks.push({
+        id: 'vt_vacuum_circulation',
+        title: 'Срыв вакуума: горячая циркуляция',
+        hint: 'Включите горячую циркуляцию П-1 и П-3; оставьте Н-2, Н-3 и хотя бы один из Н-4/Н-32 в «ПУСК».',
+        isDone: valves.HC_P1 && valves.HC_P3 && pumps.N_2 && pumps.N_3 && (pumps.N_4 || pumps.N_32),
+      });
+    }
+
+    if (defects?.k2_pump_fail) {
+      emergencyTasks.push({
+        id: 'k2_pump_fail_stop_feed',
+        title: 'Отказ Н-4/Н-32: прекращение подачи в К-2',
+        hint: 'Закройте V-3, чтобы прекратить поступление кубового остатка в К-2.',
+        isDone: !valves.V_3,
+      });
+    }
+
     if (emergencyTasks.length > 0) {
       return emergencyTasks;
     }
@@ -140,7 +217,8 @@ const ScenarioChecklist: React.FC = () => {
         id: item.id,
         title: item.title,
         hint: isExam ? item.hint_exam : item.hint_training,
-        isDone: evalCondition(item.condition, valves, pumps, sensors, setpoints),
+        isDone: completedChecklistSteps.includes(item.id)
+          || evalCondition(item.condition, valves, pumps, sensors, setpoints),
       }));
     }
 

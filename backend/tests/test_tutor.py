@@ -186,8 +186,8 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_integration_testcase_2_pump_fail_recovery(self):
         """Интеграционный тест: Тест-кейс 2 (Парирование отказа сырьевого насоса)"""
-        # Инструктор активировал отказ насоса, оператор снизил уставку (SP_DOWN)
-        actions = ["SP_DOWN"]
+        # Инструктор активировал отказ насоса, оператор снижает обе уставки и закрывает V-1.
+        actions = ["SP_DOWN", "SP3_DOWN", "V1_CLOSE"]
         score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"pump_fail"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
@@ -212,8 +212,8 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_integration_testcase_5_coil_overheat_recovery(self):
         """Интеграционный тест: Тест-кейс 5 (Парирование прогара змеевика печи)"""
-        # Инструктор активировал прогар, оператор снизил уставку (SP_DOWN) и открыл сброс V-2
-        actions = ["SP_DOWN", "V2_OPEN"]
+        # При прогаре П-1 оператор снижает нагрев, сбрасывает давление и изолирует печной контур.
+        actions = ["SP_DOWN", "V2_OPEN", "FUEL_P1_CLOSE", "V_P1_IN_CLOSE", "V3_CLOSE"]
         score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"coil_overheat"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
@@ -229,7 +229,7 @@ class TestKTKComponents(unittest.TestCase):
 
     def test_integration_testcase_7_air_fail_recovery(self):
         """Интеграционный тест: Тест-кейс 7 (Парирование отказа воздуха КИПиА air_fail)"""
-        actions = ["ESD"]
+        actions = ["SP_DOWN", "SP3_DOWN"]
         score, errors, recs, _ = self.analyzer.evaluate_session(actions, "startup", defects_triggered={"air_fail"})
         self.assertEqual(score, 100)
         self.assertEqual(len(errors), 0)
@@ -295,11 +295,11 @@ class TestKTKComponents(unittest.TestCase):
     def test_adaptive_defect_progression_chain(self):
         """Проверяет переход между нештатными ситуациями при успешной их ликвидации."""
         defect_chain = [
-            ({"pump_fail"}, ["SP_DOWN"], "coil_overheat"),
-            ({"coil_overheat"}, ["SP_DOWN", "V2_OPEN"], "valve_jam"),
+            ({"pump_fail"}, ["SP_DOWN", "SP3_DOWN", "V1_CLOSE"], "coil_overheat"),
+            ({"coil_overheat"}, ["SP_DOWN", "V2_OPEN", "FUEL_P1_CLOSE", "V_P1_IN_CLOSE", "V3_CLOSE"], "valve_jam"),
             ({"valve_jam"}, ["SP_UP", "V2_OPEN", "ESD"], "power_fail"),
             ({"power_fail"}, ["SP_DOWN", "V1_CLOSE"], "air_fail"),
-            ({"air_fail"}, ["ESD"], "steam_fail"),
+            ({"air_fail"}, ["SP_DOWN", "SP3_DOWN"], "steam_fail"),
             ({"steam_fail"}, ["SP_DOWN", "V3_OPEN"], "startup"),
         ]
         for defects, actions, expected_next in defect_chain:

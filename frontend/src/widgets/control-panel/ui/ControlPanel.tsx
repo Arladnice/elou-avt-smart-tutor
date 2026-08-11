@@ -6,8 +6,7 @@ import { Thermometer, Radio, Minus, Plus } from 'lucide-react';
 import * as S from './ControlPanel.styles';
 
 const PUMP_LABELS: Array<[PumpId, string]> = [
-  ['N_20', 'Н-20 · сырьё'], ['N_2', 'Н-2 · К-1 → П-1'],
-  ['N_3', 'Н-3 · П-3'], ['N_4', 'Н-4 · куб К-2'], ['N_32', 'Н-32 · куб К-2'],
+  ['N_20', 'Н-20'], ['N_2', 'Н-2'], ['N_3', 'Н-3'], ['N_4', 'Н-4'], ['N_32', 'Н-32'],
 ];
 
 const PROCESS_VALVES: Array<[ValveId, string]> = [
@@ -21,10 +20,15 @@ const ControlPanel: React.FC = () => {
   const { setpoints, valves, pumps, status, trainingAcceleration } = useTelemetry();
   const { toggleValve, togglePump, changeSetpoint, changeFeedRate } = useSimulatorActions();
   const [localTemps, setLocalTemps] = React.useState({ P1: setpoints.T_1_Sp, P3: setpoints.T_3_Sp });
+  const [localFeedRate, setLocalFeedRate] = React.useState(setpoints.F_in_Sp);
 
   React.useEffect(() => {
     setLocalTemps({ P1: setpoints.T_1_Sp, P3: setpoints.T_3_Sp });
   }, [setpoints.T_1_Sp, setpoints.T_3_Sp]);
+
+  React.useEffect(() => {
+    setLocalFeedRate(setpoints.F_in_Sp);
+  }, [setpoints.F_in_Sp]);
 
   const handleStepTemp = (furnace: 'P1' | 'P3', delta: number) => {
     if (status !== 'running') return;
@@ -69,9 +73,9 @@ const ControlPanel: React.FC = () => {
       {renderFurnaceSetpoint('P3', 'Уставка температуры печи П-3:')}
 
       <S.ControlGroup>
-        <S.Label><Radio size={14} />Расход сырья Н-20: {setpoints.F_in_Sp}%</S.Label>
-        <Slider min={0} max={100} step={5} value={setpoints.F_in_Sp}
-          onChangeComplete={changeFeedRate} disabled={status !== 'running'}
+        <S.Label><Radio size={14} />Расход сырья Н-20: {localFeedRate}%</S.Label>
+        <Slider min={0} max={100} step={5} value={localFeedRate}
+          onChange={setLocalFeedRate} onChangeComplete={changeFeedRate} disabled={status !== 'running'}
           tooltip={{ formatter: value => `${value}%` }} />
       </S.ControlGroup>
 

@@ -5,10 +5,11 @@ import asyncio
 import random
 import urllib.request
 from collections import deque
-from typing import List, Set, Dict
+from typing import Any, List, Set, Dict
 from fastapi import WebSocket
 
 from elou_tutor.simulation.model import ELOUAVTSimulator
+from elou_tutor.simulation.scenarios import get_scenario_by_id
 from elou_tutor.ml.predictor import RiskPredictor
 from elou_tutor.tutor.analyzer import ErrorAnalyzer
 from elou_tutor.db.audit import log_audit_event
@@ -51,6 +52,48 @@ def get_shared_predictor() -> RiskPredictor:
     return _shared_predictor
 
 
+def is_checklist_condition_met(
+    condition: Dict[str, Any],
+    valves: Dict[str, bool],
+    pumps: Dict[str, bool],
+    sensors: Dict[str, Any],
+    setpoints: Dict[str, float],
+) -> bool:
+    """Проверяет условие шага сценария по текущему состоянию установки."""
+    condition_type = condition.get("type")
+    target = condition.get("target")
+    expected = condition.get("expected")
+
+    if condition_type == "valve_is":
+        return valves.get(target) is expected
+    if condition_type == "pump_is":
+        return pumps.get(target) is expected
+    if condition_type in {"sensor_gte", "sensor_lte"}:
+        value = sensors.get(target)
+    elif condition_type in {"setpoint_gte", "setpoint_lte"}:
+        value = setpoints.get(target)
+    else:
+        value = None
+
+    if condition_type in {"sensor_gte", "setpoint_gte"}:
+        return value is not None and value >= expected - condition.get("tolerance", 0)
+    if condition_type in {"sensor_lte", "setpoint_lte"}:
+        return value is not None and value <= expected + condition.get("tolerance", 0)
+    if condition_type == "composite_and":
+        children = condition.get("conditions", [])
+        return bool(children) and all(
+            is_checklist_condition_met(child, valves, pumps, sensors, setpoints)
+            for child in children
+        )
+    if condition_type == "composite_or":
+        children = condition.get("conditions", [])
+        return bool(children) and any(
+            is_checklist_condition_met(child, valves, pumps, sensors, setpoints)
+            for child in children
+        )
+    return False
+
+
 class SessionCapacityError(RuntimeError):
     """Достигнут предел одновременных учебных сессий."""
 
@@ -79,6 +122,11 @@ class SimulationSession:
         # Те же действия с отметками времени: нужны для локализации ошибок
         self.action_timeline: List[dict] = []
         self.defects_triggered: Set[str] = set()
+        # Пройденные пункты сценария — серверный источник истины. Шаг может
+        # отражать завершённую технологическую операцию, которая штатно
+        # меняет состояние позже (например, Н-2/Н-3 останавливаются после
+        # горячей циркуляции), поэтому его нельзя пересчитывать только в UI.
+        self.completed_checklist_steps: Set[str] = set()
         self.telemetry_history: List[List[float]] = [] 
         self.logs: List[dict] = []
         
@@ -174,6 +222,7 @@ class SimulationSession:
         sensors = sim_state["sensors"]
         valves = sim_state["valves"]
         setpoints = sim_state["setpoints"]
+        self._update_completed_checklist_steps(sim_state)
         
         if not self.telemetry_history:
             self.telemetry_history.append([
@@ -243,6 +292,7 @@ class SimulationSession:
             "accidentReason": sim_state["accidentReason"],
             "operatorName": self.active_operator_name,
             "scenarioId": self.active_scenario,
+            "completedChecklistSteps": sorted(self.completed_checklist_steps),
             "startupK2Prefill": sim_state["startupK2Prefill"],
             "riskLevel": risk,
             "predictions": pred_vals,
@@ -333,6 +383,7 @@ class SimulationSession:
         self.actions_taken.clear()
         self.action_timeline.clear()
         self.defects_triggered.clear()
+        self.completed_checklist_steps.clear()
         self.telemetry_history.clear()
         self.logs.clear()
         self.is_paused = False
@@ -354,6 +405,26 @@ class SimulationSession:
         else:
             self.add_log("info", "Система перезапущена. Режим работы: Стабильный.")
             self.add_log("info", "Входной клапан V-1 открыт. Подача сырья в норме.")
+
+    def _update_completed_checklist_steps(self, sim_state: Dict[str, Any]) -> None:
+        """Запоминает достигнутые контрольные точки активного сценария."""
+        scenario = get_scenario_by_id(self.active_scenario)
+        if not scenario:
+            return
+
+        for item in scenario.get("checklist", []):
+            step_id = item.get("id")
+            condition = item.get("condition")
+            if not step_id or not condition or step_id in self.completed_checklist_steps:
+                continue
+            if is_checklist_condition_met(
+                condition,
+                sim_state["valves"],
+                sim_state["pumps"],
+                sim_state["sensors"],
+                sim_state["setpoints"],
+            ):
+                self.completed_checklist_steps.add(step_id)
 
     def add_log(self, log_type: str, message: str, severity: str = None, fingerprint: str = None):
         if fingerprint in self.mutes:

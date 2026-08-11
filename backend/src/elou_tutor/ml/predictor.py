@@ -181,7 +181,12 @@ class RiskPredictor:
         is_normal_heating = (actual_temp <= setpoint_temp + 5.0 and setpoint_temp <= FURNACE_TEMP_WARNING)
         
         # 1. По температуре печи (предупреждение: FURNACE_TEMP_WARNING=340°C, авария: FURNACE_TEMP_CRITICAL=365°C)
-        if pred_temp >= FURNACE_TEMP_CRITICAL_LEVEL:
+        # ONNX видит резкий разгон холодной печи как продолжение тренда и на
+        # одном такте может предсказать перегрев, которого не будет: уставка
+        # уже ограничивает нагрев. В штатном разогреве до безопасной уставки
+        # такой прогноз не должен мигать риском 100%; критический риск остаётся
+        # для фактического перегрева либо разгона выше уставки.
+        if pred_temp >= FURNACE_TEMP_CRITICAL_LEVEL and not is_startup_heating and not is_normal_heating:
             risk = 100.0
         elif pred_temp > FURNACE_TEMP_WARNING and not is_startup_heating and not is_normal_heating:
             risk += (pred_temp - FURNACE_TEMP_WARNING) / (FURNACE_TEMP_CRITICAL - FURNACE_TEMP_WARNING) * RISK_WEIGHT_TEMP
@@ -202,6 +207,13 @@ class RiskPredictor:
             and not startup_was_filled
             and time_elapsed <= ACCIDENT_STARTUP_MAX_TIME_SEC
         )
+        # При контролируемом останове К-1 диапазон 16–20% — целевая зона
+        # завершения циркуляции. Сигнализация ПАЗ на 20% сохраняется, но
+        # риск не должен искусственно разгоняться до порога блокировки 15%.
+        planned_column_shutdown_level = (
+            scenario_id == "column_shutdown"
+            and risk_level > COLUMN_LEVEL_LOW_INTERLOCK
+        )
         
         if risk_level > COLUMN_LEVEL_HIGH:
             risk += (risk_level - COLUMN_LEVEL_HIGH) / (COLUMN_LEVEL_HIGH_CRITICAL - COLUMN_LEVEL_HIGH) * RISK_WEIGHT_LEVEL
@@ -218,12 +230,16 @@ class RiskPredictor:
                 elif time_elapsed > VALVE_ACTION_TIMEOUT_SEC and window[-1, 0] < 0.5:
                     # Пустая колонна при закрытой подаче — не штатный пуск.
                     risk += RISK_PENALTY_NO_FEED
-            elif not is_startup_filling:
+            elif not is_startup_filling and not planned_column_shutdown_level:
                 if risk_level <= COLUMN_LEVEL_LOW_INTERLOCK:
                     risk += 75.0 + (COLUMN_LEVEL_LOW_INTERLOCK - risk_level) / (COLUMN_LEVEL_LOW_INTERLOCK - COLUMN_LEVEL_LOW_CRITICAL) * 25.0
                 else:
                     risk += (COLUMN_LEVEL_LOW - risk_level) / (COLUMN_LEVEL_LOW - COLUMN_LEVEL_LOW_INTERLOCK) * 75.0
-            elif time_elapsed > VALVE_ACTION_TIMEOUT_SEC and window[-1, 0] < 0.5:  # V-1 закрыт > 15с
+            elif (
+                not planned_column_shutdown_level
+                and time_elapsed > VALVE_ACTION_TIMEOUT_SEC
+                and window[-1, 0] < 0.5
+            ):  # V-1 закрыт > 15с
                 risk += RISK_PENALTY_NO_FEED
 
         # 4. Вакуумный блок К-2 по фактическим показаниям

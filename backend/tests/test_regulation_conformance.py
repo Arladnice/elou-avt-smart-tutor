@@ -131,50 +131,44 @@ class TestLevelSetpoints:
 
 
 class TestInterlockPanelDesignations:
-    """Позиции панели ПАЗ обязаны называться так же, как в регламенте."""
+    """Панель ПАЗ повторяет согласованную таблицу блокировок."""
 
-    def test_every_row_declares_its_basis(self):
-        for definition in INTERLOCK_DEFINITIONS:
-            assert definition.get("basis") in ("регламент", "учебная"), (
-                f"позиция {definition['tag']} не объявляет основание"
-            )
+    def test_rows_match_the_agreed_paz_table(self):
+        rows = {definition["tag"]: definition for definition in INTERLOCK_DEFINITIONS}
 
-    def test_regulatory_rows_exist_in_regulation(self, regulation):
-        """
-        Позиция, объявленная регламентной, обязана встречаться в тексте.
+        assert rows["Е-1"]["sensors"] == ("LRCSA 603", "LRSA 603B")
+        assert rows["Е-1"]["logic"] == "2oo2"
+        assert rows["К1"]["sensors"] == ("PRSA 204",)
+        assert rows["К1"]["logic"] == "1oo1"
+        assert rows["К1 (куб)"]["sensors"] == ("LRCSA 602", "LRSA 602A", "LRSA 602B")
+        assert rows["К1 (куб)"]["logic"] == "2oo3"
+        assert rows["Е-2"]["sensors"] == ("LRCSA 609", "LRSA 609B")
+        assert rows["Е-2"]["logic"] == "2oo2"
+        assert rows["К2"]["sensors"] == ("PRSA 213",)
+        assert rows["К2"]["logic"] == "1oo1"
+        assert rows["К2 (куб)"]["sensors"] == ("LRCSA 604", "LRSA 604A", "LRSA 604B")
+        assert rows["К2 (куб)"]["logic"] == "2oo3"
 
-        Прежние обозначения (LIRSA 1a, PIRSA 9a, TIRSA 10a и прочие) в
-        регламенте отсутствуют полностью — это была собственная нотация.
-        """
-        regulatory = [d for d in INTERLOCK_DEFINITIONS if d.get("basis") == "регламент"]
-        assert regulatory, "ни одна позиция панели не привязана к регламенту"
+    def test_signal_and_trip_thresholds_match_the_agreed_paz_table(self):
+        rows = {definition["tag"]: definition for definition in INTERLOCK_DEFINITIONS}
 
-        for definition in regulatory:
-            # Отсекаем учебные уточнения вида «PRSA 204/II»
-            tag = definition["tag"].split("/")[0].strip()
-            assert tag in regulation, f"позиция {tag} не найдена в тексте регламента"
-
-    def test_regulatory_rows_cover_the_real_trips(self):
-        """
-        Панель включает пять защитных функций и регламентные каналы контроля.
-
-        Защиты: совместные каналы Е-1, давление К-1, низкий уровень Е-2,
-        давление К-2 и низкий уровень куба К-2. Температурных блокировок нет.
-        """
-        trips = {d["tag"] for d in INTERLOCK_DEFINITIONS if d.get("primary")}
-
-        assert trips == {
-            "LRCSA 603", "LRSA 603B", "PRSA 204",
-            "LRSA 609В", "PRSA 213", "LRSA 604А",
-        }
+        assert rows["Е-1"]["signalization"] == "≤20%"
+        assert rows["Е-1"]["trip_threshold"] == "<15%"
+        assert rows["К1"]["signalization"] == "≥4,5 кгс/см²"
+        assert rows["К1"]["trip_threshold"] == ">4,8 кгс/см²"
+        assert rows["К2"]["signalization"] == "≥1,0 кгс/см²"
+        assert rows["К2"]["trip_threshold"] == ">1,5 кгс/см²"
 
     def test_panel_contains_no_invented_temperature_trips(self):
         """После сверки панель не должна содержать учебных температурных ПАЗ."""
-        tags = {definition["tag"] for definition in INTERLOCK_DEFINITIONS}
+        sensors = {
+            sensor
+            for definition in INTERLOCK_DEFINITIONS
+            for sensor in definition["sensors"]
+        }
 
-        assert "TR 55-1" not in tags
-        assert "TR 43-9" not in tags
-        assert all(definition["basis"] == "регламент" for definition in INTERLOCK_DEFINITIONS)
+        assert "TR 55-1" not in sensors
+        assert "TR 43-9" not in sensors
 
     def test_tags_are_unique(self):
         tags = [d["tag"] for d in INTERLOCK_DEFINITIONS]

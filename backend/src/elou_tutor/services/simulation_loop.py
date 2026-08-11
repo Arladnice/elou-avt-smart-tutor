@@ -8,7 +8,7 @@ from elou_tutor.domain.process_limits import (
     COLUMN_LEVEL_HIGH_CRITICAL_LEVEL, COLUMN_LEVEL_LOW_CRITICAL_LEVEL,
     ESCALATION_WARNING_DELAY_SEC, ESCALATION_CRITICAL_DELAY_SEC,
     K2_LEVEL_HIGH, K2_LEVEL_HIGH_CRITICAL,
-    K2_LEVEL_LOW, K2_LEVEL_LOW_CRITICAL,
+    K2_LEVEL_LOW, K2_LEVEL_LOW_INTERLOCK, K2_LEVEL_LOW_CRITICAL,
     K2_PRESSURE_WARNING, K2_PRESSURE_CRITICAL,
     K2_TEMP_WARNING, K2_TEMP_CRITICAL,
 )
@@ -114,14 +114,42 @@ async def _advance_one_second(session):
         session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) выше нормы! Откройте дренаж V_3.", severity=sev, fingerprint="column_level_high")
     elif level < COLUMN_LEVEL_LOW and not is_startup_filling:
         sev = "CRITICAL" if level < COLUMN_LEVEL_LOW_CRITICAL_LEVEL else "WARNING"
-        session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-1 ({level:.1f}%) опасно низок! Риск срыва печных насосов.", severity=sev, fingerprint="column_level_low")
+        if session.active_scenario == "column_shutdown" and level >= 16.0:
+            message = (
+                f"Контролируемый останов К-1: L-1 {level:.1f}% в целевом диапазоне 16–20%. "
+                "Завершите останов Н-2/Н-3 и закройте V-3 до снижения ниже 15%."
+            )
+        else:
+            message = f"Предупреждение: Уровень куба К-1 ({level:.1f}%) опасно низок! Риск срыва печных насосов."
+        session.add_log(
+            "warning" if sev == "WARNING" else "error",
+            message,
+            severity=sev,
+            fingerprint="column_level_low",
+        )
 
     if k2_level > K2_LEVEL_HIGH:
         sev = "CRITICAL" if k2_level > K2_LEVEL_HIGH_CRITICAL else "WARNING"
         session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-2 ({k2_level:.1f}%) выше нормы! Проверьте откачку насосами Н-4/Н-32.", severity=sev, fingerprint="k2_level_high")
     elif k2_level < K2_LEVEL_LOW and not startup_k2_prefill:
         sev = "CRITICAL" if k2_level < K2_LEVEL_LOW_CRITICAL else "WARNING"
-        session.add_log("warning" if sev == "WARNING" else "error", f"Предупреждение: Уровень куба К-2 ({k2_level:.1f}%) опасно низок! Риск кавитации насосов и обнажения змеевиков.", severity=sev, fingerprint="k2_level_low")
+        if k2_level <= K2_LEVEL_LOW_INTERLOCK:
+            message = (
+                f"ПАЗ: достигнут низкий уровень куба К-2 ({k2_level:.1f}%). "
+                "Откачка Н-4/Н-32 автоматически заблокирована; не включайте её "
+                "до восстановления уровня."
+            )
+        else:
+            message = (
+                f"Предупреждение: Уровень куба К-2 ({k2_level:.1f}%) снижается. "
+                "Контролируйте откачку Н-4/Н-32, чтобы не допустить кавитации."
+            )
+        session.add_log(
+            "warning" if sev == "WARNING" else "error",
+            message,
+            severity=sev,
+            fingerprint="k2_level_low",
+        )
 
     if k2_pressure > K2_PRESSURE_WARNING:
         sev = "CRITICAL" if k2_pressure >= K2_PRESSURE_CRITICAL else "WARNING"

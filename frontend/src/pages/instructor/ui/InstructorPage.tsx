@@ -663,6 +663,11 @@ const InstructorPage: React.FC = () => {
                 selectedSession.violations.map((v: NonNullable<TrainingRecord['violations']>[number]) => (
                   <S.ViolationCard key={v.title}>
                     <S.ViolationHeader>{v.title} ({v.clause})</S.ViolationHeader>
+                    {v.action_index !== null && v.action_index !== undefined && v.at_second !== null && v.at_second !== undefined && (
+                      <S.ViolationMoment>
+                        [{String(Math.floor(v.at_second / 60)).padStart(2, '0')}:{String(v.at_second % 60).padStart(2, '0')}] шаг {v.action_index + 1}: {v.action ?? 'действие оператора'}
+                      </S.ViolationMoment>
+                    )}
                     <S.ViolationText>{v.text}</S.ViolationText>
                   </S.ViolationCard>
                 ))

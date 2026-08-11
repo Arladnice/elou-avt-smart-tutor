@@ -63,11 +63,15 @@ export interface Setpoints {
 
 export interface InterlockRow {
   tag: string;
-  logic: '1oo1' | 'совместно' | 'контроль';
+  sensors: string[];
+  logic: '1oo1' | '2oo2' | '2oo3';
+  signalization: string;
+  trip_threshold: string;
   mechanism: string;
-  primary: boolean;
   bypassed: boolean;
-  alarm: boolean;
+  signal: boolean;
+  trip: boolean;
+  paz_active: boolean;
 }
 
 export interface LogEntry {
@@ -84,6 +88,8 @@ export interface LogEntry {
 export interface TelemetryPoint {
   timeElapsed: number;
   T_1: number;
+  T_2: number;
+  T_3: number;
   P_1: number;
   L_1: number;
   L_2: number;
@@ -110,6 +116,8 @@ export interface TelemetryState {
   predictions: number[];
   telemetryHistory: TelemetryPoint[];
   logs: LogEntry[];
+  /** Контрольные точки, подтверждённые бэкендом в текущей сессии. */
+  completedChecklistSteps: string[];
   accidentReason: string;
   /** Задержка WebSocket в мс — Критерий 1 (производительность). Метрика потока, а не сессии */
   wsLatency: number;
@@ -158,16 +166,10 @@ export const INITIAL_DEFECTS: Defects = {
  * набор обозначений, а после — другой.
  */
 export const INITIAL_INTERLOCKS: InterlockRow[] = [
-  { tag: 'LRCSA 603', logic: 'совместно', mechanism: 'Останов Н-6/Н-6А', primary: true, bypassed: false, alarm: false },
-  { tag: 'LRSA 603B', logic: 'совместно', mechanism: 'Останов Н-6/Н-6А', primary: true, bypassed: false, alarm: false },
-  { tag: 'PRSA 204', logic: '1oo1', mechanism: 'Отсечка топлива и пара К-1', primary: true, bypassed: false, alarm: false },
-  { tag: 'LRCA 602', logic: 'контроль', mechanism: 'Сигнализация уровня К-1', primary: false, bypassed: false, alarm: false },
-  { tag: 'LR 602А', logic: 'контроль', mechanism: 'Дублирующий контроль К-1', primary: false, bypassed: false, alarm: false },
-  { tag: 'LR 602В', logic: 'контроль', mechanism: 'Дублирующий контроль К-1', primary: false, bypassed: false, alarm: false },
-  { tag: 'LRCA 609', logic: 'контроль', mechanism: 'Сигнализация уровня Е-2', primary: false, bypassed: false, alarm: false },
-  { tag: 'LRSA 609В', logic: '1oo1', mechanism: 'Запрет Н-7/Н-7А', primary: true, bypassed: false, alarm: false },
-  { tag: 'PRSA 213', logic: '1oo1', mechanism: 'Отсечка топлива и пара К-2', primary: true, bypassed: false, alarm: false },
-  { tag: 'LRCA 604', logic: 'контроль', mechanism: 'Сигнализация уровня К-2', primary: false, bypassed: false, alarm: false },
-  { tag: 'LRSA 604А', logic: '1oo1', mechanism: 'Запрет Н-4/Н-32', primary: true, bypassed: false, alarm: false },
-  { tag: 'LR 604В', logic: 'контроль', mechanism: 'Дублирующий контроль К-2', primary: false, bypassed: false, alarm: false },
+  { tag: 'Е-1', sensors: ['LRCSA 603', 'LRSA 603B'], logic: '2oo2', signalization: '≤20%', trip_threshold: '<15%', mechanism: 'Останов Н-6/Н-6А', bypassed: false, signal: false, trip: false, paz_active: false },
+  { tag: 'К1', sensors: ['PRSA 204'], logic: '1oo1', signalization: '≥4,5 кгс/см²', trip_threshold: '>4,8 кгс/см²', mechanism: 'Отсечка топлива и пара К-1', bypassed: false, signal: false, trip: false, paz_active: false },
+  { tag: 'К1 (куб)', sensors: ['LRCSA 602', 'LRSA 602A', 'LRSA 602B'], logic: '2oo3', signalization: '≤20%', trip_threshold: '<15%', mechanism: 'ПАЗ по низкому уровню куба К-1', bypassed: false, signal: false, trip: false, paz_active: false },
+  { tag: 'Е-2', sensors: ['LRCSA 609', 'LRSA 609B'], logic: '2oo2', signalization: '≤20%', trip_threshold: '<15%', mechanism: 'Запрет Н-7/Н-7А', bypassed: false, signal: false, trip: false, paz_active: false },
+  { tag: 'К2', sensors: ['PRSA 213'], logic: '1oo1', signalization: '≥1,0 кгс/см²', trip_threshold: '>1,5 кгс/см²', mechanism: 'Отсечка топлива и пара К-2', bypassed: false, signal: false, trip: false, paz_active: false },
+  { tag: 'К2 (куб)', sensors: ['LRCSA 604', 'LRSA 604A', 'LRSA 604B'], logic: '2oo3', signalization: '≤20%', trip_threshold: '<15%', mechanism: 'Запрет Н-4/Н-32', bypassed: false, signal: false, trip: false, paz_active: false },
 ];

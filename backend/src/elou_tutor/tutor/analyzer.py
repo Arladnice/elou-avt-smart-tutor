@@ -22,8 +22,68 @@ from elou_tutor.simulation.scenarios import get_scenario_by_id
 from elou_tutor.tutor.alignment import calculate_lcs_alignment
 
 
+# Внутри указанных технологических групп порядок операций не влияет на
+# безопасность: он не должен снижать балл при корректно завершённом шаге.
+_ORDER_INDEPENDENT_ACTION_GROUPS = {
+    "shutdown": (
+        ("FUEL_P1_CLOSE", "FUEL_P3_CLOSE"),
+        ("V_STEAM_K2_CLOSE", "V_VT_CLOSE"),
+        ("N_2_STOP", "N_3_STOP"),
+    ),
+    "column_shutdown": (
+        ("FUEL_P1_CLOSE", "FUEL_P3_CLOSE"),
+        ("N_2_STOP", "N_3_STOP"),
+    ),
+}
+
+# Эти действия выполняются только по показаниям. Их отсутствие не является
+# ошибкой, а выполнение не должно считаться лишним, когда того требует процесс.
+_OPTIONAL_SCENARIO_ACTIONS = {
+    "overpressure_relief": {"V2_OPEN"},
+}
+
+# Подбор уставок и расхода — нормальная часть обучения. Оцениваем достижение
+# требуемого направления регулирования, а не количество промежуточных движений.
+_TUNING_ACTIONS = frozenset({
+    "SP_UP", "SP_DOWN", "SP3_UP", "SP3_DOWN", "FEED_UP", "FEED_DOWN",
+})
+
+
 class ErrorAnalyzer:
     """Анализирует действия оператора, классифицирует ошибки и формирует адаптивные рекомендации."""
+
+    @staticmethod
+    def _normalize_independent_action_order(actions: list, scenario_id: str) -> list:
+        """Канонизирует только порядок независимых операций для LCS-оценки."""
+        normalized = list(actions)
+        for group in _ORDER_INDEPENDENT_ACTION_GROUPS.get(scenario_id, ()):
+            positions = [index for index, action in enumerate(normalized) if action in group]
+            if len(positions) < 2:
+                continue
+            ordered_actions = sorted(
+                (normalized[index] for index in positions),
+                key=group.index,
+            )
+            for position, action in zip(positions, ordered_actions):
+                normalized[position] = action
+        return normalized
+
+    @staticmethod
+    def _actions_for_alignment(actions: list, golden: list, scenario_id: str) -> list:
+        """Исключает промежуточные движения уставок из LCS-оценки."""
+        required_tuning = Counter(action for action in golden if action in _TUNING_ACTIONS)
+        seen_tuning = Counter()
+        alignment_actions = []
+
+        for action in actions:
+            if action not in _TUNING_ACTIONS:
+                alignment_actions.append(action)
+                continue
+            if seen_tuning[action] < required_tuning[action]:
+                alignment_actions.append(action)
+                seen_tuning[action] += 1
+
+        return ErrorAnalyzer._normalize_independent_action_order(alignment_actions, scenario_id)
 
     def _get_golden_sequence(self, scenario_id: str) -> list:
         """
@@ -180,9 +240,10 @@ class ErrorAnalyzer:
         """
         # Прогар змеевика печи П-1
         if "coil_overheat" in defects_triggered:
+            required_isolation = {"FUEL_P1_CLOSE", "V_P1_IN_CLOSE", "V3_CLOSE"}
             has_sp_down = "SP_DOWN" in actions
             has_v2_open = "V2_OPEN" in actions
-            if has_sp_down and has_v2_open:
+            if has_sp_down and has_v2_open and required_isolation.issubset(actions):
                 return 100, [], [
                     "Поздравляем! Вы успешно локализовали неисправность 'Прогар змеевика П-1'.",
                     "Вы своевременно снизили температурную нагрузку на печь и открыли сброс "
@@ -206,21 +267,30 @@ class ErrorAnalyzer:
                             "открыть регулирующий клапан V-2 на факельную линию."
                 })
                 recs.append("При росте давления откройте клапан аварийного сброса V-2.")
+            if not required_isolation.issubset(actions):
+                errors.append({
+                    "clause": "Раздел 7.9.7",
+                    "title": "Печь П-1 не изолирована после прогара",
+                    "text": "После отсечки топлива закройте вход П-1 (V-П1) и выход "
+                            "контура V-3, чтобы локализовать повреждённый змеевик.",
+                })
+                recs.append("При прогаре закройте топливо П-1, V-П1 и V-3.")
             recs.append("Рекомендуемый адаптивный сценарий дообучения: 'Аварийный останов печей П-1 и П-3'")
             return 40, errors, recs, "shutdown"
 
         # Отказ сырьевого насоса
         if "pump_fail" in defects_triggered:
-            if "SP_DOWN" in actions:
+            required = {"SP_DOWN", "SP3_DOWN", "V1_CLOSE"}
+            if required.issubset(actions):
                 return 100, [], [
                     "Поздравляем! Вы успешно локализовали отказ сырьевого насоса.",
-                    "Вы своевременно снизили уставку температуры (SP_DOWN) при прекращении "
+                    "Вы снизили уставки обеих печей и перекрыли V-1 при прекращении "
                     "подачи холодного сырья, предотвратив сухой перегрев змеевиков.",
                     "Рекомендуемый следующий этап траектории: 'Прогар змеевика печи П-1'"
                 ], "coil_overheat"
             return 30, [TECH_REGULATIONS["P1_DRY_HEAT"]], [
-                "При прекращении подачи сырья немедленно снизьте уставку температуры "
-                "печи П-1, так как нагрев сухого змеевика приведет к его прогару.",
+                "При прекращении подачи сырья снизьте уставки П-1 и П-3, затем закройте V-1, "
+                "чтобы исключить сухой перегрев змеевиков.",
                 "Рекомендуемый адаптивный сценарий дообучения: 'Аварийный останов печей П-1 и П-3'"
             ], "shutdown"
 
@@ -276,17 +346,17 @@ class ErrorAnalyzer:
 
         # Отказ воздуха КИПиА
         if "air_fail" in defects_triggered:
-            has_esd = "ESD" in actions
             limit_temp = 240.0 if scenario_id == "startup" else 245.0
-            has_sp_down = "SP_DOWN" in actions or (
+            has_both_setpoints_down = {"SP_DOWN", "SP3_DOWN"}.issubset(actions) or (
                 final_sensors and final_sensors.get("T_1", 999) <= limit_temp
                 and final_sensors.get("T_1_Sp", 999) < limit_temp
+                and final_sensors.get("T_3", 999) <= limit_temp
+                and final_sensors.get("T_3_Sp", 999) < limit_temp
             )
-            if has_esd or has_sp_down:
+            if has_both_setpoints_down:
                 return 100, [], [
                     "Поздравляем! Вы успешно отреагировали на отказ воздуха КИПиА (air_fail).",
-                    "При потере управления пневмоклапанами вы снизили нагрев печи / "
-                    "задействовали блокировку ПАЗ (ESD).",
+                    "При потере управления пневмоклапанами вы снизили уставки обеих печей.",
                     "Рекомендуемый следующий этап траектории: 'Срыв подачи отпарного пара'"
                 ], "steam_fail"
             return 30, [{
@@ -294,11 +364,9 @@ class ErrorAnalyzer:
                 "title": "Потеря управления арматурой при отказе воздуха КИПиА",
                 "text": "При падении давления воздуха КИПиА клапаны переходят в безопасное "
                         "состояние (закрыты), управление теряется. Для предотвращения прогара "
-                        "змеевика необходимо снизить уставку нагрева печи (SP_DOWN) или "
-                        "активировать ESD."
+                        "змеевиков необходимо снизить уставки нагрева П-1 и П-3."
             }], [
-                "При отказе воздуха КИПиА немедленно снизьте уставку нагрева Т-1 ниже "
-                "допустимой или нажмите кнопку ПАЗ (ESD).",
+                "При отказе воздуха КИПиА немедленно снизьте уставки нагрева П-1 и П-3 ниже допустимой.",
                 "Рекомендуемый адаптивный сценарий дообучения: 'Аварийный останов печей П-1 и П-3'"
             ], "shutdown"
 
@@ -326,15 +394,15 @@ class ErrorAnalyzer:
         if "vt_vacuum_loss" in defects_triggered:
             has_esd = "ESD" in actions
             required = {
-                "SP_DOWN", "SP3_DOWN", "V_STEAM_K2_CLOSE",
+                "SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "V_STEAM_K2_CLOSE",
                 "HC_P1_OPEN", "HC_P3_OPEN",
             }
             relief_kept_closed = "V_K2_RELIEF_OPEN" not in actions
             if has_esd or (required.issubset(actions) and relief_kept_closed):
                 return 100, [], [
                     "Поздравляем! Вы правильно отреагировали на срыв вакуума в блоке ВТ.",
-                    "Вы снизили нагрузку обеих печей, прекратили пар К-2, оставили "
-                    "газовый сброс закрытым и сохранили горячую циркуляцию.",
+                    "Вы снизили нагрузку обеих печей, прекратили подачу сырья, закрыли "
+                    "пар К-2, оставили газовый сброс закрытым и сохранили горячую циркуляцию.",
                     "Рекомендуемый следующий этап траектории: 'Отказ насосов откачки К-2'",
                 ], "recirculation"
 
@@ -343,11 +411,11 @@ class ErrorAnalyzer:
                 "title": "Коксование мазута при срыве вакуума",
                 "text": "При потере вакуума остаточное давление в К-2 растёт от 1,0 к "
                         "1,5 кгс/см², температура куба поднимается, и мазут коксуется с "
-                        "крекингом. Требуется снизить нагрузку обеих печей, прекратить пар "
-                        "К-2, не открывать газовый сброс и сохранить горячую циркуляцию.",
+                        "крекингом. Требуется снизить нагрузку обеих печей, прекратить подачу "
+                        "сырья и пар К-2, не открывать газовый сброс и сохранить горячую циркуляцию.",
             }], [
-                "При срыве вакуума снизьте нагрузку П-1/П-3, закройте пар К-2 и не "
-                "открывайте газовый сброс К-2.",
+                "При срыве вакуума снизьте нагрузку П-1/П-3, остановите Н-20, закройте V-1 "
+                "и пар К-2; газовый сброс К-2 не открывайте.",
                 "Рекомендуемый адаптивный сценарий дообучения: 'Срыв вакуума ВТ'",
             ], "vt_vacuum_failure"
 
@@ -387,11 +455,10 @@ class ErrorAnalyzer:
         if "elou_desalt_fail" in defects_triggered:
             has_esd = "ESD" in actions
             required = {
-                "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN",
+                "V_ELOU_CLOSE", "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN",
                 "SP_DOWN", "SP3_DOWN",
             }
-            elou_kept_isolated = "V_ELOU_OPEN" not in actions
-            if has_esd or (required.issubset(actions) and elou_kept_isolated):
+            if has_esd or required.issubset(actions):
                 return 100, [], [
                     "Поздравляем! Вы правильно отреагировали на проскок солей и воды из ЭЛОУ.",
                     "Вы изолировали ЭЛОУ, остановили Н-20, перевели К-1 на горячую "
@@ -428,7 +495,8 @@ class ErrorAnalyzer:
             return 100, [], ["Сценарий успешно выполнен."], scenario_id
 
         # 1. LCS-выравнивание последовательности
-        dtw_score = calculate_lcs_alignment(actions, golden)
+        alignment_actions = self._actions_for_alignment(actions, golden, scenario_id)
+        dtw_score = calculate_lcs_alignment(alignment_actions, golden)
 
         # 2. Обнаружение критических нарушений
         errors, recommendations = [], []
@@ -438,13 +506,20 @@ class ErrorAnalyzer:
 
         remaining = Counter(golden)
         extra_positions = []
+        # Повторные движения уставок — штатная часть обучения: оператор
+        # подбирает нагрев по фактической температуре. Они не считаются
+        # лишними действиями и не влияют на процент выполнения сценария.
+        setpoint_actions = _TUNING_ACTIONS
+        optional_actions = _OPTIONAL_SCENARIO_ACTIONS.get(scenario_id, set())
         for index, action in enumerate(actions):
             if remaining[action] > 0:
                 remaining[action] -= 1
             elif action not in {
-                "PUMP_RUNNING_CUT", "SETPOINT_OVERLIMIT", "SP3_UP", "SP3_DOWN",
+                "PUMP_RUNNING_CUT", "SETPOINT_OVERLIMIT", *setpoint_actions,
+                "CALL_DISPATCHER",
                 "V_P1_IN_OPEN", "V_P1_IN_CLOSE", "HC_P1_OPEN", "HC_P1_CLOSE",
                 "HC_P3_OPEN", "HC_P3_CLOSE",
+                *optional_actions,
             }:
                 extra_positions.append(index)
 
@@ -501,7 +576,6 @@ class ErrorAnalyzer:
             "P1_DRY_HEAT": 30,
             "HOT_CUT": 35,
             "V3_DRAIN_BLOCK": 20,
-            "FORCED_HEATING": 15,
             "UNNECESSARY_VENT": 10,
             "PUMP_RUNNING_CUT": 100,
             "SETPOINT_OVERLIMIT": 40,
@@ -541,7 +615,6 @@ class ErrorAnalyzer:
             "P1_DRY_HEAT": False,
             "HOT_CUT": False,
             "V3_DRAIN_BLOCK": False,
-            "FORCED_HEATING": False,
             "UNNECESSARY_VENT": False,
             "PUMP_RUNNING_CUT": False,
             "SETPOINT_OVERLIMIT": False,
@@ -567,12 +640,22 @@ class ErrorAnalyzer:
         if "V1_CLOSE" in actions:
             v1_close_idx = actions.index("V1_CLOSE")
             pump_stopped = "N_20_STOP" in actions[:v1_close_idx]
-            if "SP_DOWN" not in actions[:v1_close_idx] and not pump_stopped:
+            fuel_isolated = "FUEL_P1_CLOSE" in actions[:v1_close_idx]
+            p3_load_reduced = (
+                scenario_id == "overpressure_relief"
+                and "SP3_DOWN" in actions[:v1_close_idx]
+            )
+            if (
+                "SP_DOWN" not in actions[:v1_close_idx]
+                and not fuel_isolated
+                and not p3_load_reduced
+                and not pump_stopped
+            ):
                 violations["HOT_CUT"] = True
                 positions["HOT_CUT"] = v1_close_idx
 
         # в) Перекрытие дренажа при открытой подаче
-        if "V3_CLOSE" in actions:
+        if "V3_CLOSE" in actions and scenario_id != "shutdown":
             last_close = max(i for i, a in enumerate(actions) if a == "V3_CLOSE")
             last_open = max(
                 (i for i, a in enumerate(actions) if a == "V3_OPEN"), default=-1
@@ -582,15 +665,7 @@ class ErrorAnalyzer:
                     violations["V3_DRAIN_BLOCK"] = True
                     positions["V3_DRAIN_BLOCK"] = last_close
 
-        # г) Форсированный нагрев
-        if actions.count("SP_UP") >= 15 and time_elapsed < 60:
-            violations["FORCED_HEATING"] = True
-            # Привязываем к последнему из частых повышений уставки
-            positions["FORCED_HEATING"] = max(
-                i for i, a in enumerate(actions) if a == "SP_UP"
-            )
-
-        # д) Необоснованный сброс V-2
+        # г) Необоснованный сброс V-2
         if "V2_OPEN" in actions and "V2_OPEN" not in golden:
             v2_open_idx = actions.index("V2_OPEN")
             if (
@@ -615,8 +690,6 @@ class ErrorAnalyzer:
                        "печи П-1. Сначала снизьте уставку нагрева печи.",
             "V3_DRAIN_BLOCK": "Контролируйте материальный баланс колонны К-1. Не перекрывайте дренаж "
                               "V-3 при открытом входе сырья V-1 во избежание роста уровня и давления.",
-            "FORCED_HEATING": "Повышайте температуру печи П-1 плавно, ступенями по 5-10°C, с выдержкой "
-                              "времени для стабилизации теплообмена.",
             "UNNECESSARY_VENT": "Держите клапан сброса V-2 закрытым при давлении в пределах нормы "
                                 "(0.1 - 0.3 МПа). Открывайте сброс только при угрозе превышения давления.",
             "PUMP_RUNNING_CUT": "Перед закрытием V-1 остановите насос Н-20 и получите подтверждение "
@@ -631,9 +704,8 @@ class ErrorAnalyzer:
     def _apply_physical_checks(self, score, sensors, scenario_id,
                                 time_elapsed, errors, recommendations):
         """Проверяет физические параметры на момент завершения сессии (anti-cheat)."""
-        furnace_temp = sensors.get("T_1")
-        if furnace_temp is None:
-            furnace_temp = sensors.get("furnaceTemp", 280.0)
+        furnace_temp = sensors.get("T_1", sensors.get("furnaceTemp", 280.0))
+        furnace3_temp = sensors.get("T_3", sensors.get("furnaceTemp3", furnace_temp))
 
         column_level = sensors.get("L_1")
         if column_level is None:
@@ -647,19 +719,27 @@ class ErrorAnalyzer:
             )
             score -= 30
 
-        if scenario_id == "startup" and furnace_temp < FURNACE_TEMP_MIN_STARTUP:
+        if scenario_id == "startup" and min(furnace_temp, furnace3_temp) < FURNACE_TEMP_MIN_STARTUP:
             errors.append(self._localize(TECH_REGULATIONS["TEMP_NOT_REACHED"], at_second=time_elapsed))
             recommendations.insert(
-                0, f"Температура печи завершена на {furnace_temp:.1f}°C, что ниже рабочего "
-                   f"минимума {FURNACE_TEMP_MIN_STARTUP}°C. Дождитесь выхода на режим перед завершением."
+                0, f"Температуры печей завершены на П-1: {furnace_temp:.1f}°C, П-3: {furnace3_temp:.1f}°C; "
+                   f"обе должны достичь рабочего минимума {FURNACE_TEMP_MIN_STARTUP}°C."
             )
             score -= 35
 
-        if scenario_id == "shutdown" and furnace_temp > FURNACE_TEMP_MAX_SHUTDOWN:
+        if scenario_id == "shutdown" and max(furnace_temp, furnace3_temp) > FURNACE_TEMP_MAX_SHUTDOWN:
             errors.append(self._localize(TECH_REGULATIONS["TEMP_NOT_REACHED"], at_second=time_elapsed))
             recommendations.insert(
-                0, f"Температура печи ({furnace_temp:.1f}°C) превышает порог безопасного останова "
-                   f"({FURNACE_TEMP_MAX_SHUTDOWN}°C). Дождитесь охлаждения перед завершением."
+                0, f"Температуры печей П-1: {furnace_temp:.1f}°C, П-3: {furnace3_temp:.1f}°C; "
+                   f"обе должны охладиться до {FURNACE_TEMP_MAX_SHUTDOWN}°C."
+            )
+            score -= 35
+
+        if scenario_id == "column_shutdown" and max(furnace_temp, furnace3_temp) > 150.0:
+            errors.append(self._localize(TECH_REGULATIONS["TEMP_NOT_REACHED"], at_second=time_elapsed))
+            recommendations.insert(
+                0, f"Останов К-1 завершён при температурах П-1: {furnace_temp:.1f}°C, "
+                   f"П-3: {furnace3_temp:.1f}°C. Обе печи должны охладиться до 150°C."
             )
             score -= 35
 
@@ -766,7 +846,7 @@ class ErrorAnalyzer:
         """
         if score < 75:
             # Приоритет 1: Нарушения теплового режима печи
-            if violations.get("P1_DRY_HEAT") or violations.get("HOT_CUT") or violations.get("FORCED_HEATING"):
+            if violations.get("P1_DRY_HEAT") or violations.get("HOT_CUT"):
                 recommended_scenario_id = "shutdown"
             # Приоритет 2: Нарушения материального баланса колонны
             elif violations.get("V3_DRAIN_BLOCK"):

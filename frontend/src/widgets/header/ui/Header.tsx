@@ -26,6 +26,14 @@ const Header: React.FC = () => {
       case 'column_shutdown': return 'Останов колонны К-1';
       case 'overpressure_relief': return 'Ликвидация роста давления';
       case 'recirculation': return 'Перевод на рециркуляцию';
+      case 'pump_fail': return 'Отказ сырьевого насоса Н-1';
+      case 'coil_overheat': return 'Прогар змеевика печи П-1';
+      case 'valve_jam': return 'Зависание клапана сброса V-2';
+      case 'power_fail': return 'Отказ электроснабжения';
+      case 'air_fail': return 'Отказ воздуха КИПиА';
+      case 'steam_fail': return 'Срыв подачи отпарного пара';
+      case 'elou_salt_breakthrough': return 'Проскок солей и воды из ЭЛОУ';
+      case 'vt_vacuum_failure': return 'Срыв вакуума вакуумного блока ВТ';
       default: return id;
     }
   };

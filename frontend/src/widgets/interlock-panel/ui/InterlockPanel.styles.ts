@@ -1,6 +1,7 @@
-import { Button, Table } from 'antd';
+import { Button } from 'antd';
 import styled from 'styled-components';
-import type { InterlockRow } from '@/entities/telemetry';
+
+type InterlockVisualState = 'normal' | 'signal' | 'paz' | 'bypassed';
 
 export const Panel = styled.div`
   display: flex;
@@ -42,74 +43,109 @@ export const Authorization = styled.div<{ $active: boolean }>`
   font-size: 11px;
 `;
 
-export const InterlockTable = styled(Table<InterlockRow>)`
-  && .ant-table {
-    background: transparent;
-    color: ${props => props.theme.colors.text};
-    font-size: 11px;
-  }
+export const InterlockList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
 
-  && .ant-table-container {
-    border-color: ${props => props.theme.colors.border};
-    overflow: hidden;
-    margin-right: 8px;
-  }
+export const InterlockCard = styled.article<{ $state: InterlockVisualState }>`
+  padding: 10px 12px;
+  border: 1px solid ${props => {
+    if (props.$state === 'paz') return props.theme.colors.danger;
+    if (props.$state === 'signal') return props.theme.colors.warning;
+    return props.theme.colors.border;
+  }};
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: ${props => props.theme.colors.surface};
+`;
 
-  && .ant-table-thead > tr > th {
-    padding: 4px 3px;
-    background: ${props => props.theme.colors.surfaceLight};
-    color: ${props => props.theme.colors.text};
-    border-color: ${props => props.theme.colors.border};
-    white-space: normal;
-  }
+export const CardHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+`;
 
-  && .ant-table-tbody > tr > td {
-    padding: 4px 3px;
-    background: ${props => props.theme.colors.surface};
-    color: ${props => props.theme.colors.textMuted};
-    border-color: ${props => props.theme.colors.border};
-  }
+export const ObjectGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+`;
 
-  && .ant-table-tbody > tr.primary-interlock > td {
-    background: ${props => props.theme.colors.accentMuted};
-  }
+export const ObjectName = styled.strong`
+  color: ${props => props.theme.colors.text};
+  font-size: 15px;
+`;
 
-  && .ant-table-tbody > tr:hover > td {
-    background: ${props => props.theme.colors.surfaceLight};
-  }
+export const StatusBadge = styled.span<{ $state: InterlockVisualState }>`
+  padding: 3px 7px;
+  border-radius: 4px;
+  color: ${props => {
+    if (props.$state === 'paz') return props.theme.colors.danger;
+    if (props.$state === 'signal' || props.$state === 'bypassed') return props.theme.colors.warning;
+    return props.theme.colors.success;
+  }};
+  background: ${props => {
+    if (props.$state === 'paz') return props.theme.colors.dangerMuted;
+    if (props.$state === 'signal' || props.$state === 'bypassed') return props.theme.colors.warningMuted;
+    return props.theme.colors.successMuted;
+  }};
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+`;
 
-  && .ant-table-thead > tr > th:nth-child(1),
-  && .ant-table-tbody > tr > td:nth-child(1) {
-    width: 72px;
-    white-space: nowrap;
-  }
+export const BypassControl = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: ${props => props.theme.colors.textMuted};
+  font-size: 11px;
+  white-space: nowrap;
+`;
 
-  && .ant-table-thead > tr > th:nth-child(2),
-  && .ant-table-tbody > tr > td:nth-child(2) {
-    width: 54px;
-  }
+export const Sensors = styled.div`
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 9px;
+`;
 
-  && .ant-table-thead > tr > th:nth-child(3),
-  && .ant-table-tbody > tr > td:nth-child(3) {
-    width: 80px;
-    white-space: nowrap;
-  }
+export const SensorValues = styled.span`
+  color: ${props => props.theme.colors.text};
+  font-size: 12px;
+  line-height: 1.4;
+`;
 
-  && .ant-table-thead > tr > th:nth-child(5),
-  && .ant-table-tbody > tr > td:nth-child(5) {
-    width: 50px;
-  }
+export const FactsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid ${props => props.theme.colors.border};
+`;
 
-  && .ant-table-cell {
-    overflow-wrap: anywhere;
-  }
+export const Fact = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+`;
 
-  && .ant-tag {
-    margin-inline-end: 0;
-    padding-inline: 4px;
-    white-space: nowrap;
-    font-size: 10px;
-  }
+export const FactLabel = styled.span`
+  color: ${props => props.theme.colors.textMuted};
+  font-size: 10px;
+`;
+
+export const FactValue = styled.span`
+  color: ${props => props.theme.colors.text};
+  font-size: 12px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 `;
 
 export const Note = styled.p`

@@ -279,7 +279,7 @@ export const SuggestionChip = styled.button`
 export const InputWrapper = styled.div`
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-end;
 
   .ant-input {
     flex: 1;
@@ -287,6 +287,9 @@ export const InputWrapper = styled.div`
     border-color: ${props => props.theme.colors.border};
     color: ${props => props.theme.colors.text};
     font-size: 14px;
+    line-height: 1.45;
+    padding: 8px 10px;
+    resize: none;
 
     &:hover, &:focus {
       border-color: ${props => props.theme.colors.primary};
@@ -297,6 +300,8 @@ export const InputWrapper = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
+    flex: 0 0 36px;
+    height: 36px;
   }
 `;
 

@@ -4,7 +4,7 @@ import urllib.request
 import urllib.error
 import logging
 from typing import List, Dict, Any
-from elou_tutor.services.vector_store import get_relevant_context
+from elou_tutor.services.operator_knowledge import build_knowledge_context, rag_answer
 from elou_tutor.simulation.scenarios import get_scenario_by_id
 
 logger = logging.getLogger(__name__)
@@ -23,13 +23,27 @@ def load_kb_file(filename: str) -> str:
             logger.error("Ошибка чтения файла БЗ %s: %s", filename, e)
     return ""
 
-def evaluate_condition(cond: dict, valves: dict, sensors: dict) -> bool:
+def evaluate_condition(
+    cond: dict,
+    valves: dict,
+    sensors: dict,
+    pumps: dict | None = None,
+    setpoints: dict | None = None,
+) -> bool:
     """Вычисляет логическое условие выполнения шага динамического сценария."""
     c_type = cond.get("type")
     if c_type == "valve_is":
         target = cond.get("target")
         expected = cond.get("expected", True)
         return valves.get(target) == expected
+    elif c_type == "pump_is":
+        pumps = pumps or {}
+        target = cond.get("target")
+        expected = cond.get("expected", True)
+        return pumps.get(target) == expected
+    elif c_type == "setpoint_lte":
+        target = cond.get("target")
+        return float((setpoints or {}).get(target, 999)) <= float(cond.get("expected", 0))
     elif c_type == "sensor_gte":
         target = cond.get("target")
         expected = float(cond.get("expected", 0))
@@ -40,7 +54,10 @@ def evaluate_condition(cond: dict, valves: dict, sensors: dict) -> bool:
         return float(sensors.get(target, 999)) <= expected
     elif c_type == "composite_and":
         sub_conds = cond.get("conditions", [])
-        return all(evaluate_condition(sub, valves, sensors) for sub in sub_conds)
+        return all(evaluate_condition(sub, valves, sensors, pumps, setpoints) for sub in sub_conds)
+    elif c_type == "composite_or":
+        sub_conds = cond.get("conditions", [])
+        return any(evaluate_condition(sub, valves, sensors, pumps, setpoints) for sub in sub_conds)
     return False
 
 
@@ -50,6 +67,7 @@ def get_scenario_checklist_progress(telemetry: Dict[str, Any]) -> str:
     sensors = telemetry.get("sensors", {})
     valves = telemetry.get("valves", {})
     setpoints = telemetry.get("setpoints", {})
+    pumps = telemetry.get("pumps", {})
     defects = telemetry.get("defects", {})
     
     t1 = sensors.get("T_1", 280.0)
@@ -89,7 +107,7 @@ def get_scenario_checklist_progress(telemetry: Dict[str, Any]) -> str:
             tasks = []
             for item in sc["checklist"]:
                 title = item.get("title", "")
-                is_done = evaluate_condition(item.get("condition", {}), valves, sensors)
+                is_done = evaluate_condition(item.get("condition", {}), valves, sensors, pumps, setpoints)
                 tasks.append((title, is_done))
         elif scenario_id == "startup":
             tasks = [
@@ -148,7 +166,8 @@ def get_telemetry_summary(telemetry: Dict[str, Any]) -> str:
 # Таймаут запроса к локальной LLM. Прежние 300 с в синхронном эндпоинте
 # означали, что несколько десятков запросов занимали весь пул потоков FastAPI
 # и подвешивали всё API, а не только чат.
-LLM_TIMEOUT_SEC = float(os.environ.get("LLM_TIMEOUT_SEC", "30"))
+LLM_TIMEOUT_SEC = float(os.environ.get("LLM_TIMEOUT_SEC", "75"))
+LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "512"))
 
 # Базовый адрес OpenAI-совместимого сервера (LM Studio). Внутри контейнера
 # 127.0.0.1 указывает на сам контейнер, поэтому адрес обязан быть настраиваемым.
@@ -162,7 +181,7 @@ def query_local_llm(messages: List[Dict[str, str]], model: str = "local-model") 
         "model": model,
         "messages": messages,
         "temperature": 0.3,
-        "max_tokens": 2048
+        "max_tokens": LLM_MAX_TOKENS
     }
     
     req = urllib.request.Request(
@@ -193,7 +212,7 @@ def query_local_llm(messages: List[Dict[str, str]], model: str = "local-model") 
         logger.warning("Локальная LLM (LM Studio) недоступна: %s. Переход на RAG-fallback.", e)
         raise e
 
-def generate_rag_fallback(user_query: str, telemetry: Dict[str, Any]) -> str:
+def generate_legacy_rag_fallback(user_query: str, telemetry: Dict[str, Any]) -> str:
     """
     Генерирует контекстно-зависимый ответ на основе вопроса пользователя и текущей телеметрии.
     Работает мгновенно (0 мс), без нейросети.
@@ -367,6 +386,11 @@ def generate_rag_fallback(user_query: str, telemetry: Dict[str, Any]) -> str:
     
     return result
 
+
+def generate_rag_fallback(user_query: str, telemetry: Dict[str, Any]) -> str:
+    """RAG по актуальному реестру сценариев и каталогу оборудования."""
+    return rag_answer(user_query, telemetry)
+
 def process_ai_chat(messages: List[Dict[str, str]], telemetry: Dict[str, Any], mode: str = "auto") -> tuple[str, str]:
     """
     Основная точка входа для чата.
@@ -406,8 +430,13 @@ def process_ai_chat(messages: List[Dict[str, str]], telemetry: Dict[str, Any], m
         return rag_response, "rag"
         
     # Подготовка запроса к LLM
-    rag_context = get_relevant_context(user_query)
-    context_instruction = f"\nКонтекст из регламента:\n{rag_context}\n" if rag_context else ""
+    # К локальной модели передаём только карточки, относящиеся к вопросу.
+    # Полный каталог на слабом CPU занимал 3 775 токенов и не успевал
+    # обработаться до таймаута, хотя RAG уже знал корректный ответ.
+    knowledge_context = build_knowledge_context(
+        user_query,
+        active_scenario_id=telemetry.get("scenarioId"),
+    )
     
     # mode == "auto"
     # Защита от галлюцинаций реализована правилом GAP-4 в системном промпте ниже:
@@ -421,10 +450,11 @@ def process_ai_chat(messages: List[Dict[str, str]], telemetry: Dict[str, Any], m
         "При критических авариях или угрозе ESD используй ДИРЕКТИВНЫЙ формат ('Срочно нажмите ESD', 'Перекройте V-1!').\n"
         "ПРАВИЛО ЗАЩИТЫ ОТ ГАЛЛЮЦИНАЦИЙ (GAP-4): Если вопроса нет в контексте базы знаний и он не касается симулятора ЭЛОУ-АВТ, "
         "отвечай: 'Информация по данному запросу не найдена в базе знаний регламентов ЭЛОУ-АВТ-6. Обратитесь к инструктору.'\n"
-        "Органы управления: V-1 (подача сырья), V-2 (сброс давления), "
-        "V-3 (дренаж куба К-1), уставка Т-1 (температура печи).\n"
+        "Используй только факты из раздела «Актуальная база тренажёра» ниже. "
+        "Не подменяй шаги сценария своими. Если сведений нет, верни точную фразу "
+        "о том, что информации нет в базе знаний тренажёра.\n"
         f"Состояние: {get_telemetry_summary(telemetry)}\n"
-        f"{context_instruction}"
+        f"=== Актуальная база тренажёра ===\n{knowledge_context}\n"
     )
     llm_messages = [{"role": "system", "content": system_prompt}] + messages[-1:]
     
