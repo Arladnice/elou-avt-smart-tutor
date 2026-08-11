@@ -5,6 +5,7 @@ import { useTelemetry } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import {
   LEVEL_HIGH,
+  K2_LEVEL_LOW_INTERLOCK,
   PRES_WARNING,
   TEMP_WARNING,
   STARTUP_FILLING_TIME_LIMIT_SEC,
@@ -34,7 +35,7 @@ const RiskAssessment: React.FC = () => {
       return `КРИТИЧЕСКИЙ РИСК! Опасно низкий уровень куба К-1 (${sensors.L_1.toFixed(1)}%). Откройте V-1.`;
     }
     if (k2LowCritical && critical) {
-      return `КРИТИЧЕСКИЙ РИСК! Опасно низкий уровень куба К-2 (${sensors.L_2.toFixed(1)}%). Проверьте насосы Н-4/Н-32.`;
+      return `КРИТИЧЕСКИЙ РИСК! Опасно низкий уровень куба К-2 (${sensors.L_2.toFixed(1)}%). Пуск Н-4/Н-32 заблокирован ПАЗ; восстановите уровень выше ${K2_LEVEL_LOW_INTERLOCK}%.`;
     }
     if (critical && sensors.P_1 > PRES_WARNING) {
       return `КРИТИЧЕСКИЙ РИСК! Высокое давление в колонне К-1 (${sensors.P_1.toFixed(2)} МПа). Немедленно откройте V-2.`;
@@ -49,7 +50,7 @@ const RiskAssessment: React.FC = () => {
       return `ПРЕДУПРЕЖДЕНИЕ: Низкий уровень куба К-1 (${sensors.L_1.toFixed(1)}%). Откройте V-1 и контролируйте заполнение.`;
     }
     if (sensors.L_2 < 20) {
-      return `ПРЕДУПРЕЖДЕНИЕ: Низкий уровень куба К-2 (${sensors.L_2.toFixed(1)}%). Проверьте откачку насосами Н-4/Н-32.`;
+      return `ПРЕДУПРЕЖДЕНИЕ: Низкий уровень куба К-2 (${sensors.L_2.toFixed(1)}%). Не запускайте Н-4/Н-32 до восстановления уровня выше ${K2_LEVEL_LOW_INTERLOCK}%.`;
     }
     if (sensors.P_1 > PRES_WARNING) {
       return `ПРЕДУПРЕЖДЕНИЕ: Давление в колонне К-1 повышено (${sensors.P_1.toFixed(2)} МПа). Проверьте V-2.`;
