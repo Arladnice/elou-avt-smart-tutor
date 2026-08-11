@@ -182,7 +182,7 @@ export const FixedPanelBody = styled.div<{ $fill?: boolean }>`
 
 export const SidebarNavigation = styled.nav`
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(0, 0.65fr) minmax(0, 1.55fr) minmax(0, 0.9fr);
   gap: 4px;
   padding: 4px;
   border: 1px solid ${props => props.theme.colors.border};
@@ -194,7 +194,7 @@ export const SidebarNavigation = styled.nav`
 export const SidebarTab = styled.button<{ $active: boolean }>`
   min-width: 0;
   min-height: 32px;
-  padding: 4px 6px;
+  padding: 4px;
   border: 1px solid ${props => props.$active ? props.theme.colors.primary : 'transparent'};
   border-radius: 4px;
   background-color: ${props => props.$active ? props.theme.colors.primaryMuted : 'transparent'};
@@ -206,7 +206,14 @@ export const SidebarTab = styled.button<{ $active: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
+  white-space: nowrap;
+
+  svg {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+  }
 
   &:hover {
     color: ${props => props.theme.colors.primary};

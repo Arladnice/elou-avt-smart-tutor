@@ -77,7 +77,7 @@ const OperatorPage: React.FC = () => {
                 <ShieldAlert size={14} /> ПАЗ
               </S.SidebarTab>
               <S.SidebarTab $active={activePanel === 'support'} onClick={() => setActivePanel('support')}>
-                <Brain size={14} /> Поддержка
+                <Brain size={14} /> Консультант AI
               </S.SidebarTab>
               <S.SidebarTab $active={activePanel === 'trend'} onClick={() => setActivePanel('trend')}>
                 <LineChart size={14} /> Прогноз
