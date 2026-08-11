@@ -33,23 +33,43 @@ def _read_registry(path: str) -> Optional[List[Dict[str, Any]]]:
         return None
 
 
+def _merge_with_package_defaults(
+    stored: List[Dict[str, Any]],
+    defaults: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Обновляет штатные сценарии, сохраняя сценарии инструктора."""
+    custom = [scenario for scenario in stored if scenario.get("is_custom") is True]
+    return [*defaults, *custom]
+
+
 def load_scenarios() -> List[Dict[str, Any]]:
     """
     Загружает список всех активных сценариев.
 
-    Если рабочего файла ещё нет — это первый запуск на чистом томе, и реестр
-    переносится из поставки в пакете. Без переноса сервер после деплоя отдавал
-    бы пустой список: у оператора не осталось бы ни одного учебного задания.
+    Штатные сценарии синхронизируются с поставкой текущего образа при каждом
+    чтении. Пользовательские сценарии инструктора остаются в рабочем файле,
+    поэтому обновление приложения не откатывает их и не оставляет в интерфейсе
+    устаревшие версии встроенных заданий.
     """
-    scenarios = _read_registry(SCENARIOS_FILE_PATH)
-    if scenarios is not None:
-        return scenarios
+    stored = _read_registry(SCENARIOS_FILE_PATH)
+    defaults = _read_registry(PACKAGE_SCENARIOS_PATH)
+
+    if stored is not None:
+        if defaults is None:
+            logger.error("Поставка сценариев недоступна, используем рабочий реестр")
+            return stored
+
+        merged = _merge_with_package_defaults(stored, defaults)
+        if merged != stored:
+            logger.info("Обновляем штатные сценарии из поставки текущего образа")
+            if not save_scenarios(merged):
+                logger.error("Не удалось обновить рабочий реестр, используем данные из памяти")
+        return merged
 
     if os.path.abspath(SCENARIOS_FILE_PATH) == os.path.abspath(PACKAGE_SCENARIOS_PATH):
         logger.error(f"Файл сценариев не найден: {SCENARIOS_FILE_PATH}")
         return []
 
-    defaults = _read_registry(PACKAGE_SCENARIOS_PATH)
     if defaults is None:
         logger.error(f"Поставка сценариев недоступна: {PACKAGE_SCENARIOS_PATH}")
         return []

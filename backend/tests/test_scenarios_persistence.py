@@ -7,8 +7,9 @@
 GUI-конструктор, исчезало при каждом редеплое.
 
 Путь записи выносится в каталог данных рядом с базой (том tutor_data), а
-встроенные сценарии остаются в пакете как эталонная поставка и переносятся
-в рабочий файл при первом обращении.
+встроенные сценарии остаются в пакете как эталонная поставка. При обновлении
+образа штатные записи синхронизируются с новой поставкой, а пользовательские
+сценарии инструктора сохраняются.
 """
 
 import json
@@ -68,6 +69,42 @@ def test_custom_scenario_survives_package_reinstall(data_dir):
     # встроенных сценариев в том файл создавался бы с одной пользовательской
     # записью, и оператор терял бы все штатные задания.
     assert ids >= {"startup", "shutdown"}
+
+
+def test_package_update_replaces_builtins_and_preserves_custom(data_dir, tmp_path, monkeypatch):
+    """Новый образ обновляет штатные задания, не удаляя сценарии инструктора."""
+    package_file = tmp_path / "package" / "scenarios.json"
+    package_file.parent.mkdir()
+    package_file.write_text(json.dumps({
+        "scenarios": [
+            {"id": "startup", "title": "Актуальный пуск", "checklist": []},
+            {"id": "shutdown", "title": "Актуальный останов", "checklist": []},
+        ]
+    }, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(scenarios_module, "PACKAGE_SCENARIOS_PATH", str(package_file))
+
+    data_dir.parent.mkdir()
+    data_dir.write_text(json.dumps({
+        "scenarios": [
+            {"id": "startup", "title": "Старый пуск", "checklist": []},
+            {
+                "id": "instructor_drill",
+                "title": "Учебная вводная инструктора",
+                "is_custom": True,
+                "checklist": [],
+            },
+        ]
+    }, ensure_ascii=False), encoding="utf-8")
+
+    loaded = scenarios_module.load_scenarios()
+
+    assert [(scenario["id"], scenario["title"]) for scenario in loaded] == [
+        ("startup", "Актуальный пуск"),
+        ("shutdown", "Актуальный останов"),
+        ("instructor_drill", "Учебная вводная инструктора"),
+    ]
+    persisted = json.loads(data_dir.read_text(encoding="utf-8"))["scenarios"]
+    assert persisted == loaded
 
 
 def test_seeding_does_not_overwrite_existing_registry(data_dir):
