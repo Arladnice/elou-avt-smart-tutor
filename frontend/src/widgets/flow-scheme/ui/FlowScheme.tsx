@@ -482,6 +482,7 @@ const FlowScheme: React.FC = () => {
   const k1ReliefActive = valves.V_2 && !defects.valve_jam;
   const k1LoopActive = valves.V_P3_OUT && valves.V_P3_RETURN && pumps.N_3 && !powerFailed;
   const k2FeedActive = valves.V_3 && valves.V_P1_IN && pumps.N_2 && !powerFailed;
+  const k1BottomOutflowActive = k1LoopActive || k2FeedActive;
   const k2OutflowAvailable = !defects.k2_pump_fail && !powerFailed && sensors.L_2 > K2_LEVEL_LOW_INTERLOCK;
   const k2Outflow32Active = k2OutflowAvailable && valves.V_K2_OUT_32 && pumps.N_32;
   const k2Outflow4Active = k2OutflowAvailable && valves.V_K2_OUT_4 && pumps.N_4;
@@ -744,7 +745,8 @@ const FlowScheme: React.FC = () => {
             isOpen={valves.V_STEAM_K1} onToggle={handleValveClick} onOpen={setSelectedEquipmentId} />
           <text x="532" y="228" textAnchor="end" className="utility-label">ПАР</text>
 
-          <S.PipeLine d="M 475,410 V 466 H 352" $isActive={k1LoopActive} />
+          <S.PipeLine d="M 475,410 V 466" $isActive={k1BottomOutflowActive} />
+          <S.PipeLine d="M 475,466 H 352" $isActive={k1LoopActive} />
           <PumpSymbol
             x={324}
             y={466}
