@@ -133,5 +133,3 @@ docs/presentations/          конкурсная презентация
 
 - [Документация проекта](docs/README.md)
 - [Сценарий демонстрации](docs/demo_scenario.md)
-- [План до 11 августа](docs/main_strategic_plan.md)
-- [Презентация](docs/presentations/ELOU_AVT_Smart_Tutor.pptx)
