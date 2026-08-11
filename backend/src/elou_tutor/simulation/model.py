@@ -12,7 +12,7 @@ from elou_tutor.domain.process_limits import (
     STARTUP_INITIAL_TEMP, STARTUP_INITIAL_PRES, STARTUP_INITIAL_LEVEL, STARTUP_SETPOINT_TEMP,
     NORMAL_INITIAL_TEMP, NORMAL_INITIAL_PRES, NORMAL_INITIAL_LEVEL, NORMAL_SETPOINT_TEMP,
     ACCIDENT_NON_STARTUP_MIN_TIME_SEC, ACCIDENT_STARTUP_MAX_TIME_SEC,
-    K2_PRESSURE_NORMAL, K2_PRESSURE_CRITICAL, K2_TEMP_NORMAL,
+    K2_LEVEL_LOW_INTERLOCK, K2_PRESSURE_NORMAL, K2_PRESSURE_CRITICAL, K2_TEMP_NORMAL,
     TRAINING_ACCELERATION,
 )
 
@@ -200,8 +200,11 @@ class ELOUAVTSimulator:
         if self.status != "running" or self.defects.get("power_fail", False):
             return
         if pump_id in self.pumps:
-            if pump_id in {"N_4", "N_32"} and self.sensors["L_2"] <= 15.0 and state:
-                return
+            if pump_id in {"N_4", "N_32"} and state:
+                if self.defects.get("k2_pump_fail", False):
+                    return
+                if self.sensors["L_2"] <= K2_LEVEL_LOW_INTERLOCK:
+                    return
             self.pumps[pump_id] = state
 
     def set_defect(self, defect_id: str, state: bool):

@@ -350,6 +350,13 @@ def test_k2_pump_failure_stops_both_outflow_pumps():
     assert simulator.pumps["N_4"] is False
     assert simulator.pumps["N_32"] is False
 
+    simulator.sensors["L_2"] = 50.0
+    simulator.set_pump("N_4", True)
+    simulator.set_pump("N_32", True)
+
+    assert simulator.pumps["N_4"] is False
+    assert simulator.pumps["N_32"] is False
+
 
 def test_cutting_p1_fuel_stops_extra_heat_from_coil_overheat():
     simulator = ELOUAVTSimulator()

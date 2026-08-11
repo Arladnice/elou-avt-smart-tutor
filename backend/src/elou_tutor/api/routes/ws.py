@@ -11,6 +11,7 @@ from elou_tutor.domain.process_limits import (
     FURNACE_TEMP_MAX_LIMIT,
     FURNACE_TEMP_MIN_LIMIT,
     FURNACE_TEMP_WARNING,
+    K2_LEVEL_LOW_INTERLOCK,
 )
 from elou_tutor.services.net import is_webhook_url_allowed
 from elou_tutor.api.security import verify_jwt_token
@@ -83,6 +84,35 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         state = bool(cmd.get("state"))
         session.simulator.set_pump(pump_id, state)
         actual_state = session.simulator.pumps[pump_id]
+        if actual_state != state:
+            pump_label = f"Н-{pump_id.removeprefix('N_')}"
+            if (
+                state
+                and pump_id in {"N_4", "N_32"}
+                and session.simulator.defects.get("k2_pump_fail", False)
+            ):
+                reason = "активен отказ насосов откачки К-2"
+            elif (
+                state
+                and pump_id in {"N_4", "N_32"}
+                and session.simulator.sensors["L_2"] <= K2_LEVEL_LOW_INTERLOCK
+            ):
+                reason = f"уровень L-2 должен быть выше {K2_LEVEL_LOW_INTERLOCK:g}%"
+            elif session.simulator.defects.get("power_fail", False):
+                reason = "отсутствует электроснабжение"
+            else:
+                reason = "команда отклонена технологической блокировкой"
+            session.add_log(
+                "warning",
+                f"Пуск насоса {pump_label} заблокирован ПАЗ: {reason}.",
+                severity="WARNING",
+            )
+            await log_audit_event_async(
+                session.active_operator_name,
+                "PUMP_TOGGLE_BLOCKED",
+                f"Насос {pump_id} -> {state}; причина: {reason}",
+            )
+            return True
         session.record_action(f"{pump_id}_{'START' if actual_state else 'STOP'}")
         session.add_log(
             "info",
