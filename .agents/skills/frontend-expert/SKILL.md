@@ -1,12 +1,12 @@
 ---
 name: frontend-expert
 description: |
-  Use when creating or editing React/TypeScript components, pages, or features in the ЭЛОУ-АВТ Smart Tutor frontend.
+  Use when creating or editing React/TypeScript components, pages, or features in the КТК ЭЛОУ-АВТ frontend.
   Tech stack: React 18, TypeScript, Ant Design, styled-components, WebSocket.
   Covers: component structure, styled patterns, API service layer, state management via Context, real-time data flow.
 ---
 
-# Frontend Expert — ЭЛОУ-АВТ Smart Tutor
+# Frontend Expert — КТК ЭЛОУ-АВТ
 
 Specialized skill for working with the project's frontend (`frontend/` directory).
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "elou-tutor"
 version = "0.1.0"
-description = "Компьютерный тренажерный комплекс ЭЛОУ-АВТ Smart Tutor"
+description = "Компьютерный тренажерный комплекс ЭЛОУ-АВТ"
 requires-python = ">=3.11"
 
 [tool.setuptools.packages.find]

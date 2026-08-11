@@ -21,7 +21,7 @@ def main():
     print(f"Начинаем сборку пояснительной записки. Дата: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     with open(output_file, "w", encoding="utf-8") as outfile:
-        outfile.write("# Сводная Пояснительная Записка к КТК ЭЛОУ-АВТ Smart Tutor\n\n")
+        outfile.write("# Сводная Пояснительная Записка к КТК ЭЛОУ-АВТ\n\n")
         outfile.write(f"**Сгенерировано автоматически:** {datetime.now().strftime('%d.%m.%Y')}\n\n")
         outfile.write("---\n\n")
         

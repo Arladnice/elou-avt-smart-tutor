@@ -6,7 +6,7 @@ description: |
   scenario initial conditions, safety thresholds from tech regulations.
 ---
 
-# Simulator Expert — ЭЛОУ-АВТ Smart Tutor
+# Simulator Expert — КТК ЭЛОУ-АВТ
 
 Specialized skill for working with the physical process simulator (`simulator/` directory).
 

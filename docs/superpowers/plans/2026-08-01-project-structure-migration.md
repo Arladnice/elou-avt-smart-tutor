@@ -65,7 +65,7 @@
 - [ ] **Шаг 1: Создать каркас каталогов**
 
 ```bash
-cd /Users/kirill/WebstormProjects/elou-avt-smart-tutor
+cd /Users/kirill/WebstormProjects/elou-avt
 mkdir -p backend/src/elou_tutor/{domain,simulation,tutor,ml/artifacts,db,services,api/routes}
 for d in "" domain simulation tutor ml db services api api/routes; do
   touch "backend/src/elou_tutor/$d/__init__.py"
@@ -84,7 +84,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "elou-tutor"
 version = "0.1.0"
-description = "Компьютерный тренажерный комплекс ЭЛОУ-АВТ Smart Tutor"
+description = "Компьютерный тренажерный комплекс ЭЛОУ-АВТ"
 requires-python = ">=3.12"
 
 [tool.setuptools.packages.find]

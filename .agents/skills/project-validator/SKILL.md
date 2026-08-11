@@ -7,7 +7,7 @@ description: |
   Generates gap-analysis reports with specific action items.
 ---
 
-# Project Validator — КТК ЭЛОУ-АВТ Smart Tutor
+# Project Validator — КТК ЭЛОУ-АВТ
 
 Final validation skill that checks the entire project against the 8 official КТК evaluation criteria, all detailed documentation in `docs/`, and ensures the project is safe from critical risks before demonstration.
 

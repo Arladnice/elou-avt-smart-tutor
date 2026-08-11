@@ -6,7 +6,7 @@ description: |
   Covers: PyTorch training, ONNX inference, reproducibility, hyperparameter management, metrics logging.
 ---
 
-# AI/ML Expert — ЭЛОУ-АВТ Smart Tutor
+# AI/ML Expert — КТК ЭЛОУ-АВТ
 
 Specialized skill for working with the project's AI/ML module (`ai_core/` directory).
 

@@ -47,8 +47,8 @@ async def lifespan(app: FastAPI):
     # Запуск циклического фонового потока симуляции техпроцесса
     sim_task = asyncio.create_task(simulation_loop())
     sim_task.add_done_callback(_report_simulation_task_exit)
-    log_audit_event("SYSTEM", "STARTUP", "Сервер КТК ЭЛОУ-АВТ Smart Tutor запущен.")
-    logger.info("Сервер КТК ЭЛОУ-АВТ Smart Tutor успешно запущен.")
+    log_audit_event("SYSTEM", "STARTUP", "Сервер КТК ЭЛОУ-АВТ запущен.")
+    logger.info("Сервер КТК ЭЛОУ-АВТ успешно запущен.")
     
     yield
     
@@ -58,10 +58,10 @@ async def lifespan(app: FastAPI):
         await sim_task
     except asyncio.CancelledError:
         pass
-    logger.info("Сервер КТК ЭЛОУ-АВТ Smart Tutor остановлен.")
+    logger.info("Сервер КТК ЭЛОУ-АВТ остановлен.")
 
 app = FastAPI(
-    title="КТК ЭЛОУ-АВТ Smart Tutor API",
+    title="КТК ЭЛОУ-АВТ API",
     lifespan=lifespan
 )
 

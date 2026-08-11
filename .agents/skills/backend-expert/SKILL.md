@@ -6,7 +6,7 @@ description: |
   Enforces modular structure, error handling, logging, and docstring standards.
 ---
 
-# Backend Expert — ЭЛОУ-АВТ Smart Tutor
+# Backend Expert — КТК ЭЛОУ-АВТ
 
 Specialized skill for working with the project's backend (`backend/` directory).
 
