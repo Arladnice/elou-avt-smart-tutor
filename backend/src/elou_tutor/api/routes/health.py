@@ -44,7 +44,7 @@ def check_llm_status() -> bool:
     except Exception:
         return False
 
-@router.get("", response_model=HealthResponse)
+@router.api_route("", methods=["GET", "HEAD"], response_model=HealthResponse)
 def health_check():
     """
     Возвращает статус работоспособности сервиса.
