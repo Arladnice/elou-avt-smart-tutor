@@ -374,10 +374,36 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
 
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
     const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-    onSetZoom(prev => {
-      const next = Math.max(0.4, Math.min(3.0, Math.round(prev * zoomFactor * 100) / 100));
-      return next;
+    const nextZoom = Math.max(0.4, Math.min(3.0, Math.round(zoom * zoomFactor * 100) / 100));
+    if (nextZoom === zoom) return;
+
+    // Относительные координаты курсора мыши внутри видимой области SVG [0, 1]
+    const mouseRatioX = (e.clientX - rect.left) / rect.width;
+    const mouseRatioY = (e.clientY - rect.top) / rect.height;
+
+    // Мировые координаты точки под курсором в системе координат схемы
+    const currentViewWidth = scheme.width / zoom;
+    const currentViewHeight = scheme.height / zoom;
+    const focusSvgX = pan.x + mouseRatioX * currentViewWidth;
+    const focusSvgY = pan.y + mouseRatioY * currentViewHeight;
+
+    // Новые размеры видимой области
+    const nextViewWidth = scheme.width / nextZoom;
+    const nextViewHeight = scheme.height / nextZoom;
+
+    // Корректировка смещения pan для сохранения точки под курсором
+    const nextPanX = focusSvgX - mouseRatioX * nextViewWidth;
+    const nextPanY = focusSvgY - mouseRatioY * nextViewHeight;
+
+    onSetZoom(nextZoom);
+    onSetPan({
+      x: Math.round(nextPanX),
+      y: Math.round(nextPanY),
     });
   };
 
