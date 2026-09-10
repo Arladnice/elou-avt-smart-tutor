@@ -23,6 +23,11 @@ export const FurnaceSymbol: React.FC<FurnaceSymbolProps> = ({
   onOpen,
   interactive = true,
 }) => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (interactive && onOpen) onOpen(equipmentId);
+  };
+
   const handleContextMenu = (e: React.MouseEvent<SVGGElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -35,9 +40,18 @@ export const FurnaceSymbol: React.FC<FurnaceSymbolProps> = ({
       data-scheme-interactive={interactive ? 'true' : undefined}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
-      aria-label={`Правая кнопка открывает карточку печи ${tag}`}
+      aria-label={`Клик открывает карточку печи ${tag}`}
       $isAlert={isAlert}
+      $isControllable={interactive}
+      onClick={handleClick}
       onContextMenu={handleContextMenu}
+      onKeyDown={e => {
+        if (!interactive) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen?.(equipmentId);
+        }
+      }}
     >
       <rect className="equipment-hitbox" x="-6" y="-25" width="102" height="108" rx="9" />
       <ellipse className="equipment-shadow" cx="45" cy="76" rx="46" ry="6" />

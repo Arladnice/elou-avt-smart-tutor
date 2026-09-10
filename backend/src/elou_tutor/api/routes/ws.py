@@ -116,7 +116,7 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         session.record_action(f"{pump_id}_{'START' if actual_state else 'STOP'}")
         session.add_log(
             "info",
-            f"Оператор {'пустил' if actual_state else 'остановил'} насос {pump_id.replace('_', '-')}",
+            f"Оператор {'пустил' if actual_state else 'остановил'} насос {pump_label}",
         )
         await log_audit_event_async(
             session.active_operator_name,

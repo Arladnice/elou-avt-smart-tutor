@@ -28,3 +28,26 @@ def test_package_data_scenarios_resolvable():
     from elou_tutor.simulation import scenarios
 
     assert os.path.isfile(scenarios.SCENARIOS_FILE_PATH)
+
+
+def test_elou_valves_and_n82_pump_behavior():
+    """Проверка переключения клапанов ниток ЭЛОУ и насоса Н-82, а также их влияния на модель."""
+    from elou_tutor.simulation.model import ELOUAVTSimulator
+
+    sim = ELOUAVTSimulator()
+    sim.reset("shutdown")
+    assert "N_82" in sim.pumps
+    assert sim.pumps["N_82"] is True
+    assert "V_FEED_1" in sim.valves
+    assert sim.valves["V_FEED_1"] is True
+
+    # Переключение насоса Н-82
+    sim.set_pump("N_82", False)
+    assert sim.pumps["N_82"] is False
+
+    # Переключение клапанов ниток
+    sim.set_valve("V_FEED_1", False)
+    assert sim.valves["V_FEED_1"] is False
+    sim.set_valve("V_FEED_1", True)
+    assert sim.valves["V_FEED_1"] is True
+

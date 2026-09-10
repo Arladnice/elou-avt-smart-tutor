@@ -23,6 +23,11 @@ export const VesselSymbol: React.FC<VesselSymbolProps> = ({
   onOpen,
   interactive = true,
 }) => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (interactive && onOpen) onOpen(equipmentId);
+  };
+
   const handleContextMenu = (e: React.MouseEvent<SVGGElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -37,9 +42,18 @@ export const VesselSymbol: React.FC<VesselSymbolProps> = ({
       data-scheme-interactive={interactive ? 'true' : undefined}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
-      aria-label={`Правая кнопка открывает карточку ёмкости ${tag}`}
+      aria-label={`Клик открывает карточку аппарата ${tag}`}
       $isAlert={isAlert}
+      $isControllable={interactive}
+      onClick={handleClick}
       onContextMenu={handleContextMenu}
+      onKeyDown={e => {
+        if (!interactive) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen?.(equipmentId);
+        }
+      }}
     >
       {isVertical ? (
         <>

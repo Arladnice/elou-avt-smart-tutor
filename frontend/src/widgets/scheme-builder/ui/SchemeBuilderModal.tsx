@@ -135,8 +135,42 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, handleUndo, handleRedo, selectedElement, mode, handleDeleteItem]);
 
-  const handleZoomIn = () => setZoom(prev => Math.min(3, Math.round((prev + 0.15) * 100) / 100));
-  const handleZoomOut = () => setZoom(prev => Math.max(0.4, Math.round((prev - 0.15) * 100) / 100));
+  const handleZoomIn = () => {
+    setZoom(prev => {
+      const next = Math.min(3, Math.round((prev + 0.15) * 100) / 100);
+      if (next === prev) return prev;
+      setPan(currentPan => {
+        const curW = workingScheme.width / prev;
+        const curH = workingScheme.height / prev;
+        const nextW = workingScheme.width / next;
+        const nextH = workingScheme.height / next;
+        return {
+          x: Math.round(currentPan.x + (curW - nextW) / 2),
+          y: Math.round(currentPan.y + (curH - nextH) / 2),
+        };
+      });
+      return next;
+    });
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => {
+      const next = Math.max(0.4, Math.round((prev - 0.15) * 100) / 100);
+      if (next === prev) return prev;
+      setPan(currentPan => {
+        const curW = workingScheme.width / prev;
+        const curH = workingScheme.height / prev;
+        const nextW = workingScheme.width / next;
+        const nextH = workingScheme.height / next;
+        return {
+          x: Math.round(currentPan.x + (curW - nextW) / 2),
+          y: Math.round(currentPan.y + (curH - nextH) / 2),
+        };
+      });
+      return next;
+    });
+  };
+
   const handleZoomReset = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });

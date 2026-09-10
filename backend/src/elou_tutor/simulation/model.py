@@ -14,6 +14,7 @@ from elou_tutor.domain.process_limits import (
     ACCIDENT_NON_STARTUP_MIN_TIME_SEC, ACCIDENT_STARTUP_MAX_TIME_SEC,
     K2_LEVEL_LOW_INTERLOCK, K2_PRESSURE_NORMAL, K2_PRESSURE_CRITICAL, K2_TEMP_NORMAL,
     TRAINING_ACCELERATION,
+    ALL_PUMP_IDS, ELOU_DEFAULT_VALVES, ELOU_STARTUP_VALVES,
 )
 
 class ELOUAVTSimulator:
@@ -58,6 +59,7 @@ class ELOUAVTSimulator:
         if sc and "initial_state" in sc:
             st = sc["initial_state"]
             self.valves = {
+                **ELOU_DEFAULT_VALVES,
                 "V_1": st.get("V_1", False),
                 "V_2": st.get("V_2", False),
                 "V_3": st.get("V_3", False),
@@ -78,9 +80,13 @@ class ELOUAVTSimulator:
                 "V_E1_DRAIN": st.get("V_E1_DRAIN", False),
                 "V_E2_DRAIN": st.get("V_E2_DRAIN", False),
             }
+            # Позволяем переопределять клапаны ЭЛОУ из initial_state сценария
+            for v_id in ELOU_DEFAULT_VALVES:
+                if v_id in st:
+                    self.valves[v_id] = st[v_id]
             self.pumps = {
                 pump_id: st.get(pump_id, True)
-                for pump_id in ("N_20", "N_2", "N_3", "N_4", "N_32")
+                for pump_id in ALL_PUMP_IDS
             }
             self.setpoints = {
                 "T_1_Sp": st.get("T_1_Sp", 280.0),
@@ -106,6 +112,7 @@ class ELOUAVTSimulator:
         elif scenario_id == "startup":
             # Холодное состояние для пуска
             self.valves = {
+                **ELOU_STARTUP_VALVES,
                 "V_1": False,     # Вход сырья в печь закрыт
                 "V_2": False,     # Сброс давления из колонны закрыт
                 "V_3": False,     # Дренаж куба колонны закрыт
@@ -118,7 +125,7 @@ class ELOUAVTSimulator:
                 "V_STEAM_K1": False, "V_STEAM_K2": False,
                 "V_K2_RELIEF": False, "V_E1_DRAIN": False, "V_E2_DRAIN": False,
             }
-            self.pumps = {pump_id: False for pump_id in ("N_20", "N_2", "N_3", "N_4", "N_32")}
+            self.pumps = {pump_id: False for pump_id in ALL_PUMP_IDS}
             self.setpoints = {
                 "T_1_Sp": STARTUP_SETPOINT_TEMP,
                 "T_3_Sp": STARTUP_SETPOINT_TEMP,
@@ -141,6 +148,7 @@ class ELOUAVTSimulator:
         else:
             # Нормальное рабочее состояние для останова и прочих тестов
             self.valves = {
+                **ELOU_DEFAULT_VALVES,
                 "V_1": True,      # Вход сырья в печь
                 "V_2": False,     # Сброс давления из колонны
                 "V_3": True,      # Дренаж куба колонны
@@ -153,7 +161,7 @@ class ELOUAVTSimulator:
                 "V_STEAM_K1": True, "V_STEAM_K2": True,
                 "V_K2_RELIEF": False, "V_E1_DRAIN": False, "V_E2_DRAIN": False,
             }
-            self.pumps = {pump_id: True for pump_id in ("N_20", "N_2", "N_3", "N_4", "N_32")}
+            self.pumps = {pump_id: True for pump_id in ALL_PUMP_IDS}
             self.setpoints = {
                 "T_1_Sp": NORMAL_SETPOINT_TEMP,
                 "T_3_Sp": NORMAL_SETPOINT_TEMP,
@@ -259,11 +267,24 @@ class ELOUAVTSimulator:
         # -------------------------------------------------------------
         sal_target = 4.2
         w_target = 0.15
+
+        # Учитываем как общий клапан V_ELOU, так и детальные нитки обессоливания
+        elou_train_active = (
+            (self.valves.get("V_FEED_1", True) and self.valves.get("V_OUT_1", True)) or
+            (self.valves.get("V_FEED_2", True) and self.valves.get("V_OUT_2", True)) or
+            (self.valves.get("V_FEED_3", True) and self.valves.get("V_OUT_3", True))
+        )
+        is_elou_flowing = V_ELOU and elou_train_active
+
         # При активном дефекте проскок сохраняется только пока поток из ЭЛОУ
-        # не изолирован. Закрытие V_ELOU — действие оператора по локализации.
-        if self.defects.get("elou_desalt_fail", False) and V_ELOU:
+        # не изолирован. Закрытие V_ELOU или отсечение ниток — действие оператора по локализации.
+        if self.defects.get("elou_desalt_fail", False) and is_elou_flowing:
             sal_target = 42.0  # Проскок солей до 42 мг/л
             w_target = 3.2     # Проскок влаги до 3.2%
+        elif not self.pumps.get("N_82", True) or not self.valves.get("V_WATER_MAIN", True):
+            # При отключении насоса Н-82 или перекрытии промывочной воды солесодержание растет
+            sal_target = 20.0
+            w_target = 0.35
         
         next_Sal = self.sensors["Sal_1"] + (sal_target - self.sensors["Sal_1"]) * 0.15 + (random.random() - 0.5) * 0.2
         next_W = self.sensors["W_1"] + (w_target - self.sensors["W_1"]) * 0.15 + (random.random() - 0.5) * 0.02
