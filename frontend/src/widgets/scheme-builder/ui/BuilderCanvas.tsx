@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useTheme } from 'styled-components';
 import type { MnemoschemeConfig } from '@/entities/mnemoscheme';
+import { translateSvgPath } from '@/entities/mnemoscheme';
 import { useTelemetry } from '@/entities/telemetry';
 import { useSimulatorActions } from '@/entities/simulator';
 import {
@@ -20,8 +21,14 @@ export interface BuilderCanvasProps {
   selectedElement: SelectedElementRef | null;
   mode: 'edit' | 'preview';
   gridSnap: number;
+  zoom: number;
+  pan: { x: number; y: number };
+  onSetZoom: (updater: number | ((prev: number) => number)) => void;
+  onSetPan: (updater: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })) => void;
   onSelectElement: (ref: SelectedElementRef | null) => void;
   onUpdateElementPosition: (category: SelectedElementRef['category'], id: string, x: number, y: number) => void;
+  onUpdateItem: (category: SelectedElementRef['category'], id: string, patch: Record<string, any>) => void;
+  onCommitHistory?: () => void;
 }
 
 export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
@@ -29,13 +36,20 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
   selectedElement,
   mode,
   gridSnap,
+  zoom,
+  pan,
+  onSetZoom,
+  onSetPan,
   onSelectElement,
   onUpdateElementPosition,
+  onUpdateItem,
+  onCommitHistory,
 }) => {
   const theme = useTheme();
   const { sensors, valves, pumps, defects, telemetryHistory } = useTelemetry();
   const { toggleValve, togglePump } = useSimulatorActions();
 
+  // Состояние перетаскивания узлов схемы (оборудование, датчики, метки)
   const [dragging, setDragging] = useState<{
     category: SelectedElementRef['category'];
     id: string;
@@ -45,7 +59,34 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     initialY: number;
   } | null>(null);
 
+  // Состояние перетаскивания трубы целиком
+  const [pipeDragging, setPipeDragging] = useState<{
+    id: string;
+    startX: number;
+    startY: number;
+    initialX1?: number;
+    initialY1?: number;
+    initialX2?: number;
+    initialY2?: number;
+    initialD?: string;
+  } | null>(null);
+
+  // Состояние перетаскивания конца прямолинейной трубы (ручки)
+  const [pipeHandleDragging, setPipeHandleDragging] = useState<{
+    id: string;
+    handle: 'start' | 'end';
+  } | null>(null);
+
+  // Состояние панорамирования холста (перемещение рабочей области)
+  const [panning, setPanning] = useState<{
+    startClientX: number;
+    startClientY: number;
+    startPanX: number;
+    startPanY: number;
+  } | null>(null);
+
   const svgRef = useRef<SVGSVGElement>(null);
+  const hasMovedRef = useRef<boolean>(false);
 
   const snap = (val: number) => {
     if (gridSnap <= 1) return Math.round(val);
@@ -55,11 +96,13 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
   const getSvgCoordinates = (event: React.MouseEvent<SVGSVGElement>): { x: number; y: number } => {
     if (!svgRef.current) return { x: 0, y: 0 };
     const rect = svgRef.current.getBoundingClientRect();
-    const scaleX = scheme.width / rect.width;
-    const scaleY = scheme.height / rect.height;
+    const currentViewWidth = scheme.width / zoom;
+    const currentViewHeight = scheme.height / zoom;
+    const scaleX = currentViewWidth / rect.width;
+    const scaleY = currentViewHeight / rect.height;
     return {
-      x: (event.clientX - rect.left) * scaleX,
-      y: (event.clientY - rect.top) * scaleY,
+      x: pan.x + (event.clientX - rect.left) * scaleX,
+      y: pan.y + (event.clientY - rect.top) * scaleY,
     };
   };
 
@@ -96,21 +139,133 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     }
   };
 
+  const handlePointerDownPipe = (e: React.MouseEvent, pipe: any) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    onSelectElement({ category: 'pipes', id: pipe.id });
+
+    if (mode === 'edit') {
+      const { x, y } = getSvgCoordinates(e as any);
+      setPipeDragging({
+        id: pipe.id,
+        startX: x,
+        startY: y,
+        initialX1: pipe.x1,
+        initialY1: pipe.y1,
+        initialX2: pipe.x2,
+        initialY2: pipe.y2,
+        initialD: pipe.d,
+      });
+    }
+  };
+
+  const handlePointerDownPipeHandle = (
+    e: React.MouseEvent,
+    id: string,
+    handle: 'start' | 'end',
+  ) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    setPipeHandleDragging({ id, handle });
+  };
+
   const handlePointerMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!dragging || mode !== 'edit') return;
-    const { x, y } = getSvgCoordinates(e);
-    const deltaX = x - dragging.startX;
-    const deltaY = y - dragging.startY;
-    const newX = snap(dragging.initialX + deltaX);
-    const newY = snap(dragging.initialY + deltaY);
-    onUpdateElementPosition(dragging.category, dragging.id, newX, newY);
+    hasMovedRef.current = true;
+    // 1. Панорамирование
+    if (panning) {
+      if (!svgRef.current) return;
+      const rect = svgRef.current.getBoundingClientRect();
+      const scaleX = (scheme.width / zoom) / rect.width;
+      const scaleY = (scheme.height / zoom) / rect.height;
+      const deltaX = (e.clientX - panning.startClientX) * scaleX;
+      const deltaY = (e.clientY - panning.startClientY) * scaleY;
+      onSetPan({
+        x: Math.round(panning.startPanX - deltaX),
+        y: Math.round(panning.startPanY - deltaY),
+      });
+      return;
+    }
+
+    if (mode !== 'edit') return;
+
+    // 2. Редактирование конца прямолинейной трубы через ручку
+    if (pipeHandleDragging) {
+      const { x, y } = getSvgCoordinates(e);
+      const snappedX = snap(x);
+      const snappedY = snap(y);
+      if (pipeHandleDragging.handle === 'start') {
+        onUpdateItem('pipes', pipeHandleDragging.id, { x1: snappedX, y1: snappedY });
+      } else {
+        onUpdateItem('pipes', pipeHandleDragging.id, { x2: snappedX, y2: snappedY });
+      }
+      return;
+    }
+
+    // 3. Перетаскивание трубы целиком
+    if (pipeDragging) {
+      const { x, y } = getSvgCoordinates(e);
+      const deltaX = snap(x - pipeDragging.startX);
+      const deltaY = snap(y - pipeDragging.startY);
+
+      if (pipeDragging.initialD) {
+        const newD = translateSvgPath(pipeDragging.initialD, deltaX, deltaY);
+        onUpdateItem('pipes', pipeDragging.id, { d: newD });
+      } else if (pipeDragging.initialX1 !== undefined) {
+        onUpdateItem('pipes', pipeDragging.id, {
+          x1: pipeDragging.initialX1 + deltaX,
+          y1: pipeDragging.initialY1! + deltaY,
+          x2: pipeDragging.initialX2! + deltaX,
+          y2: pipeDragging.initialY2! + deltaY,
+        });
+      }
+      return;
+    }
+
+    // 4. Перетаскивание оборудования / датчиков / меток
+    if (dragging) {
+      const { x, y } = getSvgCoordinates(e);
+      const deltaX = x - dragging.startX;
+      const deltaY = y - dragging.startY;
+      const newX = snap(dragging.initialX + deltaX);
+      const newY = snap(dragging.initialY + deltaY);
+      onUpdateElementPosition(dragging.category, dragging.id, newX, newY);
+    }
   };
 
   const handlePointerUp = () => {
+    if (dragging || pipeDragging || pipeHandleDragging) {
+      onCommitHistory?.();
+    }
     setDragging(null);
+    setPipeDragging(null);
+    setPipeHandleDragging(null);
+    setPanning(null);
+  };
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    hasMovedRef.current = false;
+    // Панорамирование при нажатии колесика мыши (button 1) или клике по фону (button 0)
+    const target = e.target as SVGElement;
+    const isBackgroundClick =
+      target === svgRef.current ||
+      target.classList?.contains('scheme-background') ||
+      target.classList?.contains('scheme-grid');
+
+    if (e.button === 1 || (e.button === 0 && (isBackgroundClick || e.altKey))) {
+      setPanning({
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startPanX: pan.x,
+        startPanY: pan.y,
+      });
+    }
   };
 
   const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (hasMovedRef.current) {
+      hasMovedRef.current = false;
+      return;
+    }
     const target = e.target as SVGElement;
     if (
       target === svgRef.current ||
@@ -119,6 +274,15 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     ) {
       onSelectElement(null);
     }
+  };
+
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+    onSetZoom(prev => {
+      const next = Math.max(0.4, Math.min(3.0, Math.round(prev * zoomFactor * 100) / 100));
+      return next;
+    });
   };
 
   // Sparkline-истории для превью
@@ -169,11 +333,18 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
   const isGridVisible = gridSnap > 1;
   const gridSize = gridSnap > 1 ? gridSnap : 20;
 
+  // Расчет viewBox с учетом масштабирования и панорамирования
+  const viewWidth = scheme.width / zoom;
+  const viewHeight = scheme.height / zoom;
+  const viewBoxStr = `${pan.x} ${pan.y} ${viewWidth} ${viewHeight}`;
+
   return (
     <S.CanvasArea>
       <S.CanvasSvg
         ref={svgRef}
-        viewBox={`0 0 ${scheme.width} ${scheme.height}`}
+        viewBox={viewBoxStr}
+        onWheel={handleWheel}
+        onMouseDown={handleCanvasMouseDown}
         onMouseMove={handlePointerMove}
         onMouseUp={handlePointerUp}
         onMouseLeave={handlePointerUp}
@@ -192,22 +363,36 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
         <rect
           className="scheme-background"
           fill="url(#builder-scheme-panel)"
-          x="0"
-          y="0"
-          width={scheme.width}
-          height={scheme.height}
+          x={pan.x - 3000}
+          y={pan.y - 3000}
+          width={scheme.width + 6000}
+          height={scheme.height + 6000}
         />
         {isGridVisible && (
           <rect
             className="scheme-grid"
             fill="url(#builder-grid)"
-            x="0"
-            y="0"
-            width={scheme.width}
-            height={scheme.height}
+            x={pan.x - 3000}
+            y={pan.y - 3000}
+            width={scheme.width + 6000}
+            height={scheme.height + 6000}
             opacity={theme.mode === 'light' ? 0.75 : 0.55}
           />
         )}
+
+        {/* Граница стандартного технологического планшета */}
+        <rect
+          x="0"
+          y="0"
+          width={scheme.width}
+          height={scheme.height}
+          fill="none"
+          stroke={theme.colors.border}
+          strokeWidth="1.5"
+          strokeDasharray="4 4"
+          opacity="0.6"
+          pointerEvents="none"
+        />
 
         {/* Технологические зоны */}
         {scheme.zones.map(z => (
@@ -231,9 +416,32 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
           return (
             <g
               key={pipe.id}
+              onMouseDown={e => handlePointerDownPipe(e, pipe)}
               onClick={e => handleItemClick(e, 'pipes', pipe.id)}
-              style={{ cursor: mode === 'edit' ? 'pointer' : 'default' }}
+              style={{ cursor: mode === 'edit' ? 'move' : 'default' }}
             >
+              {/* Невидимый хитбокс увеличенной ширины для легкого выделения и перетаскивания мышью */}
+              {pipe.d && (
+                <path
+                  d={pipe.d}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth="20"
+                  pointerEvents="stroke"
+                />
+              )}
+              {pipe.x1 !== undefined && (
+                <line
+                  x1={pipe.x1}
+                  y1={pipe.y1}
+                  x2={pipe.x2}
+                  y2={pipe.y2}
+                  stroke="transparent"
+                  strokeWidth="20"
+                  pointerEvents="stroke"
+                />
+              )}
+
               <PipelineSymbol
                 kind={pipe.kind}
                 d={pipe.d}
@@ -244,15 +452,47 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                 isActive={active}
                 isCutOff={isCut}
               />
+
+              {/* Подсветка выделения */}
               {isSelected && pipe.d && (
                 <path
                   d={pipe.d}
                   fill="none"
                   stroke={theme.colors.primary}
-                  strokeWidth="6"
-                  opacity="0.5"
+                  strokeWidth="7"
+                  opacity="0.6"
                   pointerEvents="none"
                 />
+              )}
+              {isSelected && pipe.x1 !== undefined && (
+                <line
+                  x1={pipe.x1}
+                  y1={pipe.y1}
+                  x2={pipe.x2}
+                  y2={pipe.y2}
+                  stroke={theme.colors.primary}
+                  strokeWidth="7"
+                  opacity="0.6"
+                  pointerEvents="none"
+                />
+              )}
+
+              {/* Маркеры (ручки) концов прямолинейной трубы для растягивания и привязки */}
+              {isSelected && mode === 'edit' && pipe.x1 !== undefined && (
+                <>
+                  <S.PipeHandle
+                    cx={pipe.x1}
+                    cy={pipe.y1}
+                    r="6"
+                    onMouseDown={e => handlePointerDownPipeHandle(e, pipe.id, 'start')}
+                  />
+                  <S.PipeHandle
+                    cx={pipe.x2}
+                    cy={pipe.y2}
+                    r="6"
+                    onMouseDown={e => handlePointerDownPipeHandle(e, pipe.id, 'end')}
+                  />
+                </>
               )}
             </g>
           );
@@ -420,6 +660,10 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
         {scheme.sensors.map(s => {
           const isSelected = selectedElement?.category === 'sensors' && selectedElement?.id === s.id;
           const val = sensors[s.sensorKey] ?? 0;
+          const hitWidth = s.showLevelGauge ? 132 : 92;
+          const hitHeight = s.showSparkline || s.showLevelGauge ? 56 : 38;
+          const hitX = s.x - (s.showLevelGauge ? 66 : 46);
+          const hitY = s.y - 18;
 
           return (
             <g
@@ -428,6 +672,15 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
               onClick={e => handleItemClick(e, 'sensors', s.id)}
               style={{ cursor: mode === 'edit' ? 'move' : 'default' }}
             >
+              {/* Прозрачный хитбокс для гарантированного захвата клика мышью */}
+              <rect
+                x={hitX}
+                y={hitY}
+                width={hitWidth}
+                height={hitHeight}
+                fill="transparent"
+                pointerEvents="all"
+              />
               <SensorSymbol
                 x={s.x}
                 y={s.y}
@@ -444,10 +697,10 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
               />
               {isSelected && (
                 <S.SelectionBox
-                  x={s.x - (s.showLevelGauge ? 66 : 46)}
-                  y={s.y - 18}
-                  width={s.showLevelGauge ? 132 : 92}
-                  height={s.showSparkline || s.showLevelGauge ? 56 : 38}
+                  x={hitX}
+                  y={hitY}
+                  width={hitWidth}
+                  height={hitHeight}
                   rx="6"
                 />
               )}
@@ -466,6 +719,15 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
               onClick={e => handleItemClick(e, 'labels', lbl.id)}
               style={{ cursor: mode === 'edit' ? 'move' : 'default' }}
             >
+              {/* Прозрачный хитбокс для надежного клика по тексту */}
+              <rect
+                x={lbl.x - 12}
+                y={lbl.y - 18}
+                width={100}
+                height={26}
+                fill="transparent"
+                pointerEvents="all"
+              />
               <text
                 x={lbl.x}
                 y={lbl.y}

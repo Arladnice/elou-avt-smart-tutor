@@ -11,3 +11,4 @@ export {
 } from './model/mnemoschemeContext';
 export { MnemoschemeProvider } from './model/MnemoschemeProvider';
 export * from './ui/symbols';
+export * from './lib/pathUtils';

@@ -30,6 +30,24 @@ const AVAILABLE_SENSOR_KEYS: (keyof Sensors)[] = [
 
 const PIPE_KINDS: PipeKind[] = ['crude', 'gas', 'steam', 'drain', 'fuel', 'demulsifier', 'utility'];
 
+const AVAILABLE_FLOW_BINDINGS: { key: string; label: string }[] = [
+  { key: '', label: 'Без анимации (статическая)' },
+  { key: 'k1Feed', label: 'Подача сырья в колонну К-1' },
+  { key: 'k1Relief', label: 'Сброс газов К-1 на факел' },
+  { key: 'k1Loop', label: 'Циркуляция остатка К-1 (П-3)' },
+  { key: 'k2Feed', label: 'Подача полугудрона в печь П-1 и К-2' },
+  { key: 'k1BottomOutflow', label: 'Выход кубового остатка К-1' },
+  { key: 'k2Outflow32', label: 'Откачка гудрона насосом Н-32' },
+  { key: 'k2Outflow4', label: 'Откачка гудрона насосом Н-4' },
+  { key: 'demulsifier', label: 'Подача деэмульгатора (ЭЛОУ)' },
+  { key: 'e1Drain', label: 'Дренаж соленой воды Э-1' },
+  { key: 'e2Drain', label: 'Дренаж соленой воды Э-2' },
+  { key: 'steamK1', label: 'Паропровод водяного пара в К-1' },
+  { key: 'steamK2', label: 'Паропровод водяного пара в К-2' },
+  { key: 'fuelP1', label: 'Топливный газ на горелки П-1' },
+  { key: 'fuelP3', label: 'Топливный газ на горелки П-3' },
+];
+
 export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   selectedElement,
   itemData,
@@ -242,6 +260,36 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               ))}
             </S.FormSelect>
           </S.FormGroup>
+
+          <S.FormGroup>
+            <S.FormLabel>Привязка технологического потока</S.FormLabel>
+            <S.FormSelect
+              value={itemData.flowBinding || ''}
+              onChange={e => handleFieldChange('flowBinding', e.target.value || undefined)}
+            >
+              {AVAILABLE_FLOW_BINDINGS.map(f => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </S.FormSelect>
+          </S.FormGroup>
+
+          <S.FormGroup>
+            <S.FormLabel>Отсечной клапан (перекрывающий поток)</S.FormLabel>
+            <S.FormSelect
+              value={itemData.cutOffValve || ''}
+              onChange={e => handleFieldChange('cutOffValve', e.target.value || undefined)}
+            >
+              <option value="">Без отсечки (постоянный)</option>
+              {AVAILABLE_VALVE_IDS.map(v => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </S.FormSelect>
+          </S.FormGroup>
+
           {itemData.d !== undefined && (
             <S.FormGroup>
               <S.FormLabel>Геометрия SVG Path (d)</S.FormLabel>

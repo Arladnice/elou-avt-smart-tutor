@@ -360,3 +360,26 @@ export const FullWidthActionButton = styled(ActionButton)`
   justify-content: center;
 `;
 
+export const ZoomBadge = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  font-family: ${props => props.theme.fonts.mono};
+  color: ${props => props.theme.colors.textMuted};
+  min-width: 38px;
+  text-align: center;
+  user-select: none;
+`;
+
+export const PipeHandle = styled.circle`
+  fill: ${props => props.theme.colors.surface};
+  stroke: ${props => props.theme.colors.primary};
+  stroke-width: 2;
+  cursor: crosshair;
+  transition: transform 0.15s ease, fill 0.15s ease;
+
+  &:hover {
+    fill: ${props => props.theme.colors.primary};
+    transform: scale(1.3);
+  }
+`;
+

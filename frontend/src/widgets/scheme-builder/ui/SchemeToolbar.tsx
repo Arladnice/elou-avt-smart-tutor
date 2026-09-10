@@ -11,6 +11,11 @@ import {
   Eye,
   Edit3,
   Grid,
+  Undo2,
+  Redo2,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from 'lucide-react';
 import type { MnemoschemeConfig } from '@/entities/mnemoscheme';
 import { useMnemoscheme } from '@/entities/mnemoscheme';
@@ -20,8 +25,16 @@ export interface SchemeToolbarProps {
   currentScheme: MnemoschemeConfig;
   mode: 'edit' | 'preview';
   gridSnap: number;
+  zoom: number;
+  canUndo: boolean;
+  canRedo: boolean;
   onSetMode: (mode: 'edit' | 'preview') => void;
   onSetGridSnap: (snap: number) => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onZoomReset: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
   onSave: () => void;
   onClone: () => void;
   onNew: () => void;
@@ -33,8 +46,16 @@ export const SchemeToolbar: React.FC<SchemeToolbarProps> = ({
   currentScheme,
   mode,
   gridSnap,
+  zoom,
+  canUndo,
+  canRedo,
   onSetMode,
   onSetGridSnap,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
+  onUndo,
+  onRedo,
   onSave,
   onClone,
   onNew,
@@ -118,15 +139,49 @@ export const SchemeToolbar: React.FC<SchemeToolbarProps> = ({
           </Tooltip>
         )}
 
-        <Tooltip title="Сбросить к заводскому пресету ЭЛОУ-АВТ-6">
+        <Tooltip title="Сбросить мнемосхему к эталонному регламенту ЭЛОУ-АВТ-6">
           <S.ActionButton onClick={onReset}>
             <RotateCcw size={13} /> Сброс
+          </S.ActionButton>
+        </Tooltip>
+
+        <Tooltip title="Отменить последнее действие (Ctrl+Z)">
+          <S.ActionButton disabled={!canUndo} onClick={onUndo}>
+            <Undo2 size={13} />
+          </S.ActionButton>
+        </Tooltip>
+
+        <Tooltip title="Повторить отмененное действие (Ctrl+Y)">
+          <S.ActionButton disabled={!canRedo} onClick={onRedo}>
+            <Redo2 size={13} />
           </S.ActionButton>
         </Tooltip>
       </S.ToolbarGroup>
 
       <S.ToolbarGroup>
         <Space orientation="horizontal" size={6}>
+          <Tooltip title="Уменьшить масштаб мнемосхемы">
+            <S.ActionButton onClick={onZoomOut} disabled={zoom <= 0.5}>
+              <ZoomOut size={13} />
+            </S.ActionButton>
+          </Tooltip>
+
+          <Tooltip title="Текущий масштаб">
+            <S.ZoomBadge>{Math.round(zoom * 100)}%</S.ZoomBadge>
+          </Tooltip>
+
+          <Tooltip title="Увеличить масштаб мнемосхемы">
+            <S.ActionButton onClick={onZoomIn} disabled={zoom >= 2.5}>
+              <ZoomIn size={13} />
+            </S.ActionButton>
+          </Tooltip>
+
+          <Tooltip title="Сбросить масштаб (100%)">
+            <S.ActionButton onClick={onZoomReset}>
+              <Maximize2 size={13} />
+            </S.ActionButton>
+          </Tooltip>
+
           <Tooltip title="Привязка к инженерной сетке">
             <Select
               value={gridSnap}
