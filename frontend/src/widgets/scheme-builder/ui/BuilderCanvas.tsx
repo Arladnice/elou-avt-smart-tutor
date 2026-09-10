@@ -63,6 +63,15 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     };
   };
 
+  const handleItemClick = (
+    e: React.MouseEvent,
+    category: SelectedElementRef['category'],
+    id: string,
+  ) => {
+    e.stopPropagation();
+    onSelectElement({ category, id });
+  };
+
   const handlePointerDownItem = (
     e: React.MouseEvent,
     category: SelectedElementRef['category'],
@@ -70,6 +79,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     currentX: number,
     currentY: number,
   ) => {
+    if (e.button !== 0) return;
     e.stopPropagation();
     onSelectElement({ category, id });
 
@@ -98,6 +108,17 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
 
   const handlePointerUp = () => {
     setDragging(null);
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    const target = e.target as SVGElement;
+    if (
+      target === svgRef.current ||
+      target.classList?.contains('scheme-background') ||
+      target.classList?.contains('scheme-grid')
+    ) {
+      onSelectElement(null);
+    }
   };
 
   // Sparkline-истории для превью
@@ -145,6 +166,9 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     return false;
   };
 
+  const isGridVisible = gridSnap > 1;
+  const gridSize = gridSnap > 1 ? gridSnap : 20;
+
   return (
     <S.CanvasArea>
       <S.CanvasSvg
@@ -152,20 +176,38 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
         viewBox={`0 0 ${scheme.width} ${scheme.height}`}
         onMouseMove={handlePointerMove}
         onMouseUp={handlePointerUp}
-        onClick={() => onSelectElement(null)}
+        onMouseLeave={handlePointerUp}
+        onClick={handleCanvasClick}
       >
         <defs>
           <linearGradient id="builder-scheme-panel" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={theme.colors.mnemonicPanelTop} />
             <stop offset="100%" stopColor={theme.colors.mnemonicPanelBottom} />
           </linearGradient>
-          <pattern id="builder-grid" width="24" height="24" patternUnits="userSpaceOnUse">
-            <path d="M 24 0 L 0 0 0 24" className="grid-line" />
+          <pattern id="builder-grid" width={gridSize} height={gridSize} patternUnits="userSpaceOnUse">
+            <path d={`M ${gridSize} 0 L 0 0 0 ${gridSize}`} className="grid-line" />
           </pattern>
         </defs>
 
-        <rect className="scheme-background" x="0" y="0" width={scheme.width} height={scheme.height} />
-        <rect className="scheme-grid" x="0" y="0" width={scheme.width} height={scheme.height} fill="url(#builder-grid)" opacity="0.4" />
+        <rect
+          className="scheme-background"
+          fill="url(#builder-scheme-panel)"
+          x="0"
+          y="0"
+          width={scheme.width}
+          height={scheme.height}
+        />
+        {isGridVisible && (
+          <rect
+            className="scheme-grid"
+            fill="url(#builder-grid)"
+            x="0"
+            y="0"
+            width={scheme.width}
+            height={scheme.height}
+            opacity={theme.mode === 'light' ? 0.75 : 0.55}
+          />
+        )}
 
         {/* Технологические зоны */}
         {scheme.zones.map(z => (
@@ -189,7 +231,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
           return (
             <g
               key={pipe.id}
-              onClick={e => handlePointerDownItem(e, 'pipes', pipe.id, 0, 0)}
+              onClick={e => handleItemClick(e, 'pipes', pipe.id)}
               style={{ cursor: mode === 'edit' ? 'pointer' : 'default' }}
             >
               <PipelineSymbol
@@ -225,6 +267,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
             <g
               key={col.id}
               onMouseDown={e => handlePointerDownItem(e, 'columns', col.id, col.x, col.y)}
+              onClick={e => handleItemClick(e, 'columns', col.id)}
               style={{ cursor: mode === 'edit' ? 'move' : 'default' }}
             >
               <ColumnSymbol
@@ -253,6 +296,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
             <g
               key={fur.id}
               onMouseDown={e => handlePointerDownItem(e, 'furnaces', fur.id, fur.x, fur.y)}
+              onClick={e => handleItemClick(e, 'furnaces', fur.id)}
               style={{ cursor: mode === 'edit' ? 'move' : 'default' }}
             >
               <FurnaceSymbol
@@ -279,6 +323,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
             <g
               key={ves.id}
               onMouseDown={e => handlePointerDownItem(e, 'vessels', ves.id, ves.x, ves.y)}
+              onClick={e => handleItemClick(e, 'vessels', ves.id)}
               style={{ cursor: mode === 'edit' ? 'move' : 'default' }}
             >
               <VesselSymbol
@@ -306,6 +351,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
             <g
               key={p.id}
               onMouseDown={e => handlePointerDownItem(e, 'pumps', p.id, p.x, p.y)}
+              onClick={e => {
+                e.stopPropagation();
+                if (mode === 'edit') {
+                  onSelectElement({ category: 'pumps', id: p.id });
+                }
+              }}
               style={{ cursor: mode === 'edit' ? 'move' : 'pointer' }}
             >
               <PumpSymbol
@@ -337,6 +388,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
             <g
               key={v.id}
               onMouseDown={e => handlePointerDownItem(e, 'valves', v.id, v.x, v.y)}
+              onClick={e => {
+                e.stopPropagation();
+                if (mode === 'edit') {
+                  onSelectElement({ category: 'valves', id: v.id });
+                }
+              }}
               style={{ cursor: mode === 'edit' ? 'move' : 'pointer' }}
             >
               <ValveSymbol
@@ -368,6 +425,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
             <g
               key={s.id}
               onMouseDown={e => handlePointerDownItem(e, 'sensors', s.id, s.x, s.y)}
+              onClick={e => handleItemClick(e, 'sensors', s.id)}
               style={{ cursor: mode === 'edit' ? 'move' : 'default' }}
             >
               <SensorSymbol
@@ -405,6 +463,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
             <g
               key={lbl.id}
               onMouseDown={e => handlePointerDownItem(e, 'labels', lbl.id, lbl.x, lbl.y)}
+              onClick={e => handleItemClick(e, 'labels', lbl.id)}
               style={{ cursor: mode === 'edit' ? 'move' : 'default' }}
             >
               <text

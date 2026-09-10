@@ -166,7 +166,75 @@ export const CanvasArea = styled.div`
 export const CanvasSvg = styled.svg`
   width: 100%;
   height: 100%;
+  background-color: ${props => props.theme.colors.mnemonicCanvas};
   user-select: none;
+
+  .scheme-background {
+    fill: url(#builder-scheme-panel);
+  }
+
+  .scheme-grid {
+    fill: url(#builder-grid);
+    pointer-events: none;
+  }
+
+  .grid-line {
+    fill: none;
+    stroke: ${props => props.theme.colors.mnemonicGrid};
+    stroke-width: ${props => (props.theme.mode === 'light' ? 0.9 : 0.65)};
+  }
+
+  .process-zone {
+    fill: ${props => props.theme.colors.mnemonicZone};
+    stroke: ${props => props.theme.colors.mnemonicZoneBorder};
+    stroke-width: 0.65;
+    pointer-events: none;
+  }
+
+  .source-label,
+  .equipment-tag,
+  .column-tag,
+  .valve-tag {
+    fill: ${props => props.theme.colors.mnemonicText};
+    font-family: ${props => props.theme.fonts.mono};
+    font-weight: 700;
+    text-anchor: middle;
+  }
+
+  .source-label {
+    font-size: 12px;
+    text-anchor: start;
+  }
+
+  .equipment-tag,
+  .valve-tag {
+    font-size: 11px;
+  }
+
+  .column-tag {
+    font-size: 17px;
+  }
+
+  .utility-label {
+    fill: ${props => props.theme.colors.mnemonicTextMuted};
+    font-family: ${props => props.theme.fonts.mono};
+    font-size: 10px;
+  }
+
+  .gas-release-label {
+    fill: ${props => props.theme.colors.mnemonicTextMuted};
+    font-family: ${props => props.theme.fonts.mono};
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.35px;
+  }
+
+  .sparkline-frame {
+    fill: ${props => props.theme.colors.instrumentBackground};
+    stroke: ${props => props.theme.colors.instrumentFrame};
+    stroke-width: 1;
+    rx: 3px;
+  }
 `;
 
 export const SelectionBox = styled.rect`
