@@ -1,5 +1,6 @@
 import React from 'react';
-import type { PipeKind } from '../../model/types';
+import type { PipeKind, PipeRouting } from '../../model/types';
+import { computePipePath } from '../../lib/pathUtils';
 import * as S from './symbols.styles';
 
 export interface PipelineSymbolProps {
@@ -9,6 +10,9 @@ export interface PipelineSymbolProps {
   y1?: number;
   x2?: number;
   y2?: number;
+  routing?: PipeRouting;
+  midX?: number;
+  midY?: number;
   isActive?: boolean;
   isCutOff?: boolean;
 }
@@ -20,14 +24,13 @@ export const PipelineSymbol: React.FC<PipelineSymbolProps> = ({
   y1,
   x2,
   y2,
+  routing,
+  midX,
+  midY,
   isActive,
   isCutOff,
 }) => {
-  const lineD =
-    d ||
-    (x1 !== undefined && y1 !== undefined && x2 !== undefined && y2 !== undefined
-      ? `M ${x1},${y1} L ${x2},${y2}`
-      : undefined);
+  const lineD = computePipePath({ d, x1, y1, x2, y2, routing, midX, midY });
 
   if (kind === 'demulsifier' && lineD) {
     return <S.DemulsifierLine d={lineD} $isActive={isActive} />;
@@ -39,21 +42,9 @@ export const PipelineSymbol: React.FC<PipelineSymbolProps> = ({
 
   if (
     (kind === 'steam' || kind === 'drain' || kind === 'fuel' || kind === 'utility') &&
-    x1 !== undefined &&
-    y1 !== undefined &&
-    x2 !== undefined &&
-    y2 !== undefined
+    lineD
   ) {
-    return (
-      <S.UtilityLine
-        $kind={kind}
-        $isActive={isActive}
-        x1={x1.toString()}
-        y1={y1.toString()}
-        x2={x2.toString()}
-        y2={y2.toString()}
-      />
-    );
+    return <S.UtilityLine d={lineD} $kind={kind} $isActive={isActive} />;
   }
 
   if (lineD) {

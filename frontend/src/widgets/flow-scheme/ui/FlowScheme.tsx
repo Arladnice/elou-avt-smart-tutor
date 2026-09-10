@@ -356,6 +356,9 @@ const FlowScheme: React.FC = () => {
                   y1={pipe.y1}
                   x2={pipe.x2}
                   y2={pipe.y2}
+                  routing={pipe.routing}
+                  midX={pipe.midX}
+                  midY={pipe.midY}
                   isActive={active}
                   isCutOff={cutOff}
                 />

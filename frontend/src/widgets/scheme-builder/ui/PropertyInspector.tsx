@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Trash2, Sliders } from 'lucide-react';
 import type { ValveId, PumpId, Sensors } from '@/entities/telemetry';
-import type { PipeKind } from '@/entities/mnemoscheme';
+import type { MnemoschemeConfig, PipeKind, SnapPort } from '@/entities/mnemoscheme';
+import { getSnapPorts, findMatchingPort } from '@/entities/mnemoscheme';
 import * as S from './SchemeBuilder.styles';
 
 export interface SelectedElementRef {
@@ -10,6 +11,7 @@ export interface SelectedElementRef {
 }
 
 export interface PropertyInspectorProps {
+  scheme?: MnemoschemeConfig;
   selectedElement: SelectedElementRef | null;
   itemData: any | null;
   onUpdateItem: (category: SelectedElementRef['category'], id: string, patch: Record<string, any>) => void;
@@ -48,38 +50,38 @@ const AVAILABLE_FLOW_BINDINGS: { key: string; label: string }[] = [
   { key: 'fuelP3', label: 'Топливный газ на горелки П-3' },
 ];
 
-const STANDARD_PORTS = [
-  { label: 'Всас насоса Н-20', x: 120, y: 100 },
-  { label: 'Напор насоса Н-20', x: 180, y: 100 },
-  { label: 'Вход задвижки V-1', x: 290, y: 100 },
-  { label: 'Выход задвижки V-1', x: 330, y: 100 },
-  { label: 'Штуцер питания К-1', x: 410, y: 190 },
-  { label: 'Верх колонны К-1 (сброс газа)', x: 480, y: 70 },
-  { label: 'Куб колонны К-1', x: 480, y: 410 },
-  { label: 'Всас насоса Н-3', x: 290, y: 470 },
-  { label: 'Напор насоса Н-3', x: 350, y: 470 },
-  { label: 'Вход змеевика печи П-3', x: 130, y: 470 },
-  { label: 'Выход змеевика печи П-3', x: 220, y: 470 },
-  { label: 'Всас насоса Н-2', x: 550, y: 470 },
-  { label: 'Напор насоса Н-2', x: 610, y: 470 },
-  { label: 'Вход печи П-1', x: 650, y: 470 },
-  { label: 'Выход печи П-1', x: 740, y: 470 },
-  { label: 'Питание колонны К-2', x: 900, y: 250 },
-  { label: 'Куб колонны К-2', x: 960, y: 450 },
-  { label: 'Всас насоса Н-32', x: 1050, y: 490 },
-  { label: 'Напор насоса Н-32', x: 1110, y: 490 },
-  { label: 'Всас насоса Н-4', x: 1050, y: 570 },
-  { label: 'Напор насоса Н-4', x: 1110, y: 570 },
-  { label: 'Емкость Е-1 (дренаж)', x: 680, y: 90 },
-  { label: 'Емкость Е-2 (дренаж)', x: 1160, y: 110 },
-];
-
 export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
+  scheme,
   selectedElement,
   itemData,
   onUpdateItem,
   onDeleteItem,
 }) => {
+  const availablePorts = useMemo(
+    () => (scheme ? getSnapPorts(scheme, selectedElement?.id) : []),
+    [scheme, selectedElement?.id]
+  );
+
+  const groupedPorts = useMemo(() => {
+    const groups: Record<string, SnapPort[]> = {};
+    availablePorts.forEach(port => {
+      const groupName = port.categoryLabel || 'Оборудование';
+      if (!groups[groupName]) groups[groupName] = [];
+      groups[groupName].push(port);
+    });
+    return groups;
+  }, [availablePorts]);
+
+  const matchedStartPort = useMemo(
+    () => findMatchingPort(availablePorts, itemData?.x1, itemData?.y1),
+    [availablePorts, itemData?.x1, itemData?.y1]
+  );
+
+  const matchedEndPort = useMemo(
+    () => findMatchingPort(availablePorts, itemData?.x2, itemData?.y2),
+    [availablePorts, itemData?.x2, itemData?.y2]
+  );
+
   if (!selectedElement || !itemData) {
     return (
       <S.InspectorSidebar>
@@ -370,6 +372,108 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           {itemData.x1 !== undefined && itemData.x2 !== undefined && (
             <>
               <S.FormGroup>
+                <S.FormLabel>Форма трассировки (углы 90°)</S.FormLabel>
+                <S.RoutingButtonGroup>
+                  <S.RoutingButton
+                    type="button"
+                    $isActive={!itemData.routing || itemData.routing === 'direct'}
+                    onClick={() => handleFieldChange('routing', 'direct')}
+                  >
+                    <S.RoutingGlyph>──</S.RoutingGlyph>
+                    Прямая
+                  </S.RoutingButton>
+                  <S.RoutingButton
+                    type="button"
+                    $isActive={itemData.routing === 'elbow-hv'}
+                    onClick={() => handleFieldChange('routing', 'elbow-hv')}
+                  >
+                    <S.RoutingGlyph>┌─</S.RoutingGlyph>
+                    Г (H-V)
+                  </S.RoutingButton>
+                  <S.RoutingButton
+                    type="button"
+                    $isActive={itemData.routing === 'elbow-vh'}
+                    onClick={() => handleFieldChange('routing', 'elbow-vh')}
+                  >
+                    <S.RoutingGlyph>└─</S.RoutingGlyph>
+                    Г (V-H)
+                  </S.RoutingButton>
+                  <S.RoutingButton
+                    type="button"
+                    $isActive={itemData.routing === 'step-h'}
+                    onClick={() => handleFieldChange('routing', 'step-h')}
+                  >
+                    <S.RoutingGlyph>─┐└</S.RoutingGlyph>
+                    Ступенька H
+                  </S.RoutingButton>
+                  <S.RoutingButton
+                    type="button"
+                    $isActive={itemData.routing === 'step-v'}
+                    onClick={() => handleFieldChange('routing', 'step-v')}
+                  >
+                    <S.RoutingGlyph>┌─┘</S.RoutingGlyph>
+                    Ступенька V
+                  </S.RoutingButton>
+                </S.RoutingButtonGroup>
+              </S.FormGroup>
+
+              {itemData.routing === 'step-h' && (
+                <S.FormGroup>
+                  <S.FormLabel>Смещение изгиба X (перемычка)</S.FormLabel>
+                  <S.CoordinateRow>
+                    <S.FormInput
+                      type="number"
+                      value={
+                        itemData.midX !== undefined
+                          ? itemData.midX
+                          : Math.round((itemData.x1 + itemData.x2) / 20) * 10
+                      }
+                      onChange={e => handleNumberChange('midX', e)}
+                    />
+                    <S.ActionButton
+                      type="button"
+                      onClick={() =>
+                        handleFieldChange(
+                          'midX',
+                          Math.round((itemData.x1 + itemData.x2) / 20) * 10
+                        )
+                      }
+                    >
+                      По центру
+                    </S.ActionButton>
+                  </S.CoordinateRow>
+                </S.FormGroup>
+              )}
+
+              {itemData.routing === 'step-v' && (
+                <S.FormGroup>
+                  <S.FormLabel>Смещение изгиба Y (перемычка)</S.FormLabel>
+                  <S.CoordinateRow>
+                    <S.FormInput
+                      type="number"
+                      value={
+                        itemData.midY !== undefined
+                          ? itemData.midY
+                          : Math.round((itemData.y1 + itemData.y2) / 20) * 10
+                      }
+                      onChange={e => handleNumberChange('midY', e)}
+                    />
+                    <S.ActionButton
+                      type="button"
+                      onClick={() =>
+                        handleFieldChange(
+                          'midY',
+                          Math.round((itemData.y1 + itemData.y2) / 20) * 10
+                        )
+                      }
+                    >
+                      По центру
+                    </S.ActionButton>
+                  </S.CoordinateRow>
+                </S.FormGroup>
+              )}
+
+              <S.FormGroup>
                 <S.FormLabel>Выравнивание геометрии</S.FormLabel>
                 <S.CoordinateRow>
                   <S.ActionButton
@@ -390,19 +494,36 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               <S.FormGroup>
                 <S.FormLabel>Прикрепить начало (X1, Y1) к аппарату</S.FormLabel>
                 <S.FormSelect
-                  value=""
+                  value={matchedStartPort ? matchedStartPort.id : (itemData.startAnchor || '')}
                   onChange={e => {
-                    const port = STANDARD_PORTS.find(p => p.label === e.target.value);
+                    const portId = e.target.value;
+                    if (!portId) {
+                      onUpdateItem(category, id, { startAnchor: undefined });
+                      return;
+                    }
+                    const port = availablePorts.find(p => p.id === portId);
                     if (port) {
-                      onUpdateItem(category, id, { x1: port.x, y1: port.y });
+                      onUpdateItem(category, id, {
+                        x1: port.x,
+                        y1: port.y,
+                        startAnchor: port.id,
+                      });
                     }
                   }}
                 >
-                  <option value="">Выберите штуцер оборудования...</option>
-                  {STANDARD_PORTS.map(p => (
-                    <option key={p.label} value={p.label}>
-                      {p.label} ({p.x}, {p.y})
-                    </option>
+                  <option value="">
+                    {matchedStartPort
+                      ? `Привязано: ${matchedStartPort.label} (${matchedStartPort.x}, ${matchedStartPort.y})`
+                      : 'Выберите штуцер оборудования...'}
+                  </option>
+                  {Object.entries(groupedPorts).map(([groupLabel, ports]) => (
+                    <optgroup key={groupLabel} label={groupLabel}>
+                      {ports.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.label} ({p.x}, {p.y})
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </S.FormSelect>
               </S.FormGroup>
@@ -410,19 +531,36 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               <S.FormGroup>
                 <S.FormLabel>Прикрепить конец (X2, Y2) к аппарату</S.FormLabel>
                 <S.FormSelect
-                  value=""
+                  value={matchedEndPort ? matchedEndPort.id : (itemData.endAnchor || '')}
                   onChange={e => {
-                    const port = STANDARD_PORTS.find(p => p.label === e.target.value);
+                    const portId = e.target.value;
+                    if (!portId) {
+                      onUpdateItem(category, id, { endAnchor: undefined });
+                      return;
+                    }
+                    const port = availablePorts.find(p => p.id === portId);
                     if (port) {
-                      onUpdateItem(category, id, { x2: port.x, y2: port.y });
+                      onUpdateItem(category, id, {
+                        x2: port.x,
+                        y2: port.y,
+                        endAnchor: port.id,
+                      });
                     }
                   }}
                 >
-                  <option value="">Выберите штуцер оборудования...</option>
-                  {STANDARD_PORTS.map(p => (
-                    <option key={p.label} value={p.label}>
-                      {p.label} ({p.x}, {p.y})
-                    </option>
+                  <option value="">
+                    {matchedEndPort
+                      ? `Привязано: ${matchedEndPort.label} (${matchedEndPort.x}, ${matchedEndPort.y})`
+                      : 'Выберите штуцер оборудования...'}
+                  </option>
+                  {Object.entries(groupedPorts).map(([groupLabel, ports]) => (
+                    <optgroup key={groupLabel} label={groupLabel}>
+                      {ports.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.label} ({p.x}, {p.y})
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </S.FormSelect>
               </S.FormGroup>

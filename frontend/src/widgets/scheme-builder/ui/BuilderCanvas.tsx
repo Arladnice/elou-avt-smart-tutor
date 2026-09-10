@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useTheme } from 'styled-components';
-import type { MnemoschemeConfig } from '@/entities/mnemoscheme';
-import { translateSvgPath } from '@/entities/mnemoscheme';
+import type { MnemoschemeConfig, SnapPort } from '@/entities/mnemoscheme';
+import { translateSvgPath, getSnapPorts, computePipePath } from '@/entities/mnemoscheme';
 import { useTelemetry } from '@/entities/telemetry';
 import { useSimulatorActions } from '@/entities/simulator';
 import {
@@ -68,6 +68,8 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     initialY1?: number;
     initialX2?: number;
     initialY2?: number;
+    initialMidX?: number;
+    initialMidY?: number;
     initialD?: string;
   } | null>(null);
 
@@ -75,6 +77,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
   const [pipeHandleDragging, setPipeHandleDragging] = useState<{
     id: string;
     handle: 'start' | 'end';
+  } | null>(null);
+
+  // Состояние перетаскивания ручки регулировки изгиба Z-ступеньки
+  const [pipeMidDragging, setPipeMidDragging] = useState<{
+    id: string;
+    axis: 'x' | 'y';
   } | null>(null);
 
   // Состояние панорамирования холста (перемещение рабочей области)
@@ -87,66 +95,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
 
   const svgRef = useRef<SVGSVGElement>(null);
   const hasMovedRef = useRef<boolean>(false);
-  const [activeSnapPort, setActiveSnapPort] = useState<{ x: number; y: number; label: string } | null>(null);
-
-  // Сбор всех технологических портов оборудования и концов труб для магнитного соединения
-  const getSnapPorts = (excludePipeId?: string) => {
-    const ports: { x: number; y: number; label: string }[] = [];
-
-    // Насосы
-    scheme.pumps.forEach(p => {
-      ports.push({ x: p.x - 30, y: p.y, label: `Всас ${p.tag}` });
-      ports.push({ x: p.x + 30, y: p.y, label: `Напор ${p.tag}` });
-    });
-
-    // Задвижки и клапаны
-    scheme.valves.forEach(v => {
-      const isVert = Boolean(v.vertical || v.rotate === 90 || v.rotate === 270);
-      const name = v.label || v.valveId;
-      if (isVert) {
-        ports.push({ x: v.x, y: v.y - 20, label: `Вход ${name}` });
-        ports.push({ x: v.x, y: v.y + 20, label: `Выход ${name}` });
-      } else {
-        ports.push({ x: v.x - 20, y: v.y, label: `Вход ${name}` });
-        ports.push({ x: v.x + 20, y: v.y, label: `Выход ${name}` });
-      }
-    });
-
-    // Емкости
-    scheme.vessels.forEach(v => {
-      ports.push({ x: v.x, y: v.y + 20, label: `Штуцер ${v.tag}` });
-      ports.push({ x: v.x + 120, y: v.y + 20, label: `Штуцер ${v.tag}` });
-      ports.push({ x: v.x + 60, y: v.y + 45, label: `Дренаж ${v.tag}` });
-    });
-
-    // Печи
-    scheme.furnaces.forEach(f => {
-      ports.push({ x: f.x, y: f.y + 35, label: `Вход змеевика ${f.tag}` });
-      ports.push({ x: f.x + 90, y: f.y + 35, label: `Выход ${f.tag}` });
-      ports.push({ x: f.x + 45, y: f.y + 70, label: `Топливо ${f.tag}` });
-    });
-
-    // Колонны
-    scheme.columns.forEach(c => {
-      ports.push({ x: c.x + 45, y: c.y, label: `Верх ${c.tag}` });
-      ports.push({ x: c.x, y: c.y + 110, label: `Питание ${c.tag}` });
-      ports.push({ x: c.x + 90, y: c.y + 110, label: `Питание ${c.tag}` });
-      ports.push({ x: c.x + 45, y: c.y + 250, label: `Куб ${c.tag}` });
-    });
-
-    // Концы других труб
-    scheme.pipes.forEach(p => {
-      if (p.id === excludePipeId) return;
-      if (p.x1 !== undefined && p.y1 !== undefined) {
-        ports.push({ x: p.x1, y: p.y1, label: `Линия (${p.kind})` });
-      }
-      if (p.x2 !== undefined && p.y2 !== undefined) {
-        ports.push({ x: p.x2, y: p.y2, label: `Линия (${p.kind})` });
-      }
-    });
-
-    return ports;
-  };
+  const [activeSnapPort, setActiveSnapPort] = useState<SnapPort | null>(null);
 
   const snap = (val: number) => {
     if (gridSnap <= 1) return Math.round(val);
@@ -214,6 +163,8 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
         initialY1: pipe.y1,
         initialX2: pipe.x2,
         initialY2: pipe.y2,
+        initialMidX: pipe.midX,
+        initialMidY: pipe.midY,
         initialD: pipe.d,
       });
     }
@@ -227,6 +178,16 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     if (e.button !== 0) return;
     e.stopPropagation();
     setPipeHandleDragging({ id, handle });
+  };
+
+  const handlePointerDownPipeMidHandle = (
+    e: React.MouseEvent,
+    id: string,
+    axis: 'x' | 'y',
+  ) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    setPipeMidDragging({ id, axis });
   };
 
   const handlePointerMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -248,7 +209,18 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
 
     if (mode !== 'edit') return;
 
-    // 2. Редактирование конца прямолинейной трубы через ручку с магнитной привязкой к портам
+    // 2. Регулировка изгиба Z-ступеньки
+    if (pipeMidDragging) {
+      const { x, y } = getSvgCoordinates(e);
+      if (pipeMidDragging.axis === 'x') {
+        onUpdateItem('pipes', pipeMidDragging.id, { midX: snap(x) });
+      } else {
+        onUpdateItem('pipes', pipeMidDragging.id, { midY: snap(y) });
+      }
+      return;
+    }
+
+    // 3. Редактирование конца прямолинейной трубы через ручку с магнитной привязкой к портам
     if (pipeHandleDragging) {
       const { x, y } = getSvgCoordinates(e);
       const targetPipe = scheme.pipes.find(p => p.id === pipeHandleDragging.id);
@@ -256,8 +228,8 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
       const otherY = pipeHandleDragging.handle === 'start' ? targetPipe?.y2 : targetPipe?.y1;
 
       // Поиск ближайшего технологического порта подключения (порог 24 px)
-      const ports = getSnapPorts(pipeHandleDragging.id);
-      let closestPort: { x: number; y: number; label: string } | null = null;
+      const ports = getSnapPorts(scheme, pipeHandleDragging.id);
+      let closestPort: SnapPort | null = null;
       let minDistance = 24;
 
       for (const port of ports) {
@@ -287,14 +259,22 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
       }
 
       if (pipeHandleDragging.handle === 'start') {
-        onUpdateItem('pipes', pipeHandleDragging.id, { x1: finalX, y1: finalY });
+        onUpdateItem('pipes', pipeHandleDragging.id, {
+          x1: finalX,
+          y1: finalY,
+          startAnchor: closestPort ? closestPort.id : undefined,
+        });
       } else {
-        onUpdateItem('pipes', pipeHandleDragging.id, { x2: finalX, y2: finalY });
+        onUpdateItem('pipes', pipeHandleDragging.id, {
+          x2: finalX,
+          y2: finalY,
+          endAnchor: closestPort ? closestPort.id : undefined,
+        });
       }
       return;
     }
 
-    // 3. Перетаскивание трубы целиком
+    // 4. Перетаскивание трубы целиком
     if (pipeDragging) {
       const { x, y } = getSvgCoordinates(e);
       const deltaX = snap(x - pipeDragging.startX);
@@ -309,12 +289,20 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
           y1: pipeDragging.initialY1! + deltaY,
           x2: pipeDragging.initialX2! + deltaX,
           y2: pipeDragging.initialY2! + deltaY,
+          midX:
+            pipeDragging.initialMidX !== undefined
+              ? pipeDragging.initialMidX + deltaX
+              : undefined,
+          midY:
+            pipeDragging.initialMidY !== undefined
+              ? pipeDragging.initialMidY + deltaY
+              : undefined,
         });
       }
       return;
     }
 
-    // 4. Перетаскивание оборудования / датчиков / меток
+    // 5. Перетаскивание оборудования / датчиков / меток
     if (dragging) {
       const { x, y } = getSvgCoordinates(e);
       const deltaX = x - dragging.startX;
@@ -326,7 +314,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
   };
 
   const handlePointerUp = () => {
-    if (dragging || pipeDragging || pipeHandleDragging) {
+    if (dragging || pipeDragging || pipeHandleDragging || pipeMidDragging) {
       onCommitHistory?.();
     }
     setDragging(null);
@@ -506,6 +494,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
           const isSelected = selectedElement?.category === 'pipes' && selectedElement?.id === pipe.id;
           const active = mode === 'preview' ? isPipeActive(pipe.flowBinding) : undefined;
           const isCut = mode === 'preview' && pipe.cutOffValve ? !valves[pipe.cutOffValve] : false;
+          const pathD = computePipePath(pipe);
 
           return (
             <g
@@ -515,21 +504,10 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
               style={{ cursor: mode === 'edit' ? 'move' : 'default' }}
             >
               {/* Невидимый хитбокс увеличенной ширины для легкого выделения и перетаскивания мышью */}
-              {pipe.d && (
+              {pathD && (
                 <path
-                  d={pipe.d}
+                  d={pathD}
                   fill="none"
-                  stroke="transparent"
-                  strokeWidth="20"
-                  pointerEvents="stroke"
-                />
-              )}
-              {pipe.x1 !== undefined && (
-                <line
-                  x1={pipe.x1}
-                  y1={pipe.y1}
-                  x2={pipe.x2}
-                  y2={pipe.y2}
                   stroke="transparent"
                   strokeWidth="20"
                   pointerEvents="stroke"
@@ -543,27 +521,18 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                 y1={pipe.y1}
                 x2={pipe.x2}
                 y2={pipe.y2}
+                routing={pipe.routing}
+                midX={pipe.midX}
+                midY={pipe.midY}
                 isActive={active}
                 isCutOff={isCut}
               />
 
               {/* Подсветка выделения */}
-              {isSelected && pipe.d && (
+              {isSelected && pathD && (
                 <path
-                  d={pipe.d}
+                  d={pathD}
                   fill="none"
-                  stroke={theme.colors.primary}
-                  strokeWidth="7"
-                  opacity="0.6"
-                  pointerEvents="none"
-                />
-              )}
-              {isSelected && pipe.x1 !== undefined && (
-                <line
-                  x1={pipe.x1}
-                  y1={pipe.y1}
-                  x2={pipe.x2}
-                  y2={pipe.y2}
                   stroke={theme.colors.primary}
                   strokeWidth="7"
                   opacity="0.6"
@@ -572,7 +541,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
               )}
 
               {/* Маркеры (ручки) концов прямолинейной трубы для растягивания и привязки */}
-              {isSelected && mode === 'edit' && pipe.x1 !== undefined && (
+              {isSelected && mode === 'edit' && pipe.x1 !== undefined && pipe.x2 !== undefined && (
                 <>
                   <S.PipeHandle
                     cx={pipe.x1}
@@ -586,6 +555,32 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                     r="6"
                     onMouseDown={e => handlePointerDownPipeHandle(e, pipe.id, 'end')}
                   />
+                  {pipe.routing === 'step-h' && (
+                    <S.PipeMidHandle
+                      $axis="x"
+                      cx={
+                        pipe.midX !== undefined
+                          ? pipe.midX
+                          : Math.round((pipe.x1 + pipe.x2) / 20) * 10
+                      }
+                      cy={(pipe.y1! + pipe.y2!) / 2}
+                      r="5.5"
+                      onMouseDown={e => handlePointerDownPipeMidHandle(e, pipe.id, 'x')}
+                    />
+                  )}
+                  {pipe.routing === 'step-v' && (
+                    <S.PipeMidHandle
+                      $axis="y"
+                      cx={(pipe.x1 + pipe.x2) / 2}
+                      cy={
+                        pipe.midY !== undefined
+                          ? pipe.midY
+                          : Math.round((pipe.y1! + pipe.y2!) / 20) * 10
+                      }
+                      r="5.5"
+                      onMouseDown={e => handlePointerDownPipeMidHandle(e, pipe.id, 'y')}
+                    />
+                  )}
                 </>
               )}
             </g>

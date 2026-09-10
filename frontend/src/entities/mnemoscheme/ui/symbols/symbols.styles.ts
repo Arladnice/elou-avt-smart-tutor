@@ -335,7 +335,8 @@ export const DemulsifierLine = styled.path<{ $isActive?: boolean }>`
   filter: drop-shadow(0 1px 0 ${props => props.theme.colors.metalLight});
 `;
 
-export const UtilityLine = styled.line<{ $kind?: 'steam' | 'fuel' | 'drain' | 'utility'; $isActive?: boolean }>`
+export const UtilityLine = styled.path<{ $kind?: 'steam' | 'fuel' | 'drain' | 'utility'; $isActive?: boolean }>`
+  fill: none;
   stroke: ${props => {
     if (props.$isActive === false) return props.theme.colors.pipeIdle;
     if (props.$kind === 'steam' || props.$kind === 'utility') return props.theme.colors.steamLine;

@@ -100,6 +100,8 @@ export interface SensorNodeConfig {
   maxLimit?: number;
 }
 
+export type PipeRouting = 'direct' | 'elbow-hv' | 'elbow-vh' | 'step-h' | 'step-v';
+
 export interface PipelineConfig {
   id: string;
   d?: string;
@@ -110,6 +112,11 @@ export interface PipelineConfig {
   y1?: number;
   x2?: number;
   y2?: number;
+  routing?: PipeRouting;
+  midX?: number;
+  midY?: number;
+  startAnchor?: string;
+  endAnchor?: string;
 }
 
 export interface LabelConfig {

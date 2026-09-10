@@ -12,3 +12,4 @@ export {
 export { MnemoschemeProvider } from './model/MnemoschemeProvider';
 export * from './ui/symbols';
 export * from './lib/pathUtils';
+export * from './model/snapPorts';

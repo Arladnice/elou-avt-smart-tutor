@@ -160,7 +160,40 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
     x: number,
     y: number,
   ) => {
-    handleUpdateItem(category, id, { x, y });
+    setWorkingScheme(prev => {
+      const list = (prev[category] as any[]) || [];
+      const oldItem = list.find(item => item.id === id);
+      const dx = oldItem ? x - oldItem.x : 0;
+      const dy = oldItem ? y - oldItem.y : 0;
+
+      const updatedList = list.map(item => (item.id === id ? { ...item, x, y } : item));
+
+      // Если перемещен аппарат, клапан или насос — смещаем привязанные концы трубопроводов
+      let updatedPipes = prev.pipes;
+      if (dx !== 0 || dy !== 0) {
+        updatedPipes = prev.pipes.map(pipe => {
+          let p = { ...pipe };
+          let changed = false;
+          if (p.startAnchor?.startsWith(`${id}-`)) {
+            if (p.x1 !== undefined && p.y1 !== undefined) {
+              p.x1 += dx;
+              p.y1 += dy;
+              changed = true;
+            }
+          }
+          if (p.endAnchor?.startsWith(`${id}-`)) {
+            if (p.x2 !== undefined && p.y2 !== undefined) {
+              p.x2 += dx;
+              p.y2 += dy;
+              changed = true;
+            }
+          }
+          return changed ? p : pipe;
+        });
+      }
+
+      return { ...prev, [category]: updatedList, pipes: updatedPipes };
+    });
   };
 
   const handleAddItem = (itemDef: PaletteItemDef) => {
@@ -185,6 +218,7 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
       category = 'pipes';
       const len = itemDef.defaultData.length || 140;
       const isVertical = itemDef.defaultData.orientation === 'vertical';
+      const isStepped = itemDef.defaultData.orientation === 'stepped';
 
       let x1: number;
       let y1: number;
@@ -198,6 +232,11 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
         y1 = centerY - Math.round(lenY / 20) * 10;
         x2 = x1 + lenX;
         y2 = y1 + lenY;
+      } else if (isStepped) {
+        x1 = centerX - 70;
+        y1 = centerY - 30;
+        x2 = centerX + 70;
+        y2 = centerY + 30;
       } else if (isVertical) {
         x1 = centerX;
         y1 = centerY - Math.round(len / 20) * 10;
@@ -360,6 +399,7 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
 
           {mode === 'edit' && (
             <PropertyInspector
+              scheme={workingScheme}
               selectedElement={selectedElement}
               itemData={getSelectedItemData()}
               onUpdateItem={handleUpdateItem}

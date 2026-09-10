@@ -414,4 +414,53 @@ export const SnapPortLabel = styled.text`
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
 `;
 
+export const PipeMidHandle = styled.circle<{ $axis?: 'x' | 'y' }>`
+  fill: #3b82f6;
+  stroke: #ffffff;
+  stroke-width: 2;
+  cursor: ${props => (props.$axis === 'x' ? 'ew-resize' : 'ns-resize')};
+  transition: r 0.15s ease, fill 0.15s ease;
+
+  &:hover {
+    fill: #60a5fa;
+    r: 7;
+  }
+`;
+
+export const RoutingButtonGroup = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+`;
+
+export const RoutingButton = styled.button<{ $isActive?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: 4px;
+  background: ${props => (props.$isActive ? props.theme.colors.primary : props.theme.colors.surfaceLight)};
+  color: ${props => (props.$isActive ? '#ffffff' : props.theme.colors.text)};
+  border: 1px solid ${props => (props.$isActive ? props.theme.colors.primary : props.theme.colors.border)};
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: ${props => (props.$isActive ? props.theme.colors.primary : props.theme.colors.surfaceMuted)};
+    border-color: ${props => props.theme.colors.primary};
+  }
+`;
+
+export const RoutingGlyph = styled.span`
+  font-family: ${props => props.theme.fonts.mono};
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+`;
+
 
