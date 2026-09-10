@@ -100,11 +100,15 @@ export const BuilderWorkspace = styled.div`
 
 export const PaletteSidebar = styled.div`
   width: 240px;
+  min-width: 240px;
+  flex-shrink: 0;
+  box-sizing: border-box;
   border-right: 1px solid ${props => props.theme.colors.border};
   background-color: ${props => props.theme.colors.surface};
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
 `;
 
 export const PaletteSectionTitle = styled.div`
@@ -246,13 +250,17 @@ export const SelectionBox = styled.rect`
 `;
 
 export const InspectorSidebar = styled.div`
-  width: 260px;
+  width: 290px;
+  min-width: 290px;
+  flex-shrink: 0;
+  box-sizing: border-box;
   border-left: 1px solid ${props => props.theme.colors.border};
   background-color: ${props => props.theme.colors.surface};
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding: 12px;
+  overflow-x: hidden;
+  padding: 14px 14px;
   gap: 14px;
 `;
 
@@ -262,21 +270,33 @@ export const InspectorTitle = styled.div`
   color: ${props => props.theme.colors.text};
   padding-bottom: 8px;
   border-bottom: 1px solid ${props => props.theme.colors.border};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 export const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 export const FormLabel = styled.label`
   font-size: 11px;
   color: ${props => props.theme.colors.textMuted};
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 export const FormInput = styled.input`
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 6px 8px;
   background-color: ${props => props.theme.colors.surfaceLight};
   border: 1px solid ${props => props.theme.colors.border};
@@ -291,6 +311,9 @@ export const FormInput = styled.input`
 `;
 
 export const FormSelect = styled.select`
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 6px 8px;
   background-color: ${props => props.theme.colors.surfaceLight};
   border: 1px solid ${props => props.theme.colors.border};
@@ -306,8 +329,10 @@ export const FormSelect = styled.select`
 
 export const CoordinateRow = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 export const EmptySelectionNotice = styled.div`
@@ -322,3 +347,16 @@ export const EmptySelectionNotice = styled.div`
   gap: 8px;
   padding: 20px;
 `;
+
+export const DeleteActionWrapper = styled.div`
+  margin-top: auto;
+  padding-top: 16px;
+  width: 100%;
+  box-sizing: border-box;
+`;
+
+export const FullWidthActionButton = styled(ActionButton)`
+  width: 100%;
+  justify-content: center;
+`;
+

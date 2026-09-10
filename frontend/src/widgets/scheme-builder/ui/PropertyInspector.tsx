@@ -307,15 +307,14 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         </S.FormGroup>
       )}
 
-      <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
-        <S.ActionButton
+      <S.DeleteActionWrapper>
+        <S.FullWidthActionButton
           $variant="danger"
-          style={{ width: '100%', justifyContent: 'center' }}
           onClick={() => onDeleteItem(category, id)}
         >
           <Trash2 size={14} /> Удалить элемент
-        </S.ActionButton>
-      </div>
+        </S.FullWidthActionButton>
+      </S.DeleteActionWrapper>
     </S.InspectorSidebar>
   );
 };
