@@ -48,6 +48,32 @@ const AVAILABLE_FLOW_BINDINGS: { key: string; label: string }[] = [
   { key: 'fuelP3', label: 'Топливный газ на горелки П-3' },
 ];
 
+const STANDARD_PORTS = [
+  { label: 'Всас насоса Н-20', x: 120, y: 100 },
+  { label: 'Напор насоса Н-20', x: 180, y: 100 },
+  { label: 'Вход задвижки V-1', x: 290, y: 100 },
+  { label: 'Выход задвижки V-1', x: 330, y: 100 },
+  { label: 'Штуцер питания К-1', x: 410, y: 190 },
+  { label: 'Верх колонны К-1 (сброс газа)', x: 480, y: 70 },
+  { label: 'Куб колонны К-1', x: 480, y: 410 },
+  { label: 'Всас насоса Н-3', x: 290, y: 470 },
+  { label: 'Напор насоса Н-3', x: 350, y: 470 },
+  { label: 'Вход змеевика печи П-3', x: 130, y: 470 },
+  { label: 'Выход змеевика печи П-3', x: 220, y: 470 },
+  { label: 'Всас насоса Н-2', x: 550, y: 470 },
+  { label: 'Напор насоса Н-2', x: 610, y: 470 },
+  { label: 'Вход печи П-1', x: 650, y: 470 },
+  { label: 'Выход печи П-1', x: 740, y: 470 },
+  { label: 'Питание колонны К-2', x: 900, y: 250 },
+  { label: 'Куб колонны К-2', x: 960, y: 450 },
+  { label: 'Всас насоса Н-32', x: 1050, y: 490 },
+  { label: 'Напор насоса Н-32', x: 1110, y: 490 },
+  { label: 'Всас насоса Н-4', x: 1050, y: 570 },
+  { label: 'Напор насоса Н-4', x: 1110, y: 570 },
+  { label: 'Емкость Е-1 (дренаж)', x: 680, y: 90 },
+  { label: 'Емкость Е-2 (дренаж)', x: 1160, y: 110 },
+];
+
 export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   selectedElement,
   itemData,
@@ -339,6 +365,68 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                 />
               </S.FormGroup>
             </S.CoordinateRow>
+          )}
+
+          {itemData.x1 !== undefined && itemData.x2 !== undefined && (
+            <>
+              <S.FormGroup>
+                <S.FormLabel>Выравнивание геометрии</S.FormLabel>
+                <S.CoordinateRow>
+                  <S.ActionButton
+                    type="button"
+                    onClick={() => handleFieldChange('y2', itemData.y1)}
+                  >
+                    Горизонтально
+                  </S.ActionButton>
+                  <S.ActionButton
+                    type="button"
+                    onClick={() => handleFieldChange('x2', itemData.x1)}
+                  >
+                    Вертикально
+                  </S.ActionButton>
+                </S.CoordinateRow>
+              </S.FormGroup>
+
+              <S.FormGroup>
+                <S.FormLabel>Прикрепить начало (X1, Y1) к аппарату</S.FormLabel>
+                <S.FormSelect
+                  value=""
+                  onChange={e => {
+                    const port = STANDARD_PORTS.find(p => p.label === e.target.value);
+                    if (port) {
+                      onUpdateItem(category, id, { x1: port.x, y1: port.y });
+                    }
+                  }}
+                >
+                  <option value="">Выберите штуцер оборудования...</option>
+                  {STANDARD_PORTS.map(p => (
+                    <option key={p.label} value={p.label}>
+                      {p.label} ({p.x}, {p.y})
+                    </option>
+                  ))}
+                </S.FormSelect>
+              </S.FormGroup>
+
+              <S.FormGroup>
+                <S.FormLabel>Прикрепить конец (X2, Y2) к аппарату</S.FormLabel>
+                <S.FormSelect
+                  value=""
+                  onChange={e => {
+                    const port = STANDARD_PORTS.find(p => p.label === e.target.value);
+                    if (port) {
+                      onUpdateItem(category, id, { x2: port.x, y2: port.y });
+                    }
+                  }}
+                >
+                  <option value="">Выберите штуцер оборудования...</option>
+                  {STANDARD_PORTS.map(p => (
+                    <option key={p.label} value={p.label}>
+                      {p.label} ({p.x}, {p.y})
+                    </option>
+                  ))}
+                </S.FormSelect>
+              </S.FormGroup>
+            </>
           )}
         </>
       )}

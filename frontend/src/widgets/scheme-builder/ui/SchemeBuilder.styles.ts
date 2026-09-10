@@ -373,13 +373,45 @@ export const ZoomBadge = styled.span`
 export const PipeHandle = styled.circle`
   fill: ${props => props.theme.colors.surface};
   stroke: ${props => props.theme.colors.primary};
-  stroke-width: 2;
-  cursor: crosshair;
-  transition: transform 0.15s ease, fill 0.15s ease;
+  stroke-width: 2.5;
+  cursor: grab;
+  transition: fill 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
 
   &:hover {
     fill: ${props => props.theme.colors.primary};
-    transform: scale(1.3);
+    stroke: #ffffff;
+    stroke-width: 3.5;
+  }
+
+  &:active {
+    cursor: grabbing;
   }
 `;
+
+export const SnapPortGroup = styled.g`
+  pointer-events: none;
+`;
+
+export const SnapPortRing = styled.circle`
+  fill: none;
+  stroke: #10b981;
+  stroke-width: 2.5;
+  stroke-dasharray: 4 3;
+`;
+
+export const SnapPortDot = styled.circle`
+  fill: #10b981;
+  stroke: #ffffff;
+  stroke-width: 2;
+`;
+
+export const SnapPortLabel = styled.text`
+  font-family: ${props => props.theme.fonts.mono};
+  font-size: 11px;
+  font-weight: 700;
+  fill: #10b981;
+  text-anchor: middle;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+`;
+
 

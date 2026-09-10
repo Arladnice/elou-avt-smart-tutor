@@ -87,6 +87,66 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
 
   const svgRef = useRef<SVGSVGElement>(null);
   const hasMovedRef = useRef<boolean>(false);
+  const [activeSnapPort, setActiveSnapPort] = useState<{ x: number; y: number; label: string } | null>(null);
+
+  // Сбор всех технологических портов оборудования и концов труб для магнитного соединения
+  const getSnapPorts = (excludePipeId?: string) => {
+    const ports: { x: number; y: number; label: string }[] = [];
+
+    // Насосы
+    scheme.pumps.forEach(p => {
+      ports.push({ x: p.x - 30, y: p.y, label: `Всас ${p.tag}` });
+      ports.push({ x: p.x + 30, y: p.y, label: `Напор ${p.tag}` });
+    });
+
+    // Задвижки и клапаны
+    scheme.valves.forEach(v => {
+      const isVert = Boolean(v.vertical || v.rotate === 90 || v.rotate === 270);
+      const name = v.label || v.valveId;
+      if (isVert) {
+        ports.push({ x: v.x, y: v.y - 20, label: `Вход ${name}` });
+        ports.push({ x: v.x, y: v.y + 20, label: `Выход ${name}` });
+      } else {
+        ports.push({ x: v.x - 20, y: v.y, label: `Вход ${name}` });
+        ports.push({ x: v.x + 20, y: v.y, label: `Выход ${name}` });
+      }
+    });
+
+    // Емкости
+    scheme.vessels.forEach(v => {
+      ports.push({ x: v.x, y: v.y + 20, label: `Штуцер ${v.tag}` });
+      ports.push({ x: v.x + 120, y: v.y + 20, label: `Штуцер ${v.tag}` });
+      ports.push({ x: v.x + 60, y: v.y + 45, label: `Дренаж ${v.tag}` });
+    });
+
+    // Печи
+    scheme.furnaces.forEach(f => {
+      ports.push({ x: f.x, y: f.y + 35, label: `Вход змеевика ${f.tag}` });
+      ports.push({ x: f.x + 90, y: f.y + 35, label: `Выход ${f.tag}` });
+      ports.push({ x: f.x + 45, y: f.y + 70, label: `Топливо ${f.tag}` });
+    });
+
+    // Колонны
+    scheme.columns.forEach(c => {
+      ports.push({ x: c.x + 45, y: c.y, label: `Верх ${c.tag}` });
+      ports.push({ x: c.x, y: c.y + 110, label: `Питание ${c.tag}` });
+      ports.push({ x: c.x + 90, y: c.y + 110, label: `Питание ${c.tag}` });
+      ports.push({ x: c.x + 45, y: c.y + 250, label: `Куб ${c.tag}` });
+    });
+
+    // Концы других труб
+    scheme.pipes.forEach(p => {
+      if (p.id === excludePipeId) return;
+      if (p.x1 !== undefined && p.y1 !== undefined) {
+        ports.push({ x: p.x1, y: p.y1, label: `Линия (${p.kind})` });
+      }
+      if (p.x2 !== undefined && p.y2 !== undefined) {
+        ports.push({ x: p.x2, y: p.y2, label: `Линия (${p.kind})` });
+      }
+    });
+
+    return ports;
+  };
 
   const snap = (val: number) => {
     if (gridSnap <= 1) return Math.round(val);
@@ -188,15 +248,48 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
 
     if (mode !== 'edit') return;
 
-    // 2. Редактирование конца прямолинейной трубы через ручку
+    // 2. Редактирование конца прямолинейной трубы через ручку с магнитной привязкой к портам
     if (pipeHandleDragging) {
       const { x, y } = getSvgCoordinates(e);
-      const snappedX = snap(x);
-      const snappedY = snap(y);
-      if (pipeHandleDragging.handle === 'start') {
-        onUpdateItem('pipes', pipeHandleDragging.id, { x1: snappedX, y1: snappedY });
+      const targetPipe = scheme.pipes.find(p => p.id === pipeHandleDragging.id);
+      const otherX = pipeHandleDragging.handle === 'start' ? targetPipe?.x2 : targetPipe?.x1;
+      const otherY = pipeHandleDragging.handle === 'start' ? targetPipe?.y2 : targetPipe?.y1;
+
+      // Поиск ближайшего технологического порта подключения (порог 24 px)
+      const ports = getSnapPorts(pipeHandleDragging.id);
+      let closestPort: { x: number; y: number; label: string } | null = null;
+      let minDistance = 24;
+
+      for (const port of ports) {
+        const dist = Math.hypot(port.x - x, port.y - y);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestPort = port;
+        }
+      }
+
+      let finalX = snap(x);
+      let finalY = snap(y);
+
+      if (closestPort) {
+        finalX = closestPort.x;
+        finalY = closestPort.y;
+        setActiveSnapPort(closestPort);
       } else {
-        onUpdateItem('pipes', pipeHandleDragging.id, { x2: snappedX, y2: snappedY });
+        setActiveSnapPort(null);
+        // Ортогональное выравнивание, если угол близок к горизонтали/вертикали (в пределах 12px) или зажат Shift
+        if (otherY !== undefined && (Math.abs(y - otherY) < 12 || e.shiftKey)) {
+          finalY = otherY;
+        }
+        if (otherX !== undefined && (Math.abs(x - otherX) < 12 || e.shiftKey)) {
+          finalX = otherX;
+        }
+      }
+
+      if (pipeHandleDragging.handle === 'start') {
+        onUpdateItem('pipes', pipeHandleDragging.id, { x1: finalX, y1: finalY });
+      } else {
+        onUpdateItem('pipes', pipeHandleDragging.id, { x2: finalX, y2: finalY });
       }
       return;
     }
@@ -239,6 +332,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     setDragging(null);
     setPipeDragging(null);
     setPipeHandleDragging(null);
+    setActiveSnapPort(null);
     setPanning(null);
   };
 
@@ -410,7 +504,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
         {/* Трубопроводы */}
         {scheme.pipes.map(pipe => {
           const isSelected = selectedElement?.category === 'pipes' && selectedElement?.id === pipe.id;
-          const active = mode === 'preview' ? isPipeActive(pipe.flowBinding) : false;
+          const active = mode === 'preview' ? isPipeActive(pipe.flowBinding) : undefined;
           const isCut = mode === 'preview' && pipe.cutOffValve ? !valves[pipe.cutOffValve] : false;
 
           return (
@@ -742,6 +836,15 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
             </g>
           );
         })}
+
+        {/* Индикатор магнитного технологического порта подключения */}
+        {activeSnapPort && (
+          <S.SnapPortGroup transform={`translate(${activeSnapPort.x}, ${activeSnapPort.y})`}>
+            <S.SnapPortRing r="14" />
+            <S.SnapPortDot r="4.5" />
+            <S.SnapPortLabel y="-18">{`✔ ${activeSnapPort.label}`}</S.SnapPortLabel>
+          </S.SnapPortGroup>
+        )}
       </S.CanvasSvg>
     </S.CanvasArea>
   );

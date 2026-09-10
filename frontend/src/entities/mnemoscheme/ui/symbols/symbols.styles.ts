@@ -343,11 +343,12 @@ export const UtilityLine = styled.line<{ $kind?: 'steam' | 'fuel' | 'drain' | 'u
     if (props.$kind === 'drain') return props.theme.colors.drainLine;
     return props.theme.colors.mnemonicTextMuted;
   }};
-  stroke-width: 2.5;
+  stroke-width: 2.8;
   pointer-events: none;
   stroke-dasharray: ${props => {
     if (props.$isActive === false) return 'none';
-    if (props.$kind === 'steam' || props.$kind === 'utility') return '7 5';
+    if (props.$kind === 'steam' || props.$kind === 'utility') return '8 5';
+    if (props.$kind === 'drain') return '10 3 3 3';
     return 'none';
   }};
   marker-end: ${props => {
@@ -361,10 +362,12 @@ export const UtilityLine = styled.line<{ $kind?: 'steam' | 'fuel' | 'drain' | 'u
 `;
 
 export const GasLine = styled.path<{ $isActive?: boolean }>`
-  stroke: ${props => props.$isActive === true
-    ? props.theme.colors.mnemonicFlow
-    : props.theme.colors.pipeIdle};
-  stroke-width: ${props => props.$isActive === true ? 4 : 3.2};
+  stroke: ${props => {
+    if (props.$isActive === true) return props.theme.colors.mnemonicFlow;
+    if (props.$isActive === false) return props.theme.colors.pipeIdle;
+    return props.theme.colors.fuelLine || '#f59e0b';
+  }};
+  stroke-width: ${props => (props.$isActive === true ? 4 : 3.5)};
   stroke-dasharray: none;
   fill: none;
   pointer-events: none;
