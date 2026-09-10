@@ -96,7 +96,19 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
     }
   }, [historyIndex, history]);
 
-  // Горячие клавиши Ctrl+Z / Ctrl+Y
+  const handleDeleteItem = useCallback(
+    (category: SelectedElementRef['category'], id: string) => {
+      const list = (workingScheme[category] as any[]) || [];
+      const updatedList = list.filter(item => item.id !== id);
+      const nextScheme = { ...workingScheme, [category]: updatedList };
+      pushHistory(nextScheme);
+      setSelectedElement(null);
+      message.info('Элемент удален со схемы');
+    },
+    [workingScheme, pushHistory]
+  );
+
+  // Горячие клавиши Ctrl+Z / Ctrl+Y / Delete
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -112,11 +124,16 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
       ) {
         e.preventDefault();
         handleRedo();
+      } else if (e.key === 'Delete' || e.key === 'Del' || e.code === 'Delete') {
+        if (selectedElement && mode === 'edit') {
+          e.preventDefault();
+          handleDeleteItem(selectedElement.category, selectedElement.id);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, handleUndo, handleRedo]);
+  }, [open, handleUndo, handleRedo, selectedElement, mode, handleDeleteItem]);
 
   const handleZoomIn = () => setZoom(prev => Math.min(3, Math.round((prev + 0.15) * 100) / 100));
   const handleZoomOut = () => setZoom(prev => Math.max(0.4, Math.round((prev - 0.15) * 100) / 100));
@@ -143,15 +160,6 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
       const updatedList = list.map(item => (item.id === id ? { ...item, ...patch } : item));
       return { ...prev, [category]: updatedList };
     });
-  };
-
-  const handleDeleteItem = (category: SelectedElementRef['category'], id: string) => {
-    const list = (workingScheme[category] as any[]) || [];
-    const updatedList = list.filter(item => item.id !== id);
-    const nextScheme = { ...workingScheme, [category]: updatedList };
-    pushHistory(nextScheme);
-    setSelectedElement(null);
-    message.info('Элемент удален со схемы');
   };
 
   const handleUpdateElementPosition = (
