@@ -129,6 +129,16 @@ const FlowScheme: React.FC = () => {
   const k2Outflow32Active = k2OutflowAvailable && valves.V_K2_OUT_32 && pumps.N_32;
   const k2Outflow4Active = k2OutflowAvailable && valves.V_K2_OUT_4 && pumps.N_4;
 
+  // Технологические потоки блока ЭЛОУ (3 нитки, вода Н-82, дренаж и ловушка Е-16)
+  const elouTrain1Active = valves.V_FEED_1 && valves.V_MID_1 && valves.V_OUT_1;
+  const elouTrain2Active = valves.V_FEED_2 && valves.V_MID_2 && valves.V_OUT_2;
+  const elouTrain3Active = valves.V_FEED_3 && valves.V_MID_3 && valves.V_OUT_3;
+  const elouFeedActive = (elouTrain1Active || elouTrain2Active || elouTrain3Active || valves.V_ELOU) && !powerFailed;
+  const washWaterActive = Boolean(pumps.N_82 && valves.V_WATER_MAIN && (valves.V_WATER_ST1 || valves.V_WATER_ST2) && !powerFailed);
+  const anyDesalterDrain = valves.V_DR_E1 || valves.V_DR_E2 || valves.V_DR_E3 || valves.V_DR_E4 || valves.V_DR_E5 || valves.V_DR_E6;
+  const elouDrainActive = Boolean(anyDesalterDrain && valves.V_DR_COL && !powerFailed);
+  const trappedOilActive = Boolean(elouDrainActive && !powerFailed);
+
   const isPipeFlowActive = (binding?: string) => {
     if (!binding) return false;
     if (binding === 'k1Feed') return k1FeedActive;
@@ -138,6 +148,10 @@ const FlowScheme: React.FC = () => {
     if (binding === 'k1BottomOutflow') return k1BottomOutflowActive;
     if (binding === 'k2Outflow32') return k2Outflow32Active;
     if (binding === 'k2Outflow4') return k2Outflow4Active;
+    if (binding === 'elouFeed') return elouFeedActive;
+    if (binding === 'washWater') return washWaterActive;
+    if (binding === 'elouDrain') return elouDrainActive;
+    if (binding === 'trappedOil') return trappedOilActive;
     if (binding === 'demulsifier') return valves.V_ELOU;
     if (binding === 'e1Drain') return valves.V_E1_DRAIN;
     if (binding === 'e2Drain') return valves.V_E2_DRAIN;

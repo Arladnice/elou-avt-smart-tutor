@@ -25,6 +25,11 @@ export const ColumnSymbol: React.FC<ColumnSymbolProps> = ({
   onOpen,
   interactive = true,
 }) => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (interactive && onOpen) onOpen(equipmentId);
+  };
+
   const handleContextMenu = (e: React.MouseEvent<SVGGElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -40,9 +45,18 @@ export const ColumnSymbol: React.FC<ColumnSymbolProps> = ({
       data-scheme-interactive={interactive ? 'true' : undefined}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
-      aria-label={`Правая кнопка открывает карточку колонны ${tag}`}
+      aria-label={`Клик открывает карточку колонны ${tag}`}
       $isAlert={isAlert}
+      $isControllable={interactive}
+      onClick={handleClick}
       onContextMenu={handleContextMenu}
+      onKeyDown={e => {
+        if (!interactive) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen?.(equipmentId);
+        }
+      }}
     >
       <rect className="equipment-hitbox" x="5" y="-14" width="122" height="314" rx="42" />
       <ellipse className="equipment-shadow" cx="65" cy="294" rx="54" ry="7" />

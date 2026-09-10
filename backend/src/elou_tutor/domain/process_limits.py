@@ -121,3 +121,42 @@ STARTUP_FILLING_TIME_LIMIT_SEC = 120     # с (Первичное заполне
 VALVE_ACTION_TIMEOUT_SEC = 15            # с (Время выдержки после открытия клапана)
 ACCIDENT_NON_STARTUP_MIN_TIME_SEC = 40   # с (Защита от ложной аварии при запуске обычных сценариев)
 ACCIDENT_STARTUP_MAX_TIME_SEC = 180      # с (Предельное время для заполнения куба при пуске)
+
+# === Блок ЭЛОУ (3 нитки, Э-1..Э-6, Е-15, Е-16) ===
+ALL_PUMP_IDS = ("N_20", "N_2", "N_3", "N_4", "N_32", "N_82")
+
+ELOU_DEFAULT_VALVES = {
+    # Входные задвижки сырой нефти
+    "V_FEED_1": True, "V_FEED_2": True, "V_FEED_3": True,
+    # Смесители 1-й ступени (инжекторы промывочной воды)
+    "A_19_1": True, "A_19_3": True, "A_19_5": True,
+    # Межступенчатые переточные задвижки
+    "V_MID_1": True, "V_MID_2": True, "V_MID_3": True,
+    # Смесители 2-й ступени
+    "A_20_2": True, "A_20_4": True, "A_20_6": True,
+    # Выходные задвижки 2-й ступени в буфер Е-15
+    "V_OUT_1": True, "V_OUT_2": True, "V_OUT_3": True,
+    # Дренаж Е-15
+    "V_E15_DRAIN": False,
+    # Напор и распределение промывочной воды Н-82
+    "V_WATER_MAIN": True, "V_WATER_ST2": True, "V_WATER_ST1": True,
+    # Дренажные клапаны соленой подтоварной воды
+    "V_DR_E1": True, "V_DR_E3": True, "V_DR_E5": True,
+    "V_DR_E2": True, "V_DR_E4": True, "V_DR_E6": True,
+    # Дренажный коллектор и сброс воды Е-16
+    "V_DR_COL": True, "V_DR_WATER": True,
+}
+
+ELOU_STARTUP_VALVES = {
+    "V_FEED_1": False, "V_FEED_2": False, "V_FEED_3": False,
+    "A_19_1": False, "A_19_3": False, "A_19_5": False,
+    "V_MID_1": False, "V_MID_2": False, "V_MID_3": False,
+    "A_20_2": False, "A_20_4": False, "A_20_6": False,
+    "V_OUT_1": False, "V_OUT_2": False, "V_OUT_3": False,
+    "V_E15_DRAIN": False,
+    "V_WATER_MAIN": False, "V_WATER_ST2": False, "V_WATER_ST1": False,
+    "V_DR_E1": False, "V_DR_E3": False, "V_DR_E5": False,
+    "V_DR_E2": False, "V_DR_E4": False, "V_DR_E6": False,
+    "V_DR_COL": False, "V_DR_WATER": False,
+}
+

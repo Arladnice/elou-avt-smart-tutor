@@ -19,9 +19,36 @@ export type ValveId =
   | 'V_STEAM_K2'
   | 'V_K2_RELIEF'
   | 'V_E1_DRAIN'
-  | 'V_E2_DRAIN';
+  | 'V_E2_DRAIN'
+  | 'V_FEED_1'
+  | 'V_FEED_2'
+  | 'V_FEED_3'
+  | 'A_19_1'
+  | 'A_19_3'
+  | 'A_19_5'
+  | 'V_MID_1'
+  | 'V_MID_2'
+  | 'V_MID_3'
+  | 'A_20_2'
+  | 'A_20_4'
+  | 'A_20_6'
+  | 'V_OUT_1'
+  | 'V_OUT_2'
+  | 'V_OUT_3'
+  | 'V_E15_DRAIN'
+  | 'V_WATER_MAIN'
+  | 'V_WATER_ST2'
+  | 'V_WATER_ST1'
+  | 'V_DR_E1'
+  | 'V_DR_E3'
+  | 'V_DR_E5'
+  | 'V_DR_E2'
+  | 'V_DR_E4'
+  | 'V_DR_E6'
+  | 'V_DR_COL'
+  | 'V_DR_WATER';
 
-export type PumpId = 'N_20' | 'N_2' | 'N_3' | 'N_4' | 'N_32';
+export type PumpId = 'N_20' | 'N_2' | 'N_3' | 'N_4' | 'N_32' | 'N_82';
 
 export type DefectId =
   | 'pump_fail'
@@ -135,9 +162,20 @@ export const INITIAL_VALVES: Valves = {
   V_K2_OUT_32: true, V_K2_OUT_4: true, HC_P1: false, HC_P3: false,
   FUEL_P1: true, FUEL_P3: true, V_STEAM_K1: true, V_STEAM_K2: true,
   V_K2_RELIEF: false, V_E1_DRAIN: false, V_E2_DRAIN: false,
+  // Блок ЭЛОУ
+  V_FEED_1: true, V_FEED_2: true, V_FEED_3: true,
+  A_19_1: true, A_19_3: true, A_19_5: true,
+  V_MID_1: true, V_MID_2: true, V_MID_3: true,
+  A_20_2: true, A_20_4: true, A_20_6: true,
+  V_OUT_1: true, V_OUT_2: true, V_OUT_3: true,
+  V_E15_DRAIN: false,
+  V_WATER_MAIN: true, V_WATER_ST2: true, V_WATER_ST1: true,
+  V_DR_E1: true, V_DR_E3: true, V_DR_E5: true,
+  V_DR_E2: true, V_DR_E4: true, V_DR_E6: true,
+  V_DR_COL: true, V_DR_WATER: true,
 };
 
-export const INITIAL_PUMPS: Pumps = { N_20: true, N_2: true, N_3: true, N_4: true, N_32: true };
+export const INITIAL_PUMPS: Pumps = { N_20: true, N_2: true, N_3: true, N_4: true, N_32: true, N_82: true };
 
 export const INITIAL_SENSORS: Sensors = {
   T_1: 280, T_3: 280, P_1: 0.25, L_1: 50, Sal_1: 4.2, W_1: 0.15,
