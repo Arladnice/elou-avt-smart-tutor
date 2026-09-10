@@ -168,8 +168,9 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
     // Центрирование относительно текущего вида с учетом зума и панорамирования (кратно 10)
     const viewW = workingScheme.width / zoom;
     const viewH = workingScheme.height / zoom;
-    const centerX = Math.round((pan.x + viewW / 2) / 10) * 10;
-    const centerY = Math.round((pan.y + viewH / 2) / 10) * 10;
+    const offset = Math.round((Math.random() * 40 - 20) / 10) * 10;
+    const centerX = Math.round((pan.x + viewW / 2) / 10) * 10 + offset;
+    const centerY = Math.round((pan.y + viewH / 2) / 10) * 10 + offset;
 
     let category: SelectedElementRef['category'] = 'equipment' as any;
     let newItem: any = { id: newId, x: centerX, y: centerY, ...itemDef.defaultData };
@@ -182,8 +183,34 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
     else if (itemDef.type === 'sensor') category = 'sensors';
     else if (itemDef.type === 'pipe') {
       category = 'pipes';
+      const len = itemDef.defaultData.length || 140;
+      const isVertical = itemDef.defaultData.orientation === 'vertical';
+
+      let x1: number;
+      let y1: number;
+      let x2: number;
+      let y2: number;
+
+      if (itemDef.defaultData.x1 !== undefined && itemDef.defaultData.x2 !== undefined) {
+        const lenX = itemDef.defaultData.x2 - itemDef.defaultData.x1;
+        const lenY = itemDef.defaultData.y2 - itemDef.defaultData.y1;
+        x1 = centerX - Math.round(lenX / 20) * 10;
+        y1 = centerY - Math.round(lenY / 20) * 10;
+        x2 = x1 + lenX;
+        y2 = y1 + lenY;
+      } else if (isVertical) {
+        x1 = centerX;
+        y1 = centerY - Math.round(len / 20) * 10;
+        x2 = centerX;
+        y2 = y1 + len;
+      } else {
+        x1 = centerX - Math.round(len / 20) * 10;
+        y1 = centerY;
+        x2 = x1 + len;
+        y2 = centerY;
+      }
+
       if (itemDef.defaultData.d) {
-        // Смещаем SVG-путь к центру экрана
         const dx = centerX - 160;
         const dy = centerY - 100;
         newItem = {
@@ -191,21 +218,15 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
           ...itemDef.defaultData,
           d: translateSvgPath(itemDef.defaultData.d, dx, dy),
         };
-      } else if (itemDef.defaultData.x1 !== undefined) {
-        const lenX = itemDef.defaultData.x2 - itemDef.defaultData.x1;
-        const lenY = itemDef.defaultData.y2 - itemDef.defaultData.y1;
-        const x1 = centerX - Math.round(lenX / 20) * 10;
-        const y1 = centerY - Math.round(lenY / 20) * 10;
+      } else {
         newItem = {
           id: newId,
           ...itemDef.defaultData,
           x1,
           y1,
-          x2: x1 + lenX,
-          y2: y1 + lenY,
+          x2,
+          y2,
         };
-      } else {
-        newItem = { id: newId, ...itemDef.defaultData };
       }
     } else if (itemDef.type === 'label') category = 'labels';
 

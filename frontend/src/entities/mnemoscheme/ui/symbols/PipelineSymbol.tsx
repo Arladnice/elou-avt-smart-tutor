@@ -23,15 +23,27 @@ export const PipelineSymbol: React.FC<PipelineSymbolProps> = ({
   isActive,
   isCutOff,
 }) => {
-  if (kind === 'demulsifier' && d) {
-    return <S.DemulsifierLine d={d} $isActive={isActive} />;
+  const lineD =
+    d ||
+    (x1 !== undefined && y1 !== undefined && x2 !== undefined && y2 !== undefined
+      ? `M ${x1},${y1} L ${x2},${y2}`
+      : undefined);
+
+  if (kind === 'demulsifier' && lineD) {
+    return <S.DemulsifierLine d={lineD} $isActive={isActive} />;
   }
 
-  if (kind === 'gas' && d) {
-    return <S.GasLine d={d} $isActive={isActive} />;
+  if (kind === 'gas' && lineD) {
+    return <S.GasLine d={lineD} $isActive={isActive} />;
   }
 
-  if ((kind === 'steam' || kind === 'drain' || kind === 'fuel' || kind === 'utility') && x1 !== undefined && y1 !== undefined && x2 !== undefined && y2 !== undefined) {
+  if (
+    (kind === 'steam' || kind === 'drain' || kind === 'fuel' || kind === 'utility') &&
+    x1 !== undefined &&
+    y1 !== undefined &&
+    x2 !== undefined &&
+    y2 !== undefined
+  ) {
     return (
       <S.UtilityLine
         $kind={kind}
@@ -44,9 +56,10 @@ export const PipelineSymbol: React.FC<PipelineSymbolProps> = ({
     );
   }
 
-  if (d) {
-    return <S.PipeLine d={d} $isActive={isActive} $isCutOff={isCutOff} />;
+  if (lineD) {
+    return <S.PipeLine d={lineD} $isActive={isActive} $isCutOff={isCutOff} />;
   }
 
   return null;
 };
+
