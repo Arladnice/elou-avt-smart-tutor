@@ -22,6 +22,22 @@ export const SchemeHeader = styled.div`
   font-weight: 600;
   letter-spacing: 0.1px;
   color: ${props => props.theme.colors.textMuted};
+  gap: 12px;
+  flex-wrap: wrap;
+`;
+
+export const HeaderLeftGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+export const PresetSelectorWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
 `;
 
 export const SchemeViewport = styled.div`
@@ -525,7 +541,7 @@ export const DemulsifierLine = styled.path<{ $isActive?: boolean }>`
   filter: drop-shadow(0 1px 0 ${props => props.theme.colors.metalLight});
 `;
 
-export const UtilityLine = styled.line<{ $kind?: 'steam' | 'fuel' | 'drain'; $isActive?: boolean }>`
+export const UtilityLine = styled.line<{ $kind?: 'steam' | 'fuel' | 'drain' | 'utility'; $isActive?: boolean }>`
   stroke: ${props => {
     if (props.$isActive === false) return props.theme.colors.pipeIdle;
     if (props.$kind === 'steam') return props.theme.colors.steamLine;

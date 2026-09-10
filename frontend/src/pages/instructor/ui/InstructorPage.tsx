@@ -26,6 +26,9 @@ import { getTableColumns, SCENARIO_NAMES, SCENARIO_SHORT_NAMES } from '../model/
 const ScenarioBuilderModal = lazy(() =>
   import('@/widgets/scenario-builder').then(m => ({ default: m.ScenarioBuilderModal })),
 );
+const SchemeBuilderModal = lazy(() =>
+  import('@/widgets/scheme-builder').then(m => ({ default: m.SchemeBuilderModal })),
+);
 import * as S from './InstructorPage.styles';
 
 const getStatusBadge = (s: string, colors: DefaultTheme['colors']) => {
@@ -39,6 +42,7 @@ const InstructorPage: React.FC = () => {
   const theme = useTheme();
   const { message, modal } = App.useApp();
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
+  const [isSchemeBuilderOpen, setIsSchemeBuilderOpen] = useState(false);
   const { sensors, valves, status, defects, logs, riskLevel, accidentReason, wsLatency, startupK2Prefill } = useTelemetry();
   const {
     isOnline,
@@ -334,6 +338,13 @@ const InstructorPage: React.FC = () => {
                       onClick={() => setIsBuilderModalOpen(true)}
                     >
                       Конструктор сценария
+                    </S.BuilderButton>
+                    <S.BuilderButton
+                      type="dashed" 
+                      size="small" 
+                      onClick={() => setIsSchemeBuilderOpen(true)}
+                    >
+                      Конструктор мнемосхемы
                     </S.BuilderButton>
                   </S.ScenarioHeading>
                   <S.ScenarioRadioGroup 
@@ -702,6 +713,15 @@ const InstructorPage: React.FC = () => {
           <ScenarioBuilderModal
             visible={isBuilderModalOpen}
             onClose={() => setIsBuilderModalOpen(false)}
+          />
+        </Suspense>
+      )}
+
+      {isSchemeBuilderOpen && (
+        <Suspense fallback={null}>
+          <SchemeBuilderModal
+            open={isSchemeBuilderOpen}
+            onClose={() => setIsSchemeBuilderOpen(false)}
           />
         </Suspense>
       )}

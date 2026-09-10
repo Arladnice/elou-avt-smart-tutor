@@ -4,6 +4,7 @@ import { ThemeProvider } from 'styled-components';
 import { darkTheme, lightTheme, type ThemeMode } from '@/app/styles/theme';
 import { GlobalStyle } from '@/app/styles/globalStyles';
 import { ThemeModeContext } from '@/shared/ui';
+import { MnemoschemeProvider } from '@/entities/mnemoscheme';
 import { SimulatorProvider } from './SimulatorProvider';
 
 const THEME_STORAGE_KEY = 'ktk_theme';
@@ -56,7 +57,9 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
         <AntdApp>
           <ThemeProvider theme={currentTheme}>
             <GlobalStyle theme={currentTheme} />
-            <SimulatorProvider>{children}</SimulatorProvider>
+            <SimulatorProvider>
+              <MnemoschemeProvider>{children}</MnemoschemeProvider>
+            </SimulatorProvider>
           </ThemeProvider>
         </AntdApp>
       </ConfigProvider>
