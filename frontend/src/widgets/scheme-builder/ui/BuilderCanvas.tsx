@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useTheme } from 'styled-components';
 import type { MnemoschemeConfig, SnapPort } from '@/entities/mnemoscheme';
 import { translateSvgPath, getSnapPorts, computePipePath } from '@/entities/mnemoscheme';
@@ -313,16 +313,30 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = useCallback(() => {
     if (dragging || pipeDragging || pipeHandleDragging || pipeMidDragging) {
       onCommitHistory?.();
     }
     setDragging(null);
     setPipeDragging(null);
     setPipeHandleDragging(null);
+    setPipeMidDragging(null);
     setActiveSnapPort(null);
     setPanning(null);
-  };
+  }, [dragging, pipeDragging, pipeHandleDragging, pipeMidDragging, onCommitHistory]);
+
+  // Глобальный сброс перетаскивания при отпускании кнопки мыши в любой точке окна
+  useEffect(() => {
+    const isInteracting = Boolean(
+      dragging || pipeDragging || pipeHandleDragging || pipeMidDragging || panning
+    );
+    if (!isInteracting) return;
+
+    window.addEventListener('mouseup', handlePointerUp);
+    return () => {
+      window.removeEventListener('mouseup', handlePointerUp);
+    };
+  }, [dragging, pipeDragging, pipeHandleDragging, pipeMidDragging, panning, handlePointerUp]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     hasMovedRef.current = false;

@@ -226,18 +226,6 @@ const PALETTE_ITEMS: { category: string; icon: React.ReactNode; items: PaletteIt
       },
       {
         type: 'pipe',
-        name: 'Угловой трубопровод (90°)',
-        sub: 'Г-образная линия (H-V)',
-        defaultData: { kind: 'crude', orientation: 'stepped', routing: 'elbow-hv' },
-      },
-      {
-        type: 'pipe',
-        name: 'Обводная Z-линия (ступенька)',
-        sub: 'Ортогональный обвод оборудования',
-        defaultData: { kind: 'crude', orientation: 'stepped', routing: 'step-h' },
-      },
-      {
-        type: 'pipe',
         name: 'Линия сброса газа',
         sub: 'Сброс на факельную установку',
         defaultData: { kind: 'gas', length: 140, orientation: 'horizontal', routing: 'direct' },
