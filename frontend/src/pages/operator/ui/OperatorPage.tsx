@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useMemo, useState } from 'react';
 import { Settings, ListTodo, Terminal, Brain, ShieldAlert, LineChart } from 'lucide-react';
 import { useTelemetry, type LogEntry } from '@/entities/telemetry';
+import { useMnemoscheme } from '@/entities/mnemoscheme';
 import { CollapsibleCard, LazyFallback } from '@/shared/ui';
 import { Header } from '@/widgets/header';
 import { FlowScheme } from '@/widgets/flow-scheme';
@@ -13,11 +14,15 @@ import { InterlockPanel } from '@/widgets/interlock-panel';
 import * as S from './OperatorPage.styles';
 
 const PredictiveTrendChart = lazy(() => import('@/widgets/ai-assistant/ui/PredictiveTrendChart'));
+const SchemeBuilderModal = lazy(() =>
+  import('@/widgets/scheme-builder').then(m => ({ default: m.SchemeBuilderModal })),
+);
 
 /** Рабочее место оператора: мнемосхема, управление уставками, чек-лист, ИИ и журнал */
 const OperatorPage: React.FC = () => {
   const { title: scenarioTitle, isEmergency } = useScenarioInfo();
   const { logs } = useTelemetry();
+  const { isBuilderOpen, closeBuilder } = useMnemoscheme();
   const [activePanel, setActivePanel] = useState<'tasks' | 'control' | 'interlocks' | 'support' | 'trend'>('tasks');
 
   const alarmCounts = useMemo(() => {
@@ -125,6 +130,11 @@ const OperatorPage: React.FC = () => {
         </S.MainArea>
       </S.GridContainer>
       <ScoreCard />
+      {isBuilderOpen && (
+        <Suspense fallback={null}>
+          <SchemeBuilderModal open={isBuilderOpen} onClose={closeBuilder} />
+        </Suspense>
+      )}
     </>
   );
 };
