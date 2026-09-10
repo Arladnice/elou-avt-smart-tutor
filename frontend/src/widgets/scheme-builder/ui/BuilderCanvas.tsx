@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useTheme } from 'styled-components';
 import type { MnemoschemeConfig, SnapPort } from '@/entities/mnemoscheme';
 import { translateSvgPath, getSnapPorts, computePipePath } from '@/entities/mnemoscheme';
-import { useTelemetry } from '@/entities/telemetry';
+import { useTelemetry, type PumpId, type ValveId } from '@/entities/telemetry';
 import { useSimulatorActions } from '@/entities/simulator';
 import {
   PumpSymbol,
@@ -604,7 +604,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
         {/* Колонны */}
         {scheme.columns.map(col => {
           const isSelected = selectedElement?.category === 'columns' && selectedElement?.id === col.id;
-          const levelVal = sensors[col.levelBinding] || 50;
+          const levelVal = (sensors as any)[col.levelBinding] ?? 50;
 
           return (
             <g
@@ -617,8 +617,8 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                 x={col.x}
                 y={col.y}
                 tag={col.tag}
-                equipmentId={col.equipmentId}
-                level={levelVal}
+                equipmentId={col.equipmentId as any}
+                level={Number(levelVal) || 50}
                 isAlert={col.alertBindings.some(d => defects[d])}
                 tagOffsetY={col.tagOffsetY}
                 interactive={mode === 'preview'}
@@ -633,7 +633,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
         {/* Печи */}
         {scheme.furnaces.map(fur => {
           const isSelected = selectedElement?.category === 'furnaces' && selectedElement?.id === fur.id;
-          const flame = sensors[fur.flameBinding];
+          const flame = (sensors as any)[fur.flameBinding];
 
           return (
             <g
@@ -646,7 +646,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                 x={fur.x}
                 y={fur.y}
                 tag={fur.tag}
-                equipmentId={fur.equipmentId}
+                equipmentId={fur.equipmentId as any}
                 flameIsOn={Boolean(flame)}
                 isAlert={fur.alertBindings.some(d => defects[d])}
                 interactive={mode === 'preview'}
@@ -674,11 +674,16 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                 y={ves.y}
                 tag={ves.tag}
                 equipmentId={ves.equipmentId}
+                orientation={ves.orientation}
                 isAlert={ves.alertBindings.some(d => defects[d])}
                 interactive={mode === 'preview'}
               />
               {isSelected && (
-                <S.SelectionBox x={ves.x - 6} y={ves.y - 12} width={132} height={70} rx="12" />
+                ves.orientation === 'vertical' ? (
+                  <S.SelectionBox x={ves.x - 6} y={ves.y - 12} width={52} height={108} rx="12" />
+                ) : (
+                  <S.SelectionBox x={ves.x - 6} y={ves.y - 12} width={132} height={70} rx="12" />
+                )
               )}
             </g>
           );
@@ -687,7 +692,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
         {/* Насосы */}
         {scheme.pumps.map(p => {
           const isSelected = selectedElement?.category === 'pumps' && selectedElement?.id === p.id;
-          const running = pumps[p.equipmentId];
+          const running = pumps[p.equipmentId as PumpId];
           const isAlert = p.alertBindings ? p.alertBindings.some(d => defects[d]) : false;
 
           return (
@@ -706,14 +711,14 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                 x={p.x}
                 y={p.y}
                 tag={p.tag}
-                equipmentId={p.equipmentId}
+                equipmentId={p.equipmentId as any}
                 direction={p.direction}
                 tagOffsetX={p.tagOffsetX}
                 tagOffsetY={p.tagOffsetY}
                 isRunning={Boolean(running)}
                 isAlert={Boolean(isAlert)}
                 interactive={mode === 'preview'}
-                onToggle={mode === 'preview' ? togglePump : undefined}
+                onToggle={mode === 'preview' ? (pumpId => togglePump(pumpId as PumpId)) : undefined}
               />
               {isSelected && (
                 <S.SelectionBox x={p.x - 42} y={p.y - 40} width={84} height={76} rx="8" />
@@ -725,7 +730,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
         {/* Клапаны */}
         {scheme.valves.map(v => {
           const isSelected = selectedElement?.category === 'valves' && selectedElement?.id === v.id;
-          const isOpen = Boolean(valves[v.valveId]);
+          const isOpen = Boolean(valves[v.valveId as ValveId]);
 
           return (
             <g
@@ -742,6 +747,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
               <ValveSymbol
                 valveId={v.valveId}
                 equipmentId={v.equipmentId}
+                kind={v.kind}
                 x={v.x}
                 y={v.y}
                 rotate={v.rotate}
@@ -750,10 +756,14 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                 label={v.label}
                 isOpen={isOpen}
                 interactive={mode === 'preview'}
-                onToggle={mode === 'preview' ? toggleValve : undefined}
+                onToggle={mode === 'preview' ? (valveId => toggleValve(valveId as ValveId)) : undefined}
               />
               {isSelected && (
-                <S.SelectionBox x={v.x - 22} y={v.y - 34} width={44} height={48} rx="6" />
+                v.kind === 'mixer' ? (
+                  <S.SelectionBox x={v.x - 24} y={v.y - 34} width={48} height={58} rx="6" />
+                ) : (
+                  <S.SelectionBox x={v.x - 22} y={v.y - 34} width={44} height={48} rx="6" />
+                )
               )}
             </g>
           );

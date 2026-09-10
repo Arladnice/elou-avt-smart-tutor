@@ -400,6 +400,212 @@ export const DEFAULT_MNEMOSCHEME_PRESET: MnemoschemeConfig = {
   ],
 };
 
+export const ELOU_DETAILED_PRESET_ID = 'elou-detailed-3train';
+
+export const ELOU_DETAILED_PRESET: MnemoschemeConfig = {
+  id: ELOU_DETAILED_PRESET_ID,
+  name: 'ЭЛОУ: Полная схема обессоливания (3 потока, Э-1..Э-6, Е-15, Е-16)',
+  description: 'Детальная технологическая схема блока ЭЛОУ: 3 параллельные нитки, 2 ступени обессоливания, контур промывочной воды Н-82, буферная емкость Е-15 и гидрозатвор-ловушка Е-16',
+  isBuiltin: true,
+  width: 1320,
+  height: 720,
+  zones: [
+    { id: 'zone-feed-header', x: 10, y: 10, width: 330, height: 90, label: 'УЗЕЛ ПОДАЧИ ПРОМЫВОЧНОЙ ВОДЫ (Н-82)' },
+    { id: 'zone-train-1', x: 10, y: 110, width: 920, height: 140, label: 'I НИТКА ОБЕССОЛИВАНИЯ (Э-1 → Э-2)' },
+    { id: 'zone-train-2', x: 10, y: 260, width: 920, height: 140, label: 'II НИТКА ОБЕССОЛИВАНИЯ (Э-3 → Э-4)' },
+    { id: 'zone-train-3', x: 10, y: 410, width: 920, height: 140, label: 'III НИТКА ОБЕССОЛИВАНИЯ (Э-5 → Э-6)' },
+    { id: 'zone-buffer', x: 940, y: 220, width: 370, height: 230, label: 'СБОР И ОТКАЧКА В К-1 (Е-15, Н-20)' },
+    { id: 'zone-drain-trap', x: 10, y: 560, width: 1300, height: 150, label: 'ДРЕНАЖНЫЙ КОЛЛЕКТОР И ЛОВУШКА НЕФТИ (Е-16)' },
+  ],
+  columns: [],
+  furnaces: [],
+  vessels: [
+    // 1-я ступень обессоливания
+    { id: 'ves-ed1', tag: 'Э-1', equipmentId: 'ED_1', x: 380, y: 150, alertBindings: ['elou_desalt_fail'] },
+    { id: 'ves-ed3', tag: 'Э-3', equipmentId: 'ED_3', x: 380, y: 300, alertBindings: ['elou_desalt_fail'] },
+    { id: 'ves-ed5', tag: 'Э-5', equipmentId: 'ED_5', x: 380, y: 450, alertBindings: ['elou_desalt_fail'] },
+    // 2-я ступень глубокого обессоливания
+    { id: 'ves-ed2', tag: 'Э-2', equipmentId: 'ED_2', x: 720, y: 150, alertBindings: ['elou_desalt_fail'] },
+    { id: 'ves-ed4', tag: 'Э-4', equipmentId: 'ED_4', x: 720, y: 300, alertBindings: ['elou_desalt_fail'] },
+    { id: 'ves-ed6', tag: 'Э-6', equipmentId: 'ED_6', x: 720, y: 450, alertBindings: ['elou_desalt_fail'] },
+    // Буферная емкость обессоленной нефти
+    { id: 'ves-e15', tag: 'Е-15', equipmentId: 'VESSEL_E_15', x: 960, y: 310, alertBindings: [] },
+    // Вертикальный гидрозатвор / ловушка нефти
+    { id: 'ves-e16', tag: 'Е-16', equipmentId: 'VESSEL_E_16', orientation: 'vertical', x: 1100, y: 580, alertBindings: [] },
+  ],
+  pumps: [
+    { id: 'pump-n82', tag: 'Н-82 (вода)', equipmentId: 'N_82', x: 80, y: 60, alertBindings: ['power_fail'] },
+    { id: 'pump-n20', tag: 'Н-20', equipmentId: 'N_20', x: 1180, y: 330, alertBindings: ['pump_fail', 'power_fail'] },
+  ],
+  valves: [
+    // Входные задвижки сырой нефти (зеленые на схеме)
+    { id: 'valve-feed-1', label: 'Вх-1', valveId: 'V_FEED_1', x: 190, y: 170 },
+    { id: 'valve-feed-2', label: 'Вх-2', valveId: 'V_FEED_2', x: 190, y: 320 },
+    { id: 'valve-feed-3', label: 'Вх-3', valveId: 'V_FEED_3', x: 190, y: 470 },
+
+    // Смесители 1-й ступени (инжекторы промывочной воды)
+    { id: 'mixer-a19-1', label: 'А-19/1', valveId: 'A_19_1', kind: 'mixer', x: 280, y: 170 },
+    { id: 'mixer-a19-3', label: 'А-19/3', valveId: 'A_19_3', kind: 'mixer', x: 280, y: 320 },
+    { id: 'mixer-a19-5', label: 'А-19/5', valveId: 'A_19_5', kind: 'mixer', x: 280, y: 470 },
+
+    // Межступенчатые задвижки
+    { id: 'valve-mid-1', label: 'Меж-1', valveId: 'V_MID_1', x: 550, y: 170 },
+    { id: 'valve-mid-2', label: 'Меж-2', valveId: 'V_MID_2', x: 550, y: 320 },
+    { id: 'valve-mid-3', label: 'Меж-3', valveId: 'V_MID_3', x: 550, y: 470 },
+
+    // Смесители 2-й ступени
+    { id: 'mixer-a20-2', label: 'А-20/2', valveId: 'A_20_2', kind: 'mixer', x: 630, y: 170 },
+    { id: 'mixer-a20-4', label: 'А-20/4', valveId: 'A_20_4', kind: 'mixer', x: 630, y: 320 },
+    { id: 'mixer-a20-6', label: 'А-20/6', valveId: 'A_20_6', kind: 'mixer', x: 630, y: 470 },
+
+    // Выходные задвижки 2-й ступени в коллектор Е-15
+    { id: 'valve-out-1', label: 'Вых-1', valveId: 'V_OUT_1', x: 890, y: 240, vertical: true, rotate: 90 },
+    { id: 'valve-out-2', label: 'Вых-2', valveId: 'V_OUT_2', x: 890, y: 320 },
+    { id: 'valve-out-3', label: 'Вых-3', valveId: 'V_OUT_3', x: 890, y: 400, vertical: true, rotate: 90 },
+
+    // Обвязка Е-15 и сырьевого насоса Н-20
+    { id: 'valve-e15-drain', label: 'Дрен Е-15', valveId: 'V_E15_DRAIN', x: 1020, y: 380, vertical: true, rotate: 90 },
+    { id: 'valve-v1-elou', label: 'V-1', valveId: 'V_1', equipmentId: 'V_1', x: 1120, y: 330 },
+
+    // Обвязка промывочной воды Н-82
+    { id: 'valve-water-main', label: 'Вода напор', valveId: 'V_WATER_MAIN', x: 190, y: 35 },
+    { id: 'valve-water-stage2', label: 'Вода II ст', valveId: 'V_WATER_ST2', x: 630, y: 70, vertical: true, rotate: 90 },
+    { id: 'valve-water-stage1', label: 'Вода I ст', valveId: 'V_WATER_ST1', x: 280, y: 115, vertical: true, rotate: 90 },
+
+    // Дренажные клапаны соленой подтоварной воды под дегидраторами
+    { id: 'valve-drain-e1', label: 'Др-1', valveId: 'V_DR_E1', x: 440, y: 220, vertical: true, rotate: 90, hideLabel: true },
+    { id: 'valve-drain-e3', label: 'Др-3', valveId: 'V_DR_E3', x: 440, y: 370, vertical: true, rotate: 90, hideLabel: true },
+    { id: 'valve-drain-e5', label: 'Др-5', valveId: 'V_DR_E5', x: 440, y: 520, vertical: true, rotate: 90, hideLabel: true },
+    { id: 'valve-drain-e2', label: 'Др-2', valveId: 'V_DR_E2', x: 780, y: 220, vertical: true, rotate: 90, hideLabel: true },
+    { id: 'valve-drain-e4', label: 'Др-4', valveId: 'V_DR_E4', x: 780, y: 370, vertical: true, rotate: 90, hideLabel: true },
+    { id: 'valve-drain-e6', label: 'Др-6', valveId: 'V_DR_E6', x: 780, y: 520, vertical: true, rotate: 90, hideLabel: true },
+
+    // Арматура ловушки Е-16
+    { id: 'valve-drain-collector', label: 'Коллектор', valveId: 'V_DR_COL', x: 1040, y: 630 },
+    { id: 'valve-water-discharge', label: 'Сброс воды', valveId: 'V_DR_WATER', x: 1118, y: 675, vertical: true, rotate: 90 },
+  ],
+  sensors: [
+    {
+      id: 'sensor-sal1-elou',
+      tag: 'Sal-1 · Соли',
+      sensorKey: 'Sal_1',
+      unit: 'мг/л',
+      x: 1080,
+      y: 250,
+      showSparkline: true,
+      minLimit: 0,
+      maxLimit: 30,
+    },
+    {
+      id: 'sensor-w1-elou',
+      tag: 'W-1 · Влага',
+      sensorKey: 'W_1',
+      unit: '%',
+      x: 1080,
+      y: 380,
+      showSparkline: true,
+      minLimit: 0,
+      maxLimit: 2.0,
+    },
+  ],
+  pipes: [
+    // 1. Сырьевая гребенка сырой нефти (зеленая)
+    { id: 'pipe-feed-raw', kind: 'crude', flowBinding: 'elouFeed', x1: 20, y1: 320, x2: 120, y2: 320, routing: 'direct' },
+    { id: 'pipe-feed-split-1', kind: 'crude', flowBinding: 'elouFeed', x1: 120, y1: 320, x2: 170, y2: 170, routing: 'elbow-vh' },
+    { id: 'pipe-feed-split-2', kind: 'crude', flowBinding: 'elouFeed', x1: 120, y1: 320, x2: 170, y2: 320, routing: 'direct' },
+    { id: 'pipe-feed-split-3', kind: 'crude', flowBinding: 'elouFeed', x1: 120, y1: 320, x2: 170, y2: 470, routing: 'elbow-vh' },
+
+    // От задвижек в смесители А-19
+    { id: 'pipe-v1-to-a19-1', kind: 'crude', flowBinding: 'elouFeed', x1: 210, y1: 170, x2: 260, y2: 170, routing: 'direct' },
+    { id: 'pipe-v2-to-a19-3', kind: 'crude', flowBinding: 'elouFeed', x1: 210, y1: 320, x2: 260, y2: 320, routing: 'direct' },
+    { id: 'pipe-v3-to-a19-5', kind: 'crude', flowBinding: 'elouFeed', x1: 210, y1: 470, x2: 260, y2: 470, routing: 'direct' },
+
+    // От смесителей А-19 в дегидраторы 1-й ступени (Э-1, Э-3, Э-5)
+    { id: 'pipe-a19-1-to-ed1', kind: 'crude', flowBinding: 'elouFeed', x1: 300, y1: 170, x2: 380, y2: 170, routing: 'direct' },
+    { id: 'pipe-a19-3-to-ed3', kind: 'crude', flowBinding: 'elouFeed', x1: 300, y1: 320, x2: 380, y2: 320, routing: 'direct' },
+    { id: 'pipe-a19-5-to-ed5', kind: 'crude', flowBinding: 'elouFeed', x1: 300, y1: 470, x2: 380, y2: 470, routing: 'direct' },
+
+    // Межступенчатые перетоки от 1-й ступени к задвижкам
+    { id: 'pipe-ed1-to-vmid1', kind: 'crude', flowBinding: 'elouFeed', x1: 500, y1: 170, x2: 530, y2: 170, routing: 'direct' },
+    { id: 'pipe-ed3-to-vmid2', kind: 'crude', flowBinding: 'elouFeed', x1: 500, y1: 320, x2: 530, y2: 320, routing: 'direct' },
+    { id: 'pipe-ed5-to-vmid3', kind: 'crude', flowBinding: 'elouFeed', x1: 500, y1: 470, x2: 530, y2: 470, routing: 'direct' },
+
+    // От межступенчатых задвижек в смесители А-20 2-й ступени
+    { id: 'pipe-vmid1-to-a20-2', kind: 'crude', flowBinding: 'elouFeed', x1: 570, y1: 170, x2: 610, y2: 170, routing: 'direct' },
+    { id: 'pipe-vmid2-to-a20-4', kind: 'crude', flowBinding: 'elouFeed', x1: 570, y1: 320, x2: 610, y2: 320, routing: 'direct' },
+    { id: 'pipe-vmid3-to-a20-6', kind: 'crude', flowBinding: 'elouFeed', x1: 570, y1: 470, x2: 610, y2: 470, routing: 'direct' },
+
+    // От смесителей А-20 в дегидраторы 2-й ступени (Э-2, Э-4, Э-6)
+    { id: 'pipe-a20-2-to-ed2', kind: 'crude', flowBinding: 'elouFeed', x1: 650, y1: 170, x2: 720, y2: 170, routing: 'direct' },
+    { id: 'pipe-a20-4-to-ed4', kind: 'crude', flowBinding: 'elouFeed', x1: 650, y1: 320, x2: 720, y2: 320, routing: 'direct' },
+    { id: 'pipe-a20-6-to-ed6', kind: 'crude', flowBinding: 'elouFeed', x1: 650, y1: 470, x2: 720, y2: 470, routing: 'direct' },
+
+    // От дегидраторов 2-й ступени к выходным клапанам
+    { id: 'pipe-ed2-to-vout1', kind: 'crude', flowBinding: 'elouFeed', x1: 840, y1: 170, x2: 890, y2: 220, routing: 'elbow-hv' },
+    { id: 'pipe-ed4-to-vout2', kind: 'crude', flowBinding: 'elouFeed', x1: 840, y1: 320, x2: 870, y2: 320, routing: 'direct' },
+    { id: 'pipe-ed6-to-vout3', kind: 'crude', flowBinding: 'elouFeed', x1: 840, y1: 470, x2: 890, y2: 420, routing: 'elbow-hv' },
+
+    // От выходных клапанов в буферную емкость Е-15
+    { id: 'pipe-vout1-to-e15', kind: 'crude', flowBinding: 'elouFeed', x1: 890, y1: 260, x2: 960, y2: 330, routing: 'elbow-vh' },
+    { id: 'pipe-vout2-to-e15', kind: 'crude', flowBinding: 'elouFeed', x1: 910, y1: 320, x2: 960, y2: 330, routing: 'direct' },
+    { id: 'pipe-vout3-to-e15', kind: 'crude', flowBinding: 'elouFeed', x1: 890, y1: 380, x2: 960, y2: 330, routing: 'elbow-vh' },
+
+    // От Е-15 к клапану V-1 и насосу Н-20
+    { id: 'pipe-e15-to-v1', kind: 'crude', flowBinding: 'k1Feed', x1: 1080, y1: 330, x2: 1100, y2: 330, routing: 'direct' },
+    { id: 'pipe-v1-to-n20', kind: 'crude', flowBinding: 'k1Feed', x1: 1140, y1: 330, x2: 1150, y2: 330, routing: 'direct' },
+    { id: 'pipe-n20-to-k1', kind: 'crude', flowBinding: 'k1Feed', x1: 1210, y1: 330, x2: 1310, y2: 330, routing: 'direct' },
+
+    // Дренаж Е-15
+    { id: 'pipe-e15-drain', kind: 'drain', x1: 1020, y1: 355, x2: 1020, y2: 410, routing: 'direct' },
+
+    // 2. Линии промывочной воды от Н-82 (utility)
+    { id: 'pipe-water-intake', kind: 'utility', flowBinding: 'washWater', x1: 20, y1: 60, x2: 50, y2: 60, routing: 'direct' },
+    { id: 'pipe-water-discharge', kind: 'utility', flowBinding: 'washWater', x1: 110, y1: 60, x2: 170, y2: 35, routing: 'elbow-vh' },
+    { id: 'pipe-water-main', kind: 'utility', flowBinding: 'washWater', x1: 210, y1: 35, x2: 630, y2: 35, routing: 'direct' },
+
+    // Ввод воды во 2-ю ступень (А-20/2, А-20/4, А-20/6)
+    { id: 'pipe-water-to-st2-v', kind: 'utility', flowBinding: 'washWater', x1: 630, y1: 35, x2: 630, y2: 50, routing: 'direct' },
+    { id: 'pipe-water-st2-feed', kind: 'utility', flowBinding: 'washWater', x1: 630, y1: 90, x2: 630, y2: 450, routing: 'direct' },
+    { id: 'pipe-water-a20-2', kind: 'utility', flowBinding: 'washWater', x1: 630, y1: 145, x2: 630, y2: 145, routing: 'direct' },
+    { id: 'pipe-water-a20-4', kind: 'utility', flowBinding: 'washWater', x1: 630, y1: 295, x2: 630, y2: 295, routing: 'direct' },
+    { id: 'pipe-water-a20-6', kind: 'utility', flowBinding: 'washWater', x1: 630, y1: 445, x2: 630, y2: 445, routing: 'direct' },
+
+    // Ввод воды в 1-ю ступень (А-19/1, А-19/3, А-19/5)
+    { id: 'pipe-water-to-st1-v', kind: 'utility', flowBinding: 'washWater', x1: 280, y1: 35, x2: 280, y2: 95, routing: 'direct' },
+    { id: 'pipe-water-st1-feed', kind: 'utility', flowBinding: 'washWater', x1: 280, y1: 135, x2: 280, y2: 450, routing: 'direct' },
+
+    // 3. Линии сброса соленой подтоварной воды (drain)
+    // 1-я ступень
+    { id: 'pipe-dr-e1', kind: 'drain', flowBinding: 'elouDrain', x1: 440, y1: 195, x2: 440, y2: 630, routing: 'direct' },
+    { id: 'pipe-dr-e3', kind: 'drain', flowBinding: 'elouDrain', x1: 440, y1: 345, x2: 440, y2: 390, routing: 'direct' },
+    { id: 'pipe-dr-e5', kind: 'drain', flowBinding: 'elouDrain', x1: 440, y1: 495, x2: 440, y2: 540, routing: 'direct' },
+
+    // 2-я ступень
+    { id: 'pipe-dr-e2', kind: 'drain', flowBinding: 'elouDrain', x1: 780, y1: 195, x2: 780, y2: 630, routing: 'direct' },
+    { id: 'pipe-dr-e4', kind: 'drain', flowBinding: 'elouDrain', x1: 780, y1: 345, x2: 780, y2: 390, routing: 'direct' },
+    { id: 'pipe-dr-e6', kind: 'drain', flowBinding: 'elouDrain', x1: 780, y1: 495, x2: 780, y2: 540, routing: 'direct' },
+
+    // Общий дренажный коллектор
+    { id: 'pipe-drain-collector', kind: 'drain', flowBinding: 'elouDrain', x1: 440, y1: 630, x2: 1020, y2: 630, routing: 'direct' },
+    { id: 'pipe-drain-to-e16', kind: 'drain', flowBinding: 'elouDrain', x1: 1060, y1: 630, x2: 1100, y2: 630, routing: 'direct' },
+
+    // Выходы из ловушки Е-16
+    { id: 'pipe-e16-oil-trap', kind: 'crude', flowBinding: 'trappedOil', x1: 1136, y1: 595, x2: 1300, y2: 595, routing: 'direct' },
+    { id: 'pipe-e16-water-dr', kind: 'drain', flowBinding: 'elouDrain', x1: 1118, y1: 664, x2: 1118, y2: 710, routing: 'direct' },
+  ],
+  labels: [
+    { id: 'lbl-feed-title', x: 20, y: 305, text: 'Из блока подготовки сырой нефти', className: 'source-label' },
+    { id: 'lbl-water-title', x: 80, y: 25, text: 'Н-82 (вода)', className: 'utility-label' },
+    { id: 'lbl-to-k1', x: 1280, y: 315, text: '(В К-1)', className: 'source-label', textAnchor: 'middle' },
+    { id: 'lbl-trapped-oil', x: 1220, y: 580, text: 'Уловленная нефть', className: 'source-label' },
+    { id: 'lbl-drain-water', x: 1140, y: 705, text: 'Дренажная вода', className: 'utility-label' },
+    { id: 'lbl-e15-drain-text', x: 1020, y: 415, text: 'Дренаж', className: 'utility-label', textAnchor: 'middle' },
+    { id: 'lbl-stage1-title', x: 440, y: 130, text: 'I СТУПЕНЬ ОБЕССОЛИВАНИЯ', className: 'equipment-tag', textAnchor: 'middle' },
+    { id: 'lbl-stage2-title', x: 780, y: 130, text: 'II СТУПЕНЬ ГЛУБОКОГО ОБЕССОЛИВАНИЯ', className: 'equipment-tag', textAnchor: 'middle' },
+  ],
+};
+
 export const BUILTIN_PRESETS: MnemoschemeConfig[] = [
   DEFAULT_MNEMOSCHEME_PRESET,
+  ELOU_DETAILED_PRESET,
 ];

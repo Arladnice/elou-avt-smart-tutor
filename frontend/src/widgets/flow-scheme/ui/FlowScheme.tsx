@@ -367,7 +367,7 @@ const FlowScheme: React.FC = () => {
 
             {/* Колонны */}
             {activeScheme.columns.map(col => {
-              const lvl = sensors[col.levelBinding] || 50;
+              const lvl = (sensors as any)[col.levelBinding] ?? 50;
               const isAlert = col.alertBindings.some(d => defects[d]);
               return (
                 <ColumnSymbol
@@ -375,18 +375,18 @@ const FlowScheme: React.FC = () => {
                   x={col.x}
                   y={col.y}
                   tag={col.tag}
-                  equipmentId={col.equipmentId}
-                  level={lvl}
+                  equipmentId={col.equipmentId as any}
+                  level={Number(lvl) || 50}
                   isAlert={isAlert}
                   tagOffsetY={col.tagOffsetY}
-                  onOpen={setSelectedEquipmentId}
+                  onOpen={id => setSelectedEquipmentId(id as EquipmentId)}
                 />
               );
             })}
 
             {/* Печи */}
             {activeScheme.furnaces.map(fur => {
-              const flame = sensors[fur.flameBinding];
+              const flame = (sensors as any)[fur.flameBinding];
               const isAlert = fur.alertBindings.some(d => defects[d]);
               return (
                 <FurnaceSymbol
@@ -397,7 +397,7 @@ const FlowScheme: React.FC = () => {
                   equipmentId={fur.equipmentId as any}
                   flameIsOn={Boolean(flame)}
                   isAlert={isAlert}
-                  onOpen={setSelectedEquipmentId}
+                  onOpen={id => setSelectedEquipmentId(id as EquipmentId)}
                 />
               );
             })}
@@ -412,15 +412,16 @@ const FlowScheme: React.FC = () => {
                   y={ves.y}
                   tag={ves.tag as any}
                   equipmentId={ves.equipmentId as any}
+                  orientation={ves.orientation}
                   isAlert={isAlert}
-                  onOpen={setSelectedEquipmentId}
+                  onOpen={id => setSelectedEquipmentId(id as EquipmentId)}
                 />
               );
             })}
 
             {/* Насосы */}
             {activeScheme.pumps.map(p => {
-              const running = pumps[p.equipmentId];
+              const running = pumps[p.equipmentId as PumpId];
               const isAlert = p.alertBindings ? p.alertBindings.some(d => defects[d]) : false;
               return (
                 <PumpSymbol
@@ -428,13 +429,13 @@ const FlowScheme: React.FC = () => {
                   x={p.x}
                   y={p.y}
                   tag={p.tag}
-                  equipmentId={p.equipmentId}
+                  equipmentId={p.equipmentId as any}
                   direction={p.direction}
                   tagOffsetX={p.tagOffsetX}
                   tagOffsetY={p.tagOffsetY}
                   isRunning={Boolean(running)}
                   isAlert={Boolean(isAlert)}
-                  onOpen={setSelectedEquipmentId}
+                  onOpen={id => setSelectedEquipmentId(id as EquipmentId)}
                   onToggle={handlePumpClick}
                 />
               );
@@ -442,12 +443,13 @@ const FlowScheme: React.FC = () => {
 
             {/* Клапаны */}
             {activeScheme.valves.map(v => {
-              const isOpen = Boolean(valves[v.valveId]);
+              const isOpen = Boolean(valves[v.valveId as ValveId]);
               return (
                 <ValveSymbol
                   key={v.id}
                   valveId={v.valveId}
                   equipmentId={v.equipmentId}
+                  kind={v.kind}
                   x={v.x}
                   y={v.y}
                   rotate={v.rotate}
@@ -455,8 +457,8 @@ const FlowScheme: React.FC = () => {
                   hideLabel={v.hideLabel}
                   label={v.label}
                   isOpen={isOpen}
-                  onToggle={handleValveClick}
-                  onOpen={setSelectedEquipmentId}
+                  onToggle={valveId => handleValveClick(valveId as ValveId)}
+                  onOpen={id => setSelectedEquipmentId(id as EquipmentId)}
                 />
               );
             })}

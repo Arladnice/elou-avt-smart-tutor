@@ -6,7 +6,7 @@ export interface ColumnSymbolProps {
   x: number;
   y: number;
   tag: 'К-1' | 'К-2' | string;
-  equipmentId: Extract<EquipmentId, 'K_1' | 'K_2'>;
+  equipmentId: 'K_1' | 'K_2' | string;
   level: number;
   isAlert: boolean;
   tagOffsetY?: number;

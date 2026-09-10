@@ -6,7 +6,7 @@ export interface FurnaceSymbolProps {
   x: number;
   y: number;
   tag: 'П-1' | 'П-3' | string;
-  equipmentId: Extract<EquipmentId, 'P_1' | 'P_3'>;
+  equipmentId: 'P_1' | 'P_3' | string;
   flameIsOn: boolean;
   isAlert: boolean;
   onOpen?: (equipmentId: EquipmentId) => void;

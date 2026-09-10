@@ -35,6 +35,10 @@ const PIPE_KINDS: PipeKind[] = ['crude', 'gas', 'steam', 'drain', 'fuel', 'demul
 const AVAILABLE_FLOW_BINDINGS: { key: string; label: string }[] = [
   { key: '', label: 'Без анимации (статическая)' },
   { key: 'k1Feed', label: 'Подача сырья в колонну К-1' },
+  { key: 'elouFeed', label: 'Подача сырой нефти в блок ЭЛОУ' },
+  { key: 'washWater', label: 'Подача промывочной воды (Н-82)' },
+  { key: 'elouDrain', label: 'Дренажный коллектор соленой воды (в Е-16)' },
+  { key: 'trappedOil', label: 'Отвод уловленной нефти из Е-16' },
   { key: 'k1Relief', label: 'Сброс газов К-1 на факел' },
   { key: 'k1Loop', label: 'Циркуляция остатка К-1 (П-3)' },
   { key: 'k2Feed', label: 'Подача полугудрона в печь П-1 и К-2' },
@@ -143,11 +147,35 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         </S.FormGroup>
       )}
 
-      {/* Клапаны: Label и valveId */}
+      {/* Емкости: ориентация */}
+      {category === 'vessels' && (
+        <S.FormGroup>
+          <S.FormLabel>Ориентация аппарата</S.FormLabel>
+          <S.FormSelect
+            value={itemData.orientation || 'horizontal'}
+            onChange={e => handleFieldChange('orientation', e.target.value)}
+          >
+            <option value="horizontal">Горизонтальная (Емкость / Электродегидратор)</option>
+            <option value="vertical">Вертикальная (Гидрозатвор / Ловушка нефти)</option>
+          </S.FormSelect>
+        </S.FormGroup>
+      )}
+
+      {/* Клапаны: Label, вид и valveId */}
       {category === 'valves' && (
         <>
           <S.FormGroup>
-            <S.FormLabel>Подпись клапана</S.FormLabel>
+            <S.FormLabel>Тип устройства</S.FormLabel>
+            <S.FormSelect
+              value={itemData.kind || 'valve'}
+              onChange={e => handleFieldChange('kind', e.target.value)}
+            >
+              <option value="valve">Клапан / Задвижка</option>
+              <option value="mixer">Смесительное устройство (Инжектор воды)</option>
+            </S.FormSelect>
+          </S.FormGroup>
+          <S.FormGroup>
+            <S.FormLabel>Подпись устройства</S.FormLabel>
             <S.FormInput
               type="text"
               value={itemData.label || ''}
@@ -160,6 +188,11 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               value={itemData.valveId}
               onChange={e => handleFieldChange('valveId', e.target.value)}
             >
+              {!AVAILABLE_VALVE_IDS.includes(itemData.valveId) && (
+                <option value={itemData.valveId}>
+                  {itemData.valveId} (пользовательский)
+                </option>
+              )}
               {AVAILABLE_VALVE_IDS.map(v => (
                 <option key={v} value={v}>
                   {v}
@@ -195,6 +228,11 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               value={itemData.equipmentId}
               onChange={e => handleFieldChange('equipmentId', e.target.value)}
             >
+              {!AVAILABLE_PUMP_IDS.includes(itemData.equipmentId) && (
+                <option value={itemData.equipmentId}>
+                  {itemData.equipmentId} (пользовательский)
+                </option>
+              )}
               {AVAILABLE_PUMP_IDS.map(p => (
                 <option key={p} value={p}>
                   {p}

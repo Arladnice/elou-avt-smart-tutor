@@ -4,8 +4,9 @@ import type { EquipmentId } from '../../model/types';
 import * as S from './symbols.styles';
 
 export interface ValveSymbolProps {
-  valveId: ValveId;
+  valveId: ValveId | string;
   equipmentId?: EquipmentId;
+  kind?: 'valve' | 'mixer';
   x: number;
   y: number;
   rotate?: number;
@@ -13,7 +14,7 @@ export interface ValveSymbolProps {
   isOpen: boolean;
   vertical?: boolean;
   hideLabel?: boolean;
-  onToggle?: (valveId: ValveId) => void;
+  onToggle?: (valveId: ValveId | string) => void;
   onOpen?: (equipmentId: EquipmentId) => void;
   interactive?: boolean;
 }
@@ -31,9 +32,21 @@ const ValveGlyph: React.FC = () => (
   </>
 );
 
+const MixerGlyph: React.FC = () => (
+  <>
+    <rect className="valve-state-part valve-flange" x="-18" y="-7" width="4" height="14" rx="1" />
+    <rect className="valve-state-part valve-flange" x="14" y="-7" width="4" height="14" rx="1" />
+    <rect className="valve-state-part valve-flange" x="-5" y="-22" width="10" height="4" rx="1" />
+    <path className="valve-state-part valve-body" d="M-14 -18 H14 V10 C14 16 8 20 0 20 C-8 20 -14 16 -14 10 Z" />
+    <line className="valve-stem" x1="-12" y1="-16" x2="12" y2="10" />
+    <line className="valve-stem" x1="12" y1="-16" x2="-12" y2="10" />
+  </>
+);
+
 export const ValveSymbol: React.FC<ValveSymbolProps> = ({
   valveId,
   equipmentId,
+  kind = 'valve',
   x,
   y,
   rotate = 0,
@@ -66,7 +79,7 @@ export const ValveSymbol: React.FC<ValveSymbolProps> = ({
       data-scheme-interactive={interactive ? 'true' : undefined}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
-      aria-label={`Переключить клапан ${label}`}
+      aria-label={`Переключить ${kind === 'mixer' ? 'смеситель' : 'клапан'} ${label}`}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onKeyDown={e => {
@@ -77,12 +90,12 @@ export const ValveSymbol: React.FC<ValveSymbolProps> = ({
         }
       }}
     >
-      <rect className="valve-hitbox" x="-20" y="-32" width="40" height="44" />
-      <ValveGlyph />
+      <rect className="valve-hitbox" x="-22" y="-32" width="44" height="56" />
+      {kind === 'mixer' ? <MixerGlyph /> : <ValveGlyph />}
       {!hideLabel && (
         <text
           x={vertical ? -24 : 0}
-          y={vertical ? -39 : -34}
+          y={vertical ? -39 : kind === 'mixer' ? -26 : -34}
           className="valve-tag"
           transform={vertical ? 'rotate(-90)' : undefined}
         >

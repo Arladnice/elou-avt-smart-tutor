@@ -1,11 +1,20 @@
 import type { DefectId, PumpId, Sensors, ValveId } from '@/entities/telemetry';
 
-export type EquipmentId =
+export type KnownEquipmentId =
   | 'N_1'
   | 'N_20'
+  | 'N_82'
   | 'E_1'
+  | 'ED_1'
+  | 'ED_2'
+  | 'ED_3'
+  | 'ED_4'
+  | 'ED_5'
+  | 'ED_6'
   | 'VESSEL_E_1'
   | 'VESSEL_E_2'
+  | 'VESSEL_E_15'
+  | 'VESSEL_E_16'
   | 'P_3'
   | 'N_2'
   | 'N_3'
@@ -19,6 +28,8 @@ export type EquipmentId =
   | 'V_3'
   | 'V_ELOU'
   | 'V_VT';
+
+export type EquipmentId = KnownEquipmentId | (string & {});
 
 export type PipeKind = 'crude' | 'gas' | 'steam' | 'drain' | 'fuel' | 'demulsifier' | 'utility';
 
@@ -34,10 +45,10 @@ export interface ProcessZoneConfig {
 export interface ColumnNodeConfig {
   id: string;
   tag: 'К-1' | 'К-2' | string;
-  equipmentId: 'K_1' | 'K_2';
+  equipmentId: 'K_1' | 'K_2' | string;
   x: number;
   y: number;
-  levelBinding: 'L_1' | 'L_2';
+  levelBinding: 'L_1' | 'L_2' | string;
   alertBindings: DefectId[];
   tagOffsetY?: number;
 }
@@ -45,27 +56,28 @@ export interface ColumnNodeConfig {
 export interface FurnaceNodeConfig {
   id: string;
   tag: 'П-1' | 'П-3' | string;
-  equipmentId: 'P_1' | 'P_3';
+  equipmentId: 'P_1' | 'P_3' | string;
   x: number;
   y: number;
-  flameBinding: 'Flame_P1' | 'Flame_P3';
+  flameBinding: 'Flame_P1' | 'Flame_P3' | string;
   alertBindings: DefectId[];
 }
 
 export interface VesselNodeConfig {
   id: string;
   tag: 'Е-1' | 'Е-2' | string;
-  equipmentId: 'VESSEL_E_1' | 'VESSEL_E_2';
+  equipmentId: EquipmentId;
   x: number;
   y: number;
-  levelSensorBinding?: 'L_E1' | 'L_E2';
+  orientation?: 'horizontal' | 'vertical';
+  levelSensorBinding?: 'L_E1' | 'L_E2' | string;
   alertBindings: DefectId[];
 }
 
 export interface PumpNodeConfig {
   id: string;
   tag: string;
-  equipmentId: PumpId;
+  equipmentId: PumpId | string;
   x: number;
   y: number;
   direction?: 'left' | 'right';
@@ -77,8 +89,9 @@ export interface PumpNodeConfig {
 export interface ValveNodeConfig {
   id: string;
   label: string;
-  valveId: ValveId;
+  valveId: ValveId | string;
   equipmentId?: EquipmentId;
+  kind?: 'valve' | 'mixer';
   x: number;
   y: number;
   rotate?: number;

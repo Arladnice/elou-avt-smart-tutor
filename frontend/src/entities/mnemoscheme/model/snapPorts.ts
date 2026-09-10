@@ -112,40 +112,99 @@ export function getSnapPorts(scheme: MnemoschemeConfig, excludePipeId?: string):
 
   // 4. Емкости
   scheme.vessels.forEach(v => {
-    ports.push({
-      id: `${v.id}-in`,
-      label: `Штуцер входа ${v.tag}`,
-      x: v.x,
-      y: v.y + 20,
-      category: 'vessel',
-      categoryLabel: 'Емкости',
-      targetId: v.id,
-    });
-    ports.push({
-      id: `${v.id}-out`,
-      label: `Штуцер выхода ${v.tag}`,
-      x: v.x + 120,
-      y: v.y + 20,
-      category: 'vessel',
-      categoryLabel: 'Емкости',
-      targetId: v.id,
-    });
-    ports.push({
-      id: `${v.id}-drain`,
-      label: `Дренаж ${v.tag}`,
-      x: v.x + 60,
-      y: v.y + 45,
-      category: 'vessel',
-      categoryLabel: 'Емкости',
-      targetId: v.id,
-    });
+    if (v.orientation === 'vertical') {
+      ports.push({
+        id: `${v.id}-in`,
+        label: `Ввод стоков ${v.tag}`,
+        x: v.x,
+        y: v.y + 50,
+        category: 'vessel',
+        categoryLabel: 'Емкости',
+        targetId: v.id,
+      });
+      ports.push({
+        id: `${v.id}-top`,
+        label: `Перелив нефти ${v.tag}`,
+        x: v.x + 36,
+        y: v.y + 15,
+        category: 'vessel',
+        categoryLabel: 'Емкости',
+        targetId: v.id,
+      });
+      ports.push({
+        id: `${v.id}-drain`,
+        label: `Дренаж воды ${v.tag}`,
+        x: v.x + 18,
+        y: v.y + 80,
+        category: 'vessel',
+        categoryLabel: 'Емкости',
+        targetId: v.id,
+      });
+    } else {
+      ports.push({
+        id: `${v.id}-in`,
+        label: `Штуцер входа ${v.tag}`,
+        x: v.x,
+        y: v.y + 20,
+        category: 'vessel',
+        categoryLabel: 'Емкости',
+        targetId: v.id,
+      });
+      ports.push({
+        id: `${v.id}-out`,
+        label: `Штуцер выхода ${v.tag}`,
+        x: v.x + 120,
+        y: v.y + 20,
+        category: 'vessel',
+        categoryLabel: 'Емкости',
+        targetId: v.id,
+      });
+      ports.push({
+        id: `${v.id}-drain`,
+        label: `Дренаж ${v.tag}`,
+        x: v.x + 60,
+        y: v.y + 45,
+        category: 'vessel',
+        categoryLabel: 'Емкости',
+        targetId: v.id,
+      });
+    }
   });
 
   // 5. Задвижки и клапаны
   scheme.valves.forEach(v => {
     const isVert = Boolean(v.vertical || v.rotate === 90 || v.rotate === 270);
     const name = v.label || v.valveId;
-    if (isVert) {
+
+    if (v.kind === 'mixer') {
+      ports.push({
+        id: `${v.id}-in`,
+        label: `Вход нефти ${name}`,
+        x: v.x - 20,
+        y: v.y,
+        category: 'valve',
+        categoryLabel: 'Смесители',
+        targetId: v.id,
+      });
+      ports.push({
+        id: `${v.id}-out`,
+        label: `Выход смеси ${name}`,
+        x: v.x + 20,
+        y: v.y,
+        category: 'valve',
+        categoryLabel: 'Смесители',
+        targetId: v.id,
+      });
+      ports.push({
+        id: `${v.id}-water`,
+        label: `Ввод воды ${name}`,
+        x: v.x,
+        y: v.y - 24,
+        category: 'valve',
+        categoryLabel: 'Смесители',
+        targetId: v.id,
+      });
+    } else if (isVert) {
       ports.push({
         id: `${v.id}-in`,
         label: `Вход ${name}`,

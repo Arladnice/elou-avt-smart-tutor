@@ -46,6 +46,18 @@ const PALETTE_ITEMS: { category: string; icon: React.ReactNode; items: PaletteIt
       },
       {
         type: 'vessel',
+        name: 'Дегидратор Э',
+        sub: 'Горизонтальный электродегидратор',
+        defaultData: { tag: 'Э-1', equipmentId: 'ED_1', orientation: 'horizontal', alertBindings: ['elou_desalt_fail'] },
+      },
+      {
+        type: 'vessel',
+        name: 'Ловушка Е-16',
+        sub: 'Вертикальный гидрозатвор нефти',
+        defaultData: { tag: 'Е-16', equipmentId: 'VESSEL_E_16', orientation: 'vertical', alertBindings: [] },
+      },
+      {
+        type: 'vessel',
         name: 'Емкость Е-1',
         sub: 'Рефлюксная емкость К-1',
         defaultData: { tag: 'Е-1', equipmentId: 'VESSEL_E_1', levelSensorBinding: 'L_E1', alertBindings: ['valve_jam', 'power_fail'] },
@@ -62,6 +74,12 @@ const PALETTE_ITEMS: { category: string; icon: React.ReactNode; items: PaletteIt
     category: 'Насосные агрегаты',
     icon: <Cpu size={14} />,
     items: [
+      {
+        type: 'pump',
+        name: 'Насос Н-82',
+        sub: 'Подача промывочной воды',
+        defaultData: { tag: 'Н-82', equipmentId: 'N_82', alertBindings: ['power_fail'] },
+      },
       {
         type: 'pump',
         name: 'Насос Н-20',
@@ -98,6 +116,12 @@ const PALETTE_ITEMS: { category: string; icon: React.ReactNode; items: PaletteIt
     category: 'Запорно-регулирующая арматура',
     icon: <GitCommit size={14} />,
     items: [
+      {
+        type: 'valve',
+        name: 'Смеситель А-19',
+        sub: 'Смесительное устройство воды',
+        defaultData: { label: 'А-19/1', valveId: 'A_19_1', kind: 'mixer' },
+      },
       {
         type: 'valve',
         name: 'Задвижка V-1',
