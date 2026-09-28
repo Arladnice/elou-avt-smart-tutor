@@ -66,6 +66,12 @@ export const ValveSymbol: React.FC<ValveSymbolProps> = ({
     if (interactive && onToggle) onToggle(valveId);
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (interactive) {
+      e.preventDefault();
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent<SVGGElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -81,6 +87,7 @@ export const ValveSymbol: React.FC<ValveSymbolProps> = ({
       tabIndex={interactive ? 0 : undefined}
       aria-label={`Переключить ${kind === 'mixer' ? 'смеситель' : 'клапан'} ${label}`}
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
       onContextMenu={handleContextMenu}
       onKeyDown={e => {
         if (!interactive) return;

@@ -56,6 +56,25 @@ export const SVGCanvas = styled.svg<{ $isPanning: boolean }>`
   cursor: ${props => props.$isPanning ? 'grabbing' : 'grab'};
   touch-action: none;
   user-select: none;
+  outline: none;
+
+  &:focus,
+  &:focus-visible,
+  &:active {
+    outline: none;
+  }
+
+  /* Устраняем браузерную обводку фокуса при кликах на любые элементы мнемосхемы */
+  g, path, rect, circle, text {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+
+    &:focus,
+    &:focus-visible,
+    &:active {
+      outline: none;
+    }
+  }
 
   .scheme-background {
     fill: url(#scheme-panel);

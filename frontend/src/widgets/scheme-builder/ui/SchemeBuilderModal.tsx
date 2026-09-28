@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Modal, message } from 'antd';
+import { Modal, App } from 'antd';
 import type { MnemoschemeConfig } from '@/entities/mnemoscheme';
 import { DEFAULT_MNEMOSCHEME_PRESET, translateSvgPath, useMnemoscheme } from '@/entities/mnemoscheme';
 import { ComponentPalette, type PaletteItemDef } from './ComponentPalette';
@@ -14,6 +14,7 @@ export interface SchemeBuilderModalProps {
 }
 
 export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, onClose }) => {
+  const { message } = App.useApp();
   const {
     activeScheme,
     savePreset,
@@ -105,7 +106,7 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
       setSelectedElement(null);
       message.info('Элемент удален со схемы');
     },
-    [workingScheme, pushHistory]
+    [workingScheme, pushHistory, message]
   );
 
   // Горячие клавиши Ctrl+Z / Ctrl+Y / Delete
@@ -184,59 +185,77 @@ export const SchemeBuilderModal: React.FC<SchemeBuilderModalProps> = ({ open, on
     return list?.find(item => item.id === id) || null;
   };
 
-  const handleUpdateItem = (
-    category: SelectedElementRef['category'],
-    id: string,
-    patch: Record<string, any>,
-  ) => {
-    setWorkingScheme(prev => {
-      const list = prev[category] as any[];
-      const updatedList = list.map(item => (item.id === id ? { ...item, ...patch } : item));
-      return { ...prev, [category]: updatedList };
-    });
-  };
+  const handleUpdateItem = useCallback(
+    (
+      category: SelectedElementRef['category'],
+      id: string,
+      patch: Record<string, any>,
+    ) => {
+      setWorkingScheme(prev => {
+        const list = (prev[category] as any[]) || [];
+        const item = list.find(i => i.id === id);
+        if (!item) return prev;
+        const isDifferent = Object.keys(patch).some(key => item[key] !== patch[key]);
+        if (!isDifferent) return prev;
+        const updatedList = list.map(i => (i.id === id ? { ...i, ...patch } : i));
+        return { ...prev, [category]: updatedList };
+      });
+    },
+    []
+  );
 
-  const handleUpdateElementPosition = (
-    category: SelectedElementRef['category'],
-    id: string,
-    x: number,
-    y: number,
-  ) => {
-    setWorkingScheme(prev => {
-      const list = (prev[category] as any[]) || [];
-      const oldItem = list.find(item => item.id === id);
-      const dx = oldItem ? x - oldItem.x : 0;
-      const dy = oldItem ? y - oldItem.y : 0;
+  const handleUpdateElementPosition = useCallback(
+    (
+      category: SelectedElementRef['category'],
+      id: string,
+      x: number,
+      y: number,
+    ) => {
+      setWorkingScheme(prev => {
+        const list = (prev[category] as any[]) || [];
+        const oldItem = list.find(item => item.id === id);
+        if (oldItem && oldItem.x === x && oldItem.y === y) {
+          return prev;
+        }
+        const dx = oldItem ? x - oldItem.x : 0;
+        const dy = oldItem ? y - oldItem.y : 0;
 
-      const updatedList = list.map(item => (item.id === id ? { ...item, x, y } : item));
+        const updatedList = list.map(item => (item.id === id ? { ...item, x, y } : item));
 
-      // Если перемещен аппарат, клапан или насос — смещаем привязанные концы трубопроводов
-      let updatedPipes = prev.pipes;
-      if (dx !== 0 || dy !== 0) {
-        updatedPipes = prev.pipes.map(pipe => {
-          let p = { ...pipe };
-          let changed = false;
-          if (p.startAnchor?.startsWith(`${id}-`)) {
-            if (p.x1 !== undefined && p.y1 !== undefined) {
-              p.x1 += dx;
-              p.y1 += dy;
-              changed = true;
+        // Если перемещен аппарат, клапан или насос — смещаем привязанные концы трубопроводов
+        let updatedPipes = prev.pipes;
+        if (dx !== 0 || dy !== 0) {
+          let pipesChanged = false;
+          updatedPipes = prev.pipes.map(pipe => {
+            let p = { ...pipe };
+            let changed = false;
+            if (p.startAnchor?.startsWith(`${id}-`)) {
+              if (p.x1 !== undefined && p.y1 !== undefined) {
+                p.x1 += dx;
+                p.y1 += dy;
+                changed = true;
+              }
             }
-          }
-          if (p.endAnchor?.startsWith(`${id}-`)) {
-            if (p.x2 !== undefined && p.y2 !== undefined) {
-              p.x2 += dx;
-              p.y2 += dy;
-              changed = true;
+            if (p.endAnchor?.startsWith(`${id}-`)) {
+              if (p.x2 !== undefined && p.y2 !== undefined) {
+                p.x2 += dx;
+                p.y2 += dy;
+                changed = true;
+              }
             }
+            if (changed) pipesChanged = true;
+            return changed ? p : pipe;
+          });
+          if (!pipesChanged) {
+            updatedPipes = prev.pipes;
           }
-          return changed ? p : pipe;
-        });
-      }
+        }
 
-      return { ...prev, [category]: updatedList, pipes: updatedPipes };
-    });
-  };
+        return { ...prev, [category]: updatedList, pipes: updatedPipes };
+      });
+    },
+    []
+  );
 
   const handleAddItem = (itemDef: PaletteItemDef) => {
     const newId = `${itemDef.type}-${Date.now().toString().slice(-6)}`;

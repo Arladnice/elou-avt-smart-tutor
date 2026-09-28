@@ -3,10 +3,27 @@ import styled from 'styled-components';
 export const EquipmentGroup = styled.g<{ $isAlert?: boolean; $isControllable?: boolean; $isRunning?: boolean }>`
   cursor: ${props => props.$isControllable ? 'pointer' : 'default'};
   transition: opacity 0.2s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus,
+  &:focus-visible,
+  &:active {
+    outline: none;
+  }
 
   .equipment-hitbox {
     fill: transparent;
+    stroke: none;
+    outline: none;
     pointer-events: all;
+  }
+
+  &:focus .equipment-hitbox,
+  &:focus-visible .equipment-hitbox,
+  &:active .equipment-hitbox {
+    stroke: none;
+    outline: none;
   }
 
   .equipment-shadow {
@@ -189,9 +206,19 @@ export const FlameWrapper = styled.g<{ $isActive: boolean }>`
 
 export const ValveGroup = styled.g<{ $isOpen: boolean }>`
   cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus,
+  &:focus-visible,
+  &:active {
+    outline: none;
+  }
 
   .valve-hitbox {
     fill: transparent;
+    stroke: none;
+    outline: none;
     pointer-events: all;
   }
 
@@ -240,6 +267,14 @@ export const ValveGroup = styled.g<{ $isOpen: boolean }>`
 `;
 
 export const SensorBox = styled.g<{ $isWarning?: boolean; $isDanger?: boolean }>`
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus,
+  &:focus-visible,
+  &:active {
+    outline: none;
+  }
   rect.bg {
     fill: ${props => {
       if (props.$isDanger) return props.theme.colors.dangerMuted;
