@@ -270,19 +270,20 @@ export const NavigatorDrawer = styled.div<{ $isOpen: boolean }>`
   position: absolute;
   top: 64px;
   left: 14px;
-  bottom: 56px;
-  width: 320px;
-  max-height: calc(100% - 120px);
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)'};
-  backdrop-filter: blur(14px);
-  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(51, 65, 85, 0.8)' : 'rgba(203, 213, 225, 0.9)'};
+  bottom: 52px;
+  width: 360px;
+  max-width: calc(100vw - 28px);
+  max-height: calc(100% - 116px);
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)'};
+  backdrop-filter: blur(16px);
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(51, 65, 85, 0.85)' : 'rgba(203, 213, 225, 0.95)'};
   border-radius: 8px;
-  box-shadow: 0 12px 32px ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.12)'};
+  box-shadow: 0 16px 40px ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.14)'};
   display: flex;
   flex-direction: column;
-  z-index: 20;
+  z-index: 25;
   overflow: hidden;
-  transform: ${props => props.$isOpen ? 'translateX(0)' : 'translateX(-340px)'};
+  transform: ${props => props.$isOpen ? 'translateX(0)' : 'translateX(-390px)'};
   opacity: ${props => props.$isOpen ? 1 : 0};
   pointer-events: ${props => props.$isOpen ? 'auto' : 'none'};
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
@@ -297,15 +298,78 @@ export const NavigatorHeader = styled.div`
   font-size: 12px;
   font-weight: 700;
   color: ${props => props.theme.colors.text};
+  gap: 8px;
+`;
+
+export const NavigatorSearch = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid ${props => props.theme.colors.border};
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.4)' : 'rgba(241, 245, 249, 0.5)'};
+  color: ${props => props.theme.colors.textMuted};
+`;
+
+export const SearchInput = styled.input`
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 11px;
+  color: ${props => props.theme.colors.text};
+  font-family: inherit;
+
+  &::placeholder {
+    color: ${props => props.theme.colors.textMuted};
+  }
+`;
+
+export const HeaderActionsGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+export const HeaderActionBtn = styled.button`
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: ${props => props.theme.colors.textMuted};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: ${props => props.theme.colors.text};
+    background: ${props => props.theme.colors.surfaceMuted};
+  }
 `;
 
 export const NavigatorBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 8px 8px 24px 8px;
+  padding: 8px 8px 32px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+
+  scrollbar-width: thin;
+  scrollbar-color: ${props => props.theme.mode === 'dark' ? 'rgba(100, 116, 139, 0.5) transparent' : 'rgba(148, 163, 184, 0.5) transparent'};
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(100, 116, 139, 0.5)' : 'rgba(148, 163, 184, 0.5)'};
+    border-radius: 4px;
+  }
 `;
 
 export const UnitSection = styled.div`
@@ -315,7 +379,7 @@ export const UnitSection = styled.div`
   overflow: hidden;
 `;
 
-export const UnitSectionHeader = styled.div`
+export const UnitSectionHeader = styled.div<{ $isExpanded?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -324,11 +388,23 @@ export const UnitSectionHeader = styled.div`
   font-weight: 700;
   color: ${props => props.theme.colors.text};
   cursor: pointer;
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.7)' : 'rgba(226, 232, 240, 0.6)'};
+  background: ${props => props.theme.mode === 'dark'
+    ? (props.$isExpanded ? 'rgba(51, 65, 85, 0.6)' : 'rgba(30, 41, 59, 0.7)')
+    : (props.$isExpanded ? 'rgba(226, 232, 240, 0.85)' : 'rgba(226, 232, 240, 0.6)')};
+  transition: background 0.15s ease, color 0.15s ease;
 
   &:hover {
     color: ${props => props.theme.colors.primary};
   }
+`;
+
+export const UnitChevron = styled.span<{ $isExpanded: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: ${props => props.$isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'};
+  color: ${props => props.theme.colors.textMuted};
 `;
 
 export const UnitNodeList = styled.div`
@@ -338,16 +414,18 @@ export const UnitNodeList = styled.div`
   gap: 2px;
 `;
 
-export const UnitNodeItem = styled.button`
+export const UnitNodeItem = styled.button<{ $isSelected?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 8px;
+  padding: 6px 8px;
   font-size: 11px;
   border-radius: 4px;
-  border: none;
-  background: transparent;
-  color: ${props => props.theme.colors.textMuted};
+  border: 1px solid ${props => props.$isSelected ? props.theme.colors.primary : 'transparent'};
+  background: ${props => props.$isSelected
+    ? (props.theme.mode === 'dark' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(2, 132, 199, 0.1)')
+    : 'transparent'};
+  color: ${props => props.$isSelected ? props.theme.colors.primary : props.theme.colors.textMuted};
   text-align: left;
   cursor: pointer;
   width: 100%;
@@ -361,10 +439,13 @@ export const UnitNodeItem = styled.button`
   span.node-tag {
     font-family: ${props => props.theme.fonts.mono};
     font-weight: 700;
-    color: ${props => props.theme.colors.primary};
+    color: ${props => props.$isSelected ? props.theme.colors.primary : props.theme.colors.primary};
     white-space: nowrap;
     flex-shrink: 0;
-    min-width: 32px;
+    min-width: 36px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(15, 23, 42, 0.5)' : 'rgba(226, 232, 240, 0.5)'};
   }
 `;
 
@@ -406,8 +487,40 @@ export const NodeLabelGroup = styled.div`
   }
 `;
 
+export const NodeActionsGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+`;
+
+export const NodeStatusTag = styled.span<{ $type?: 'pump' | 'valve' | 'sensor'; $active?: boolean }>`
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  font-family: ${props => props.theme.fonts.mono};
+  background: ${props => {
+    if (props.$type === 'pump') return props.$active ? 'rgba(16, 185, 129, 0.2)' : 'rgba(100, 116, 139, 0.15)';
+    if (props.$type === 'valve') return props.$active ? 'rgba(2, 132, 199, 0.2)' : 'rgba(100, 116, 139, 0.15)';
+    return 'rgba(245, 158, 11, 0.15)';
+  }};
+  color: ${props => {
+    if (props.$type === 'pump') return props.$active ? '#10b981' : '#94a3b8';
+    if (props.$type === 'valve') return props.$active ? '#0284c7' : '#94a3b8';
+    return '#f59e0b';
+  }};
+  border: 1px solid ${props => {
+    if (props.$type === 'pump') return props.$active ? 'rgba(16, 185, 129, 0.4)' : 'rgba(100, 116, 139, 0.3)';
+    if (props.$type === 'valve') return props.$active ? 'rgba(2, 132, 199, 0.4)' : 'rgba(100, 116, 139, 0.3)';
+    return 'rgba(245, 158, 11, 0.3)';
+  }};
+  white-space: nowrap;
+`;
+
 export const NodeInfoBtn = styled.div`
-  padding: 2px 4px;
+  padding: 3px 5px;
   cursor: pointer;
   opacity: 0.7;
   display: flex;
@@ -419,6 +532,7 @@ export const NodeInfoBtn = styled.div`
   &:hover {
     opacity: 1;
     color: ${props => props.theme.colors.primary};
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
   }
 `;
 

@@ -13,13 +13,11 @@ import {
   Droplets,
   Tag,
   FolderTree,
-  X,
-  ChevronRight,
-  Info,
 } from 'lucide-react';
-import { CAMERA_PRESETS, PLANT_HIERARCHY } from '../model/PlantDigitalTwin3D.config';
+import { CAMERA_PRESETS } from '../model/PlantDigitalTwin3D.config';
 import type { CameraPreset } from '../model/types';
 import { useThreeTwin } from '../model/useThreeTwin';
+import { PlantNavigatorDrawer } from './PlantNavigatorDrawer';
 import * as S from './PlantDigitalTwin3D.styles';
 
 interface PlantDigitalTwin3DProps {
@@ -146,67 +144,15 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
         </S.ControlGroup>
       </S.TopControlsBar>
 
-      {/* Выдвижная боковая панель «Навигатор установки» (как на скриншоте 2 КАТКИ) */}
-      <S.NavigatorDrawer $isOpen={isNavigatorOpen}>
-        <S.NavigatorHeader>
-          <S.DrawerTitleGroup>
-            <FolderTree size={14} />
-            <span>Структура установки ЭЛОУ-АВТ-6</span>
-          </S.DrawerTitleGroup>
-          <S.DrawerCloseBtn
-            type="button"
-            onClick={() => setIsNavigatorOpen(false)}
-            aria-label="Закрыть"
-          >
-            <X size={15} />
-          </S.DrawerCloseBtn>
-        </S.NavigatorHeader>
-
-        <S.NavigatorBody>
-          {PLANT_HIERARCHY.map(unit => (
-            <S.UnitSection key={unit.id}>
-              <S.UnitSectionHeader
-                onClick={() => focusOnCoordinates(unit.cameraPosition, unit.cameraTarget)}
-                title="Навести камеру на блок"
-              >
-                <span>{unit.label}</span>
-                <ChevronRight size={13} />
-              </S.UnitSectionHeader>
-
-              {unit.children && (
-                <S.UnitNodeList>
-                  {unit.children.map(child => (
-                    <S.UnitNodeItem
-                      key={child.id}
-                      type="button"
-                      onClick={() => focusOnCoordinates(child.cameraPosition, child.cameraTarget)}
-                      title={`Фокус на ${child.label}`}
-                    >
-                      <S.NodeLabelGroup>
-                        <span className="node-tag">{child.tag}</span>
-                        <span>{child.label}</span>
-                      </S.NodeLabelGroup>
-                      {child.equipmentId && (
-                        <S.NodeInfoBtn
-                          role="button"
-                          tabIndex={0}
-                          title="Паспорт оборудования"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEquipmentSafe(child.equipmentId as EquipmentId);
-                          }}
-                        >
-                          <Info size={12} />
-                        </S.NodeInfoBtn>
-                      )}
-                    </S.UnitNodeItem>
-                  ))}
-                </S.UnitNodeList>
-              )}
-            </S.UnitSection>
-          ))}
-        </S.NavigatorBody>
-      </S.NavigatorDrawer>
+      {/* Выдвижная боковая панель «Навигатор установки» (аккордеон + поиск + живые статусы) */}
+      <PlantNavigatorDrawer
+        isOpen={isNavigatorOpen}
+        onClose={() => setIsNavigatorOpen(false)}
+        onFocusCoordinates={focusOnCoordinates}
+        onOpenEquipment={handleOpenEquipmentSafe}
+        pumps={pumps}
+        valves={valves}
+      />
 
 
       <S.HintOverlay>
