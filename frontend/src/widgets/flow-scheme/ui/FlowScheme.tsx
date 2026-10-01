@@ -5,7 +5,6 @@ import { Activity, Maximize2, TrendingUp, ZoomIn, ZoomOut, Sliders, Box, Layers 
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { useTelemetry, type PumpId, type ValveId } from '@/entities/telemetry';
-import { PlantDigitalTwin3D } from '@/widgets/digital-twin-3d';
 import {
   useMnemoscheme,
   PumpSymbol,
@@ -49,7 +48,11 @@ interface SchemeViewBox {
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-const FlowScheme: React.FC = () => {
+export interface FlowSchemeProps {
+  render3D?: (onOpenEquipment: (id: string) => void) => React.ReactNode;
+}
+
+const FlowScheme: React.FC<FlowSchemeProps> = ({ render3D }) => {
   const theme = useTheme();
   const { message } = App.useApp();
   const { sensors, valves, pumps, status, defects, telemetryHistory, wsLatency } = useTelemetry();
@@ -570,9 +573,9 @@ const FlowScheme: React.FC = () => {
           </S.SVGCanvas>
           <S.ZoomHint>Колесо — масштаб · перетаскивание — перемещение</S.ZoomHint>
         </S.SchemeViewport>
-      ) : (
-        <PlantDigitalTwin3D onOpenEquipment={(id) => setSelectedEquipmentId(id as EquipmentId)} />
-      )}
+      ) : render3D ? (
+        render3D((id) => setSelectedEquipmentId(id as EquipmentId))
+      ) : null}
 
     </S.SchemeContainer>
 

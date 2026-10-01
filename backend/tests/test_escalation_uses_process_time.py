@@ -53,10 +53,14 @@ def _critical_session(name):
     return session
 
 
+async def _run_steps(session, seconds):
+    for _ in range(seconds):
+        await step_session(session)
+
+
 def _advance(session, seconds):
     """Прогоняет N секунд техпроцесса за нулевое настенное время."""
-    for _ in range(seconds):
-        asyncio.run(step_session(session))
+    asyncio.run(_run_steps(session, seconds))
 
 
 def _fingerprints(session):

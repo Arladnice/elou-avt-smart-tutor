@@ -428,5 +428,5 @@ export const createValve3D = (
 };
 
 export type { TwinMaterials } from './twinMaterials';
-export { createTwinMaterials, applyThemeToMaterials } from './twinMaterials';
+export { createTwinMaterials, applyThemeToMaterials, applyMediumHighlight } from './twinMaterials';
 export { createIndustrialGround, createMainPipeRack } from './twinStructure';

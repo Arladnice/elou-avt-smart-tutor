@@ -7,6 +7,7 @@ export interface PipeStream {
   radius: number;
   isActive: () => boolean;
   color: number;
+  medium: 'crude' | 'gas' | 'water' | 'steam' | 'drain';
 }
 
 export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (type: string) => boolean) => {
@@ -28,6 +29,7 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
       material: materials.waterPipe,
       radius: 0.15,
       color: 0x0ea5e9,
+      medium: 'water',
       isActive: () => isStreamActive('washWater'),
     },
     // 2. Линия обессоленной нефти из ЭЛОУ (-14, 2.5, 0) в сырьевой насос Н-20 (-6, 1.4, 0)
@@ -41,6 +43,7 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
       material: materials.crudePipe,
       radius: 0.2,
       color: 0x10b981,
+      medium: 'crude',
       isActive: () => isStreamActive('elouFeed'),
     },
     // 3. Сырьевая магистраль от Н-20 через клапан V-1 (-2, 1.4, 0) в колонну К-1 (13, 5.5, 0)
@@ -56,6 +59,7 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
       material: materials.crudePipe,
       radius: 0.22,
       color: 0x10b981,
+      medium: 'crude',
       isActive: () => isStreamActive('k1Feed'),
     },
     // 4. Горячая струя: от низа К-1 через Н-2, печь П-1 через клапан V-3 в вакуумную колонну К-2
@@ -75,6 +79,7 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
       material: materials.gasPipe,
       radius: 0.18,
       color: 0xf59e0b,
+      medium: 'gas',
       isActive: () => isStreamActive('k2Feed'),
     },
     // 5. Контур циркуляции П-3: от низа К-1 через Н-3, печь П-3 обратно в К-1
@@ -90,6 +95,7 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
       material: materials.crudePipe,
       radius: 0.18,
       color: 0x10b981,
+      medium: 'crude',
       isActive: () => isStreamActive('k1Loop'),
     },
     // 6. Сброс паров/газа со шлема К-1 (13, 22.0, 0) через клапан сброса V-2 на факельный коллектор
@@ -103,6 +109,7 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
       material: materials.gasPipe,
       radius: 0.18,
       color: 0xf59e0b,
+      medium: 'gas',
       isActive: () => isStreamActive('k1Relief'),
     },
     // 7. Откачка гудрона с низа вакуумной колонны К-2 в насосы Н-4 / Н-32
@@ -116,6 +123,7 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
       material: materials.drainPipe,
       radius: 0.2,
       color: 0x64748b,
+      medium: 'drain',
       isActive: () => isStreamActive('k2Outflow'),
     },
   ];
@@ -158,9 +166,10 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
     }
   });
 
-  const updateParticles = (delta: number) => {
+  const updateParticles = (delta: number, activeMedium: string | null = null) => {
     particleMeshes.forEach((item) => {
-      if (!item.stream.isActive()) {
+      const isMediumMatch = !activeMedium || activeMedium === 'all' || item.stream.medium === activeMedium;
+      if (!item.stream.isActive() || !isMediumMatch) {
         item.mesh.visible = false;
         return;
       }

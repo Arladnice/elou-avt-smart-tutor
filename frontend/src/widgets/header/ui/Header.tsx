@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTelemetry } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { formatTime } from '@/shared/lib';
-import { ThemeToggle } from '@/shared/ui';
-import { Play, RotateCcw, ShieldAlert, User, CheckCircle, ClipboardList, FlaskConical } from 'lucide-react';
+import { ThemeToggle, JuryQrModal } from '@/shared/ui';
+import { Play, RotateCcw, ShieldAlert, User, CheckCircle, ClipboardList, FlaskConical, QrCode } from 'lucide-react';
 import * as S from './Header.styles';
 
 const Header: React.FC = () => {
   const { status, timeElapsed } = useTelemetry();
   const { username, role, scenarioId, isDemoMode } = useSession();
   const { triggerEsd, resetSession, logoutUser, completeSession } = useSimulatorActions();
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const getStatusText = () => {
     if (status === 'running') return 'Работа';
@@ -83,11 +84,24 @@ const Header: React.FC = () => {
           <ShieldAlert size={12} />
           Авария (ESD)
         </S.Button>
+        <S.Button
+          onClick={() => setIsQrModalOpen(true)}
+          $variant="secondary"
+          title="Открыть QR-код для прямого подключения жюри с мобильных устройств"
+        >
+          <QrCode size={12} />
+          Демо QR
+        </S.Button>
         <ThemeToggle />
         <S.Button onClick={logoutUser} $variant="secondary">
           Выход
         </S.Button>
       </S.Actions>
+
+      <JuryQrModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+      />
     </S.HeaderContainer>
   );
 };

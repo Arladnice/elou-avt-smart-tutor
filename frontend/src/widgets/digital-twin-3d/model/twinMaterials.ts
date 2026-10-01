@@ -90,3 +90,36 @@ export const applyThemeToMaterials = (materials: TwinMaterials, themeMode: 'ligh
   materials.drainPipe.color.setHex(theme.drainPipe);
   materials.grating.color.setHex(theme.steelDark);
 };
+
+export const applyMediumHighlight = (materials: TwinMaterials, activeMedium: string | null) => {
+  const pipeMats: Record<string, THREE.MeshStandardMaterial> = {
+    crude: materials.crudePipe,
+    gas: materials.gasPipe,
+    water: materials.waterPipe,
+    steam: materials.steamPipe,
+    drain: materials.drainPipe,
+  };
+
+  Object.entries(pipeMats).forEach(([mediumKey, mat]) => {
+    if (!activeMedium || activeMedium === 'all') {
+      mat.transparent = false;
+      mat.opacity = 1.0;
+      mat.roughness = 0.3;
+      mat.emissive.setHex(0x000000);
+      mat.emissiveIntensity = 0;
+    } else if (mediumKey === activeMedium) {
+      mat.transparent = false;
+      mat.opacity = 1.0;
+      mat.roughness = 0.15;
+      mat.emissive.copy(mat.color);
+      mat.emissiveIntensity = 0.5;
+    } else {
+      mat.transparent = true;
+      mat.opacity = 0.15;
+      mat.roughness = 0.6;
+      mat.emissive.setHex(0x000000);
+      mat.emissiveIntensity = 0;
+    }
+    mat.needsUpdate = true;
+  });
+};

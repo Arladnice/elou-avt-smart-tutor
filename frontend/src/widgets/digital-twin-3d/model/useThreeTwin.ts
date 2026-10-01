@@ -20,6 +20,7 @@ import {
   createPump3D,
   createTwinMaterials,
   applyThemeToMaterials,
+  applyMediumHighlight,
   createValve3D,
   type TwinMaterials,
 } from './twinGeometry';
@@ -35,6 +36,7 @@ interface UseThreeTwinProps {
   themeMode?: 'light' | 'dark';
   showXRay: boolean;
   showFlows: boolean;
+  selectedMedium?: string | null;
   onTogglePump: (pumpId: PumpId) => void;
   onToggleValve: (valveId: ValveId) => void;
   onOpenEquipment: (equipmentId: EquipmentId) => void;
@@ -57,6 +59,7 @@ export const useThreeTwin = ({
   themeMode = 'dark',
   showXRay,
   showFlows,
+  selectedMedium = null,
   onTogglePump,
   onToggleValve,
   onOpenEquipment,
@@ -101,6 +104,7 @@ export const useThreeTwin = ({
     activePreset,
     showXRay,
     showFlows,
+    selectedMedium,
   });
   latestPropsRef.current = {
     sensors,
@@ -111,6 +115,7 @@ export const useThreeTwin = ({
     activePreset,
     showXRay,
     showFlows,
+    selectedMedium,
   };
 
   // 1. Инициализация сцены Three.js
@@ -269,7 +274,7 @@ export const useThreeTwin = ({
 
     const { group: pipeGroup, updateParticles } = createRefineryPipes(materials, isStreamActiveHelper);
     scene.add(pipeGroup);
-    updateParticlesRef.current = updateParticles;
+    updateParticlesRef.current = (delta: number) => updateParticles(delta, latestPropsRef.current.selectedMedium || null);
 
     // Интерактивные объекты для raycasting
     const interactives: THREE.Object3D[] = [];
@@ -436,6 +441,9 @@ export const useThreeTwin = ({
 
     // Обновляем материалы
     applyThemeToMaterials(materialsRef.current, themeMode);
+    if (latestPropsRef.current.selectedMedium) {
+      applyMediumHighlight(materialsRef.current, latestPropsRef.current.selectedMedium);
+    }
 
     // Обновляем освещение
     if (ambientLightRef.current) {
@@ -451,6 +459,12 @@ export const useThreeTwin = ({
       blueBacklightRef.current.intensity = theme.blueLightIntensity;
     }
   }, [themeMode]);
+
+  // 2.1. Реактивная подсветка и фильтрация выбранной технологической среды
+  useEffect(() => {
+    if (!materialsRef.current) return;
+    applyMediumHighlight(materialsRef.current, selectedMedium || null);
+  }, [selectedMedium]);
 
   // 3. Плавный переход к выбранному пресету камеры
   useEffect(() => {

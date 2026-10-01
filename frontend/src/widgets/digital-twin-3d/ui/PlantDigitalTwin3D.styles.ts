@@ -140,12 +140,25 @@ export const LegendContainer = styled.div`
   flex-wrap: wrap;
 `;
 
-export const LegendItem = styled.div<{ $color: string }>`
+export const LegendItem = styled.button<{ $color: string; $active?: boolean }>`
+  background: ${props => props.$active ? (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)') : 'transparent'};
+  border: 1px solid ${props => props.$active ? props.$color : 'transparent'};
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: ${props => props.theme.colors.textMuted};
+  font-weight: ${props => props.$active ? 600 : 500};
+  color: ${props => props.$active ? props.theme.colors.text : props.theme.colors.textMuted};
+  transition: all 0.18s ease;
+
+  &:hover {
+    color: ${props => props.theme.colors.text};
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'};
+    border-color: ${props => props.$active ? props.$color : (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)')};
+  }
 
   &::before {
     content: '';
@@ -155,6 +168,23 @@ export const LegendItem = styled.div<{ $color: string }>`
     border-radius: 50%;
     background-color: ${props => props.$color};
     box-shadow: 0 0 6px ${props => props.$color};
+  }
+`;
+
+export const LegendResetBtn = styled.button`
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)'};
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #ef4444;
+  font-weight: 600;
+  transition: all 0.18s ease;
+
+  &:hover {
+    background: #ef4444;
+    color: #ffffff;
   }
 `;
 

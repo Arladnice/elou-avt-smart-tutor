@@ -5,6 +5,7 @@ import { useMnemoscheme } from '@/entities/mnemoscheme';
 import { CollapsibleCard, LazyFallback } from '@/shared/ui';
 import { Header } from '@/widgets/header';
 import { FlowScheme } from '@/widgets/flow-scheme';
+import { PlantDigitalTwin3D } from '@/widgets/digital-twin-3d';
 import { ControlPanel } from '@/widgets/control-panel';
 import { ScenarioChecklist, useScenarioInfo, EmergencyTitle } from '@/widgets/scenario-checklist';
 import { AiAssistant, RiskAssessment } from '@/widgets/ai-assistant';
@@ -50,7 +51,11 @@ const OperatorPage: React.FC = () => {
         <Header />
         <S.MainArea>
           <S.LeftColumn>
-            <FlowScheme />
+            <FlowScheme
+              render3D={(onOpenEquipment) => (
+                <PlantDigitalTwin3D onOpenEquipment={onOpenEquipment} />
+              )}
+            />
             <S.SidebarLogWrapper>
               <S.FixedPanel $fill>
                 <S.FixedPanelHeader><Terminal size={14} /> Журнал событий и тревог</S.FixedPanelHeader>

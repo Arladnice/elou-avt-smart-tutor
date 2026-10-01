@@ -34,6 +34,11 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
   const [showFlows, setShowFlows] = useState(true);
   const [showHUD, setShowHUD] = useState(true);
   const [isNavigatorOpen, setIsNavigatorOpen] = useState(false);
+  const [selectedMedium, setSelectedMedium] = useState<string | null>(null);
+
+  const handleSelectMedium = (medium: string) => {
+    setSelectedMedium(prev => (prev === medium ? null : medium));
+  };
 
   const handleOpenEquipmentSafe = (id: EquipmentId) => {
     if (onOpenEquipment) {
@@ -58,6 +63,7 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
     themeMode: theme.mode,
     showXRay,
     showFlows,
+    selectedMedium,
     onTogglePump: (pId: PumpId) => togglePump(pId),
     onToggleValve: (vId: ValveId) => toggleValve(vId),
     onOpenEquipment: handleOpenEquipmentSafe,
@@ -191,14 +197,63 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
       {/* Всплывающая подсказка при наведении на 3D объект */}
       {hoveredName && <S.HoverPill>{hoveredName}</S.HoverPill>}
 
-      {/* Нижняя легенда потоков */}
+      {/* Нижняя легенда потоков с фильтрацией сред */}
       <S.BottomBar>
         <S.LegendContainer>
-          <S.LegendItem $color="#10b981">Сырая нефть / Продукт</S.LegendItem>
-          <S.LegendItem $color="#f59e0b">Газ / Светлые фракции</S.LegendItem>
-          <S.LegendItem $color="#0ea5e9">Промывочная вода</S.LegendItem>
-          <S.LegendItem $color="#e2e8f0">Водяной пар</S.LegendItem>
-          <S.LegendItem $color="#64748b">Дренаж / Гудрон</S.LegendItem>
+          <S.LegendItem
+            type="button"
+            $color="#10b981"
+            $active={selectedMedium === 'crude'}
+            onClick={() => handleSelectMedium('crude')}
+            title="Фильтровать: показать только сырую нефть и продукты"
+          >
+            Сырая нефть / Продукт
+          </S.LegendItem>
+          <S.LegendItem
+            type="button"
+            $color="#f59e0b"
+            $active={selectedMedium === 'gas'}
+            onClick={() => handleSelectMedium('gas')}
+            title="Фильтровать: показать только газовые линии и пары"
+          >
+            Газ / Светлые фракции
+          </S.LegendItem>
+          <S.LegendItem
+            type="button"
+            $color="#0ea5e9"
+            $active={selectedMedium === 'water'}
+            onClick={() => handleSelectMedium('water')}
+            title="Фильтровать: показать только промывочную воду"
+          >
+            Промывочная вода
+          </S.LegendItem>
+          <S.LegendItem
+            type="button"
+            $color="#e2e8f0"
+            $active={selectedMedium === 'steam'}
+            onClick={() => handleSelectMedium('steam')}
+            title="Фильтровать: показать только водяной пар"
+          >
+            Водяной пар
+          </S.LegendItem>
+          <S.LegendItem
+            type="button"
+            $color="#64748b"
+            $active={selectedMedium === 'drain'}
+            onClick={() => handleSelectMedium('drain')}
+            title="Фильтровать: показать только гудрон и дренаж"
+          >
+            Дренаж / Гудрон
+          </S.LegendItem>
+          {selectedMedium && (
+            <S.LegendResetBtn
+              type="button"
+              onClick={() => setSelectedMedium(null)}
+              title="Сбросить фильтр сред (показать все)"
+            >
+              Сбросить фильтр
+            </S.LegendResetBtn>
+          )}
         </S.LegendContainer>
       </S.BottomBar>
     </S.TwinWrapper>

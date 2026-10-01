@@ -1,0 +1,1 @@
+export { JuryQrModal } from './JuryQrModal';
