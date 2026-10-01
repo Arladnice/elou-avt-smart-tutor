@@ -1,4 +1,5 @@
-import styled, { keyframes } from 'styled-components';
+import styled, { css, keyframes } from 'styled-components';
+
 
 const pulseGlow = keyframes`
   0%, 100% {
@@ -84,10 +85,11 @@ export const ViewpointBtn = styled.button<{ $active?: boolean; $isCinematic?: bo
     background: ${props => (props.$active ? undefined : 'rgba(51, 65, 85, 0.6)')};
   }
 
-  ${props => props.$active && props.$isCinematic && `
+  ${props => props.$active && props.$isCinematic && css`
     animation: ${cinematicStrobe} 2s infinite ease-in-out;
   `}
 `;
+
 
 export const ToggleBtn = styled.button<{ $active?: boolean }>`
   display: inline-flex;
