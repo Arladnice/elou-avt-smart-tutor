@@ -37,9 +37,16 @@ def _merge_with_package_defaults(
     stored: List[Dict[str, Any]],
     defaults: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Обновляет штатные сценарии, сохраняя сценарии инструктора."""
-    custom = [scenario for scenario in stored if scenario.get("is_custom") is True]
-    return [*defaults, *custom]
+    """Обновляет штатные сценарии, сохраняя сценарии инструктора без дубликатов."""
+    builtin = [s for s in defaults if not s.get("is_custom")]
+    custom_map: Dict[str, Dict[str, Any]] = {}
+    for s in stored:
+        if s.get("is_custom") and s.get("id"):
+            custom_map[s["id"]] = s
+    for s in defaults:
+        if s.get("is_custom") and s.get("id") and s["id"] not in custom_map:
+            custom_map[s["id"]] = s
+    return [*builtin, *custom_map.values()]
 
 
 def load_scenarios() -> List[Dict[str, Any]]:
@@ -52,8 +59,23 @@ def load_scenarios() -> List[Dict[str, Any]]:
     устаревшие версии встроенных заданий.
     """
     stored = _read_registry(SCENARIOS_FILE_PATH)
-    defaults = _read_registry(PACKAGE_SCENARIOS_PATH)
 
+    # Если рабочий файл совпадает с поставкой (локальная разработка без Docker):
+    if os.path.abspath(SCENARIOS_FILE_PATH) == os.path.abspath(PACKAGE_SCENARIOS_PATH):
+        if stored is None:
+            logger.error(f"Файл сценариев не найден: {SCENARIOS_FILE_PATH}")
+            return []
+        builtin = [s for s in stored if not s.get("is_custom")]
+        custom_map: Dict[str, Dict[str, Any]] = {}
+        for s in stored:
+            if s.get("is_custom") and s.get("id"):
+                custom_map[s["id"]] = s
+        cleaned = [*builtin, *custom_map.values()]
+        if len(cleaned) != len(stored):
+            save_scenarios(cleaned)
+        return cleaned
+
+    defaults = _read_registry(PACKAGE_SCENARIOS_PATH)
     if stored is not None:
         if defaults is None:
             logger.error("Поставка сценариев недоступна, используем рабочий реестр")
@@ -65,10 +87,6 @@ def load_scenarios() -> List[Dict[str, Any]]:
             if not save_scenarios(merged):
                 logger.error("Не удалось обновить рабочий реестр, используем данные из памяти")
         return merged
-
-    if os.path.abspath(SCENARIOS_FILE_PATH) == os.path.abspath(PACKAGE_SCENARIOS_PATH):
-        logger.error(f"Файл сценариев не найден: {SCENARIOS_FILE_PATH}")
-        return []
 
     if defaults is None:
         logger.error(f"Поставка сценариев недоступна: {PACKAGE_SCENARIOS_PATH}")
@@ -111,7 +129,16 @@ def save_scenarios(scenarios: List[Dict[str, Any]]) -> bool:
             json.dump({"scenarios": scenarios}, f, ensure_ascii=False, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_path, SCENARIOS_FILE_PATH)
+        try:
+            os.replace(tmp_path, SCENARIOS_FILE_PATH)
+        except PermissionError:
+            import shutil
+            shutil.copyfile(tmp_path, SCENARIOS_FILE_PATH)
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
         return True
     except Exception as e:
         logger.error(f"Ошибка записи в файл сценариев: {e}")

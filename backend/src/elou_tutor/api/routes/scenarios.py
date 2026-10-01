@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, ConfigDict
 from typing import List, Dict, Any, Optional
 
 from elou_tutor.api.schemas import ImportScenarioModel
@@ -29,6 +29,8 @@ class ChecklistItemModel(BaseModel):
 
 
 class InitialStateModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     T_1: float = 280.0
     T_3: float = 280.0
     P_1: float = 0.35
@@ -42,6 +44,7 @@ class InitialStateModel(BaseModel):
 
 
 class CreateScenarioModel(BaseModel):
+    model_config = ConfigDict(extra="allow")
     id: str = Field(..., description="Уникальный ID сценария")
     title: str = Field(..., description="Название сценария")
     short_name: str = Field(..., description="Короткое название для меню")

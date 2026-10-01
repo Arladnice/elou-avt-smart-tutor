@@ -8,9 +8,9 @@ _VALVE_IDS = (
     "V1", "V2", "V3", "V_ELOU", "V_VT", "V_P3_OUT", "V_P3_RETURN",
     "V_P1_IN", "V_K2_OUT_32", "V_K2_OUT_4", "HC_P1", "HC_P3",
     "FUEL_P1", "FUEL_P3", "V_STEAM_K1", "V_STEAM_K2", "V_K2_RELIEF",
-    "V_E1_DRAIN", "V_E2_DRAIN",
+    "V_E1_DRAIN", "V_E2_DRAIN", "V_WATER_MAIN", "V_FEED_1", "V_OUT_1",
 )
-_PUMP_IDS = ("N_20", "N_2", "N_3", "N_4", "N_32")
+_PUMP_IDS = ("N_20", "N_2", "N_3", "N_4", "N_32", "N_82")
 PRODUCIBLE_ACTIONS = frozenset(
     [f"{v}_OPEN" for v in _VALVE_IDS]
     + [f"{v}_CLOSE" for v in _VALVE_IDS]
