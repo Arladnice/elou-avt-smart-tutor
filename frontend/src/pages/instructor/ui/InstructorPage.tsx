@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import { useTheme, type DefaultTheme } from 'styled-components';
 import { Switch, Alert, Modal, Button, App } from 'antd';
-import { ShieldCheck, Users, Play, AlertTriangle, LogOut, Trash2, Info, AlertOctagon } from 'lucide-react';
+import { ShieldCheck, Users, Play, AlertTriangle, LogOut, Trash2, Info, AlertOctagon, QrCode } from 'lucide-react';
 import { fetchSystemMetrics, type SystemMetrics } from '@/shared/api';
 import { useTelemetry, sendAlarmFeedback, type DefectId } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
-import { ThemeToggle } from '@/shared/ui';
+import { ThemeToggle, JuryQrModal } from '@/shared/ui';
 import { K2_LEVEL_HIGH, K2_LEVEL_LOW } from '@/shared/config';
 import { InstructorAiAssistant } from '@/widgets/instructor-ai';
 import {
@@ -43,6 +43,7 @@ const InstructorPage: React.FC = () => {
   const { message, modal } = App.useApp();
   const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
   const [isSchemeBuilderOpen, setIsSchemeBuilderOpen] = useState(false);
+  const [isJuryQrOpen, setIsJuryQrOpen] = useState(false);
   const { sensors, valves, status, defects, logs, riskLevel, accidentReason, wsLatency, startupK2Prefill } = useTelemetry();
   const {
     isOnline,
@@ -295,6 +296,14 @@ const InstructorPage: React.FC = () => {
               }
             />
           </S.ConnectedBadge>
+          <Button
+            size="small"
+            icon={<QrCode size={12} />}
+            onClick={() => setIsJuryQrOpen(true)}
+            title="Открыть QR-код для быстрого мобильного подключения экспертов и жюри"
+          >
+            Демо QR
+          </Button>
           <ThemeToggle />
           <S.LogoutButton 
             onClick={logoutUser} 
@@ -725,6 +734,11 @@ const InstructorPage: React.FC = () => {
           />
         </Suspense>
       )}
+
+      <JuryQrModal
+        isOpen={isJuryQrOpen}
+        onClose={() => setIsJuryQrOpen(false)}
+      />
     </S.Container>
   );
 };

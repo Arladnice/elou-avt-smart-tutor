@@ -50,3 +50,21 @@ export const deleteScenario = async (scenarioId: string): Promise<{ status: stri
   }
   return response.json();
 };
+
+/** Обновление пользовательского сценария (только инструктор) */
+export const updateScenario = async (
+  scenarioId: string,
+  payload: ScenarioItem,
+): Promise<{ status: string; message: string; scenario_id: string }> => {
+  const response = await authorizedFetch(`${BASE_URL}/scenarios/${encodeURIComponent(scenarioId)}`, {
+    method: 'PUT',
+    headers: authHeaders(JSON_HEADERS),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to update scenario');
+  }
+  return response.json();
+};
+

@@ -36,46 +36,114 @@
           "title": "1. Заполнение куба К-1 до 20%",
           "hint_training": "Пустите Н-20, откройте V-1 и дождитесь L-1 не ниже 20%.",
           "hint_exam": "Организовать прямую подачу сырья из ЭЛОУ в К-1 и набрать минимальный уровень.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "pump_is", "target": "N_20", "expected": true },
-            { "type": "valve_is", "target": "V_1", "expected": true },
-            { "type": "sensor_gte", "target": "L_1", "expected": 20.0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "pump_is",
+                "target": "N_20",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "V_1",
+                "expected": true
+              },
+              {
+                "type": "sensor_gte",
+                "target": "L_1",
+                "expected": 20.0
+              }
+            ]
+          }
         },
         {
           "id": "k2_prefill",
           "title": "2. Подача через П-1 и заполнение К-2",
           "hint_training": "Пустите Н-2, откройте V-3 и V-П1. После транспортного запаздывания около 12 с L-2 начнёт расти; дождитесь уровня не ниже 20%.",
           "hint_exam": "После набора уровня К-1 организовать подачу кубового продукта через П-1 в К-2.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "pump_is", "target": "N_2", "expected": true },
-            { "type": "valve_is", "target": "V_3", "expected": true },
-            { "type": "valve_is", "target": "V_P1_IN", "expected": true },
-            { "type": "sensor_gte", "target": "L_2", "expected": 20.0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "pump_is",
+                "target": "N_2",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "V_3",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "V_P1_IN",
+                "expected": true
+              },
+              {
+                "type": "sensor_gte",
+                "target": "L_2",
+                "expected": 20.0
+              }
+            ]
+          }
         },
         {
           "id": "k2_level_control",
           "title": "3. Включение откачки и стабилизация уровня К-2",
           "hint_training": "После L-2 выше 15% откройте V-Н4 и пустите Н-4. Н-4 — рабочий насос откачки К-2; он удержит уровень К-2 в безопасном диапазоне при работающем Н-2.",
           "hint_exam": "После заполнения куба К-2 включить рабочую откачку, не допуская переполнения.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "V_K2_OUT_4", "expected": true },
-            { "type": "pump_is", "target": "N_4", "expected": true },
-            { "type": "sensor_gte", "target": "L_2", "expected": 15.0 },
-            { "type": "sensor_lte", "target": "L_2", "expected": 80.0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "V_K2_OUT_4",
+                "expected": true
+              },
+              {
+                "type": "pump_is",
+                "target": "N_4",
+                "expected": true
+              },
+              {
+                "type": "sensor_gte",
+                "target": "L_2",
+                "expected": 15.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "L_2",
+                "expected": 80.0
+              }
+            ]
+          }
         },
         {
           "id": "p3_circulation",
           "title": "4. Включение контура П-3",
           "hint_training": "Пустите Н-3 при открытых входной и возвратной задвижках П-3.",
           "hint_exam": "Организовать минимальную циркуляцию через П-3.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "pump_is", "target": "N_3", "expected": true },
-            { "type": "valve_is", "target": "V_P3_OUT", "expected": true },
-            { "type": "valve_is", "target": "V_P3_RETURN", "expected": true }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "pump_is",
+                "target": "N_3",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "V_P3_OUT",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "V_P3_RETURN",
+                "expected": true
+              }
+            ]
+          }
         },
         {
           "id": "furnaces_working",
@@ -85,15 +153,45 @@
           "condition": {
             "type": "composite_and",
             "conditions": [
-              { "type": "valve_is", "target": "FUEL_P1", "expected": true },
-              { "type": "valve_is", "target": "FUEL_P3", "expected": true },
-              { "type": "sensor_gte", "target": "T_1", "expected": 300.0, "tolerance": 2.0 },
-              { "type": "sensor_gte", "target": "T_3", "expected": 300.0, "tolerance": 2.0 }
+              {
+                "type": "valve_is",
+                "target": "FUEL_P1",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "FUEL_P3",
+                "expected": true
+              },
+              {
+                "type": "sensor_gte",
+                "target": "T_1",
+                "expected": 300.0,
+                "tolerance": 2.0
+              },
+              {
+                "type": "sensor_gte",
+                "target": "T_3",
+                "expected": 300.0,
+                "tolerance": 2.0
+              }
             ]
           }
         }
       ],
-      "golden_sequence": ["N_20_START", "V1_OPEN", "N_2_START", "V3_OPEN", "V_K2_OUT_4_OPEN", "N_4_START", "N_3_START", "FUEL_P1_OPEN", "FUEL_P3_OPEN", "SP_UP", "SP3_UP"]
+      "golden_sequence": [
+        "N_20_START",
+        "V1_OPEN",
+        "N_2_START",
+        "V3_OPEN",
+        "V_K2_OUT_4_OPEN",
+        "N_4_START",
+        "N_3_START",
+        "FUEL_P1_OPEN",
+        "FUEL_P3_OPEN",
+        "SP_UP",
+        "SP3_UP"
+      ]
     },
     {
       "id": "shutdown",
@@ -126,72 +224,188 @@
           "title": "1. Отсечение топлива П-1 и П-3",
           "hint_training": "На мнемосхеме закройте два зелёных клапана «ТОПЛ. П-1» и «ТОПЛ. П-3» под печами. Либо во вкладке «Управление» выключите «Топливо П-1» и «Топливо П-3». Проверьте: у обеих печей отображается «ПЛАМЯ: НЕТ».",
           "hint_exam": "Отсечь топливо обеих печей и проконтролировать погасание пламени.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "FUEL_P1", "expected": false },
-            { "type": "valve_is", "target": "FUEL_P3", "expected": false },
-            { "type": "sensor_lte", "target": "Flame_P1", "expected": 0 },
-            { "type": "sensor_lte", "target": "Flame_P3", "expected": 0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "FUEL_P1",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "FUEL_P3",
+                "expected": false
+              },
+              {
+                "type": "sensor_lte",
+                "target": "Flame_P1",
+                "expected": 0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "Flame_P3",
+                "expected": 0
+              }
+            ]
+          }
         },
         {
           "id": "close_furnace_routes",
           "title": "2. Остановка подачи и изоляция печных контуров",
           "hint_training": "После отсечки топлива закройте V-1 (подача сырья), затем V-3, V-П1, вход и возврат П-3.",
           "hint_exam": "Прекратить подачу сырья и герметизировать входные и выходные линии обеих печей.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "V_1", "expected": false },
-            { "type": "valve_is", "target": "V_3", "expected": false },
-            { "type": "valve_is", "target": "V_P1_IN", "expected": false },
-            { "type": "valve_is", "target": "V_P3_OUT", "expected": false },
-            { "type": "valve_is", "target": "V_P3_RETURN", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "V_1",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_3",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_P1_IN",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_P3_OUT",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_P3_RETURN",
+                "expected": false
+              }
+            ]
+          }
         },
         {
           "id": "hot_circulation",
           "title": "3. Горячая циркуляция при работающих насосах",
           "hint_training": "Во вкладке «Управление» в блоке «Горячая циркуляция» включите оба переключателя: «Печь П-1» и «Печь П-3». Н-2 и Н-3 оставьте в положении «ПУСК». V-2 для этого шага не открывайте.",
           "hint_exam": "Сохранить циркуляцию продукта до безопасного охлаждения печей.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "HC_P1", "expected": true },
-            { "type": "valve_is", "target": "HC_P3", "expected": true },
-            { "type": "pump_is", "target": "N_2", "expected": true },
-            { "type": "pump_is", "target": "N_3", "expected": true }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "HC_P1",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "HC_P3",
+                "expected": true
+              },
+              {
+                "type": "pump_is",
+                "target": "N_2",
+                "expected": true
+              },
+              {
+                "type": "pump_is",
+                "target": "N_3",
+                "expected": true
+              }
+            ]
+          }
         },
         {
           "id": "cool_to_300",
           "title": "4. Охлаждение печей до 300°C",
           "hint_training": "Продолжайте циркуляцию до фактической температуры обеих печей не выше 300°C.",
           "hint_exam": "Охладить печи на циркуляции до регламентной ступени.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "sensor_lte", "target": "T_1", "expected": 300.0 },
-            { "type": "sensor_lte", "target": "T_3", "expected": 300.0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "sensor_lte",
+                "target": "T_1",
+                "expected": 300.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 300.0
+              }
+            ]
+          }
         },
         {
           "id": "steam_stop",
           "title": "5. Останов пара К-1 и К-2",
           "hint_training": "Закройте пар в К-1 и К-2.",
           "hint_exam": "После охлаждения прекратить подачу технологического пара.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "V_STEAM_K1", "expected": false },
-            { "type": "valve_is", "target": "V_STEAM_K2", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "V_STEAM_K1",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_STEAM_K2",
+                "expected": false
+              }
+            ]
+          }
         },
         {
           "id": "stop_at_200",
           "title": "6. Останов насосов П-1/П-3 при 200°C",
           "hint_training": "При T-1/T-3 не выше 200°C остановите Н-2 и Н-3.",
           "hint_exam": "После охлаждения до 200°C остановить насосы горячей циркуляции П-1 и П-3.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "sensor_lte", "target": "T_1", "expected": 200.0 },
-            { "type": "sensor_lte", "target": "T_3", "expected": 200.0 },
-            { "type": "pump_is", "target": "N_2", "expected": false },
-            { "type": "pump_is", "target": "N_3", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "sensor_lte",
+                "target": "T_1",
+                "expected": 200.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 200.0
+              },
+              {
+                "type": "pump_is",
+                "target": "N_2",
+                "expected": false
+              },
+              {
+                "type": "pump_is",
+                "target": "N_3",
+                "expected": false
+              }
+            ]
+          }
         }
       ],
-      "golden_sequence": ["FUEL_P1_CLOSE", "FUEL_P3_CLOSE", "V1_CLOSE", "V3_CLOSE", "V_P1_IN_CLOSE", "V_P3_OUT_CLOSE", "V_P3_RETURN_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "V_STEAM_K2_CLOSE", "N_2_STOP", "N_3_STOP"]
+      "golden_sequence": [
+        "FUEL_P1_CLOSE",
+        "FUEL_P3_CLOSE",
+        "V1_CLOSE",
+        "V3_CLOSE",
+        "V_P1_IN_CLOSE",
+        "V_P3_OUT_CLOSE",
+        "V_P3_RETURN_CLOSE",
+        "HC_P1_OPEN",
+        "HC_P3_OPEN",
+        "V_STEAM_K1_CLOSE",
+        "V_STEAM_K2_CLOSE",
+        "N_2_STOP",
+        "N_3_STOP"
+      ]
     },
     {
       "id": "column_shutdown",
@@ -212,29 +426,79 @@
         {
           "id": "reduce_heat",
           "title": "1. Снижение подачи и нагрева",
-            "hint_training": "Понизьте уставку и дождитесь остывания Т-1 ниже 150°C. Также убедитесь, что Т-3 не выше 150°C; затем остановите Н-20 и закройте V-1.",
+          "hint_training": "Понизьте уставку и дождитесь остывания Т-1 ниже 150°C. Также убедитесь, что Т-3 не выше 150°C; затем остановите Н-20 и закройте V-1.",
           "hint_exam": "Снизить уставки обеих печей до 150°C, дождаться охлаждения Т-1/Т-3 до 150°C и прекратить подачу сырья.",
-          "condition": { "type": "composite_and", "conditions": [
-              { "type": "setpoint_lte", "target": "T_1_Sp", "expected": 150.0 },
-              { "type": "setpoint_lte", "target": "T_3_Sp", "expected": 150.0 },
-              { "type": "sensor_lte", "target": "T_1", "expected": 150.0 },
-              { "type": "sensor_lte", "target": "T_3", "expected": 150.0 },
-            { "type": "pump_is", "target": "N_20", "expected": false },
-            { "type": "valve_is", "target": "V_1", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "setpoint_lte",
+                "target": "T_1_Sp",
+                "expected": 150.0
+              },
+              {
+                "type": "setpoint_lte",
+                "target": "T_3_Sp",
+                "expected": 150.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_1",
+                "expected": 150.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 150.0
+              },
+              {
+                "type": "pump_is",
+                "target": "N_20",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_1",
+                "expected": false
+              }
+            ]
+          }
         },
         {
           "id": "column_circulation",
           "title": "2. Горячая циркуляция К-1",
           "hint_training": "Оставьте Н-2 и Н-3 в работе, включите горячую циркуляцию П-1/П-3 и закройте пар К-1.",
           "hint_exam": "Перевести К-1 на горячую циркуляцию и прекратить подачу пара.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "pump_is", "target": "N_2", "expected": true },
-            { "type": "pump_is", "target": "N_3", "expected": true },
-            { "type": "valve_is", "target": "HC_P1", "expected": true },
-            { "type": "valve_is", "target": "HC_P3", "expected": true },
-            { "type": "valve_is", "target": "V_STEAM_K1", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "pump_is",
+                "target": "N_2",
+                "expected": true
+              },
+              {
+                "type": "pump_is",
+                "target": "N_3",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "HC_P1",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "HC_P3",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "V_STEAM_K1",
+                "expected": false
+              }
+            ]
+          }
         },
         {
           "id": "fuel_off_250",
@@ -244,30 +508,90 @@
           "condition": {
             "type": "composite_and",
             "conditions": [
-              { "type": "sensor_lte", "target": "T_1", "expected": 250.0 },
-              { "type": "sensor_lte", "target": "T_3", "expected": 250.0 },
-              { "type": "valve_is", "target": "FUEL_P1", "expected": false },
-              { "type": "valve_is", "target": "FUEL_P3", "expected": false }
+              {
+                "type": "sensor_lte",
+                "target": "T_1",
+                "expected": 250.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 250.0
+              },
+              {
+                "type": "valve_is",
+                "target": "FUEL_P1",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "FUEL_P3",
+                "expected": false
+              }
             ]
           }
         },
         {
           "id": "stop_at_150",
-            "title": "4. Останов циркуляции при T-1/T-3 не выше 150°C и L-1 16–20%",
-            "hint_training": "При T-1 и T-3 не выше 150°C и L-1 в диапазоне 16–20% остановите Н-2/Н-3 и закройте V-3. Не допускайте L-1 ниже 15%: это порог ПАЗ.",
+          "title": "4. Останов циркуляции при T-1/T-3 не выше 150°C и L-1 16–20%",
+          "hint_training": "При T-1 и T-3 не выше 150°C и L-1 в диапазоне 16–20% остановите Н-2/Н-3 и закройте V-3. Не допускайте L-1 ниже 15%: это порог ПАЗ.",
           "hint_exam": "При T-1/T-3 не выше 150°C и L-1 16–20% остановить Н-2/Н-3 и изолировать выход К-1.",
-          "condition": { "type": "composite_and", "conditions": [
-              { "type": "sensor_lte", "target": "T_1", "expected": 150.0 },
-              { "type": "sensor_lte", "target": "T_3", "expected": 150.0 },
-              { "type": "sensor_gte", "target": "L_1", "expected": 16.0 },
-              { "type": "sensor_lte", "target": "L_1", "expected": 20.0 },
-            { "type": "pump_is", "target": "N_2", "expected": false },
-            { "type": "pump_is", "target": "N_3", "expected": false },
-            { "type": "valve_is", "target": "V_3", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "sensor_lte",
+                "target": "T_1",
+                "expected": 150.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 150.0
+              },
+              {
+                "type": "sensor_gte",
+                "target": "L_1",
+                "expected": 16.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "L_1",
+                "expected": 20.0
+              },
+              {
+                "type": "pump_is",
+                "target": "N_2",
+                "expected": false
+              },
+              {
+                "type": "pump_is",
+                "target": "N_3",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_3",
+                "expected": false
+              }
+            ]
+          }
         }
       ],
-      "golden_sequence": ["SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "V_STEAM_K1_CLOSE", "FUEL_P1_CLOSE", "FUEL_P3_CLOSE", "N_2_STOP", "N_3_STOP", "V3_CLOSE"]
+      "golden_sequence": [
+        "SP_DOWN",
+        "SP3_DOWN",
+        "N_20_STOP",
+        "V1_CLOSE",
+        "HC_P1_OPEN",
+        "HC_P3_OPEN",
+        "V_STEAM_K1_CLOSE",
+        "FUEL_P1_CLOSE",
+        "FUEL_P3_CLOSE",
+        "N_2_STOP",
+        "N_3_STOP",
+        "V3_CLOSE"
+      ]
     },
     {
       "id": "overpressure_relief",
@@ -277,7 +601,7 @@
       "is_custom": false,
       "initial_state": {
         "T_1": 280.0,
-        "P_1": 0.40,
+        "P_1": 0.4,
         "L_1": 50.0,
         "L_E1": 85.0,
         "T_1_Sp": 280.0,
@@ -293,40 +617,101 @@
           "title": "1. Проверка и дренирование Е-1",
           "hint_training": "При уровне Е-1 выше 80% откройте дренаж Е-1 и снизьте уровень до 80% или ниже.",
           "hint_exam": "Диагностировать подпор газосепаратора и устранить высокий уровень Е-1.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "V_E1_DRAIN", "expected": true },
-            { "type": "sensor_lte", "target": "L_E1", "expected": 80.0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "V_E1_DRAIN",
+                "expected": true
+              },
+              {
+                "type": "sensor_lte",
+                "target": "L_E1",
+                "expected": 80.0
+              }
+            ]
+          }
         },
         {
           "id": "reduce_load",
           "title": "2. Снижение нагрузки П-3 до 240°C и подачи сырья",
           "hint_training": "Снизьте уставку П-3 до 240°C или ниже, дождитесь T-3 не выше 260°C; затем остановите Н-20 и закройте V-1. Уставку П-1 не снижайте.",
           "hint_exam": "Уменьшить нагрузку печи П-3 и прекратить поступление сырья.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "setpoint_lte", "target": "T_3_Sp", "expected": 240.0 },
-            { "type": "pump_is", "target": "N_20", "expected": false },
-            { "type": "valve_is", "target": "V_1", "expected": false },
-            { "type": "sensor_lte", "target": "T_3", "expected": 260.0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "setpoint_lte",
+                "target": "T_3_Sp",
+                "expected": 240.0
+              },
+              {
+                "type": "pump_is",
+                "target": "N_20",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_1",
+                "expected": false
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 260.0
+              }
+            ]
+          }
         },
         {
           "id": "pressure_control",
           "title": "3. Контроль P-1 и сброс V-2 при необходимости",
           "hint_training": "Контролируйте P-1: если давление не выше 0,40 МПа или снижается, V-2 не открывайте. Если P-1 снова растёт выше 0,40 МПа — откройте V-2 на факельную линию.",
           "hint_exam": "Использовать сброс только после диагностики и снижения нагрузки.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "setpoint_lte", "target": "T_3_Sp", "expected": 240.0 },
-            { "type": "pump_is", "target": "N_20", "expected": false },
-            { "type": "valve_is", "target": "V_1", "expected": false },
-            { "type": "composite_or", "conditions": [
-              { "type": "sensor_lte", "target": "P_1", "expected": 0.40 },
-              { "type": "valve_is", "target": "V_2", "expected": true }
-            ] }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "setpoint_lte",
+                "target": "T_3_Sp",
+                "expected": 240.0
+              },
+              {
+                "type": "pump_is",
+                "target": "N_20",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_1",
+                "expected": false
+              },
+              {
+                "type": "composite_or",
+                "conditions": [
+                  {
+                    "type": "sensor_lte",
+                    "target": "P_1",
+                    "expected": 0.4
+                  },
+                  {
+                    "type": "valve_is",
+                    "target": "V_2",
+                    "expected": true
+                  }
+                ]
+              }
+            ]
+          }
         }
       ],
-      "golden_sequence": ["V_E1_DRAIN_OPEN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE"]
+      "golden_sequence": [
+        "V_E1_DRAIN_OPEN",
+        "SP3_DOWN",
+        "N_20_STOP",
+        "V1_CLOSE"
+      ]
     },
     {
       "id": "recirculation",
@@ -351,54 +736,128 @@
           "title": "1. Снижение расхода сырья до 60%",
           "hint_training": "Установите расход Н-20 на 60%, не останавливая подачу.",
           "hint_exam": "Плавно снизить сырьевую нагрузку установки до 60%.",
-          "condition": { "type": "setpoint_lte", "target": "F_in_Sp", "expected": 60.0 }
+          "condition": {
+            "type": "setpoint_lte",
+            "target": "F_in_Sp",
+            "expected": 60.0
+          }
         },
         {
           "id": "cool_300",
           "title": "2. Охлаждение печей до 300°C",
           "hint_training": "Снизьте отдельные уставки П-1/П-3 и дождитесь T-1/T-3 не выше 300°C.",
           "hint_exam": "Снизить тепловую нагрузку обеих печей перед циркуляцией.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "sensor_lte", "target": "T_1", "expected": 300.0 },
-            { "type": "sensor_lte", "target": "T_3", "expected": 300.0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "sensor_lte",
+                "target": "T_1",
+                "expected": 300.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 300.0
+              }
+            ]
+          }
         },
         {
           "id": "stop_feed_and_p1",
           "title": "3. Отсечение топлива П-1 и изоляция К-1",
           "hint_training": "Сначала отсеките топливо П-1, затем закройте V-1 и V-3. Закрытый V-3 не даёт Н-2 опустошить куб К-1 во время циркуляции.",
           "hint_exam": "Сначала прекратить горение в П-1, затем изолировать К-1 от подачи в К-2.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "V_1", "expected": false },
-            { "type": "valve_is", "target": "V_3", "expected": false },
-            { "type": "valve_is", "target": "FUEL_P1", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "V_1",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_3",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "FUEL_P1",
+                "expected": false
+              }
+            ]
+          }
         },
         {
           "id": "hot_circulation",
           "title": "4. Горячая циркуляция и отсечение топлива П-3",
           "hint_training": "Включите HC П-1/П-3 и закройте топливную линию П-3.",
           "hint_exam": "Перевести печные контуры на горячую циркуляцию без горения.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "HC_P1", "expected": true },
-            { "type": "valve_is", "target": "HC_P3", "expected": true },
-            { "type": "valve_is", "target": "FUEL_P3", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "HC_P1",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "HC_P3",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "FUEL_P3",
+                "expected": false
+              }
+            ]
+          }
         },
         {
           "id": "cool_100",
           "title": "5. Продолжение циркуляции до 100°C",
           "hint_training": "Не отключайте Н-2/Н-3 до охлаждения обеих печей до 100°C.",
           "hint_exam": "Сохранить циркуляцию до безопасной конечной температуры.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "sensor_lte", "target": "T_1", "expected": 100.0 },
-            { "type": "sensor_lte", "target": "T_3", "expected": 100.0 },
-            { "type": "pump_is", "target": "N_2", "expected": true },
-            { "type": "pump_is", "target": "N_3", "expected": true }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "sensor_lte",
+                "target": "T_1",
+                "expected": 100.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 100.0
+              },
+              {
+                "type": "pump_is",
+                "target": "N_2",
+                "expected": true
+              },
+              {
+                "type": "pump_is",
+                "target": "N_3",
+                "expected": true
+              }
+            ]
+          }
         }
       ],
-      "golden_sequence": ["FEED_DOWN", "SP_DOWN", "SP3_DOWN", "FUEL_P1_CLOSE", "V1_CLOSE", "V3_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "FUEL_P3_CLOSE"]
+      "golden_sequence": [
+        "FEED_DOWN",
+        "SP_DOWN",
+        "SP3_DOWN",
+        "FUEL_P1_CLOSE",
+        "V1_CLOSE",
+        "V3_CLOSE",
+        "HC_P1_OPEN",
+        "HC_P3_OPEN",
+        "FUEL_P3_CLOSE"
+      ]
     },
     {
       "id": "elou_salt_breakthrough",
@@ -416,7 +875,7 @@
         "V_1": true,
         "V_2": false,
         "V_3": true,
-          "V_ELOU": true
+        "V_ELOU": true
       },
       "checklist": [
         {
@@ -424,44 +883,105 @@
           "title": "1. Отключение ЭЛОУ, воды и реагентов",
           "hint_training": "Оставьте V-ELOU закрытым: подача воды/реагентов и электрообессоливание должны быть прекращены.",
           "hint_exam": "Изолировать неисправный блок ЭЛОУ, не возобновляя дозирование.",
-          "condition": { "type": "valve_is", "target": "V_ELOU", "expected": false }
+          "condition": {
+            "type": "valve_is",
+            "target": "V_ELOU",
+            "expected": false
+          }
         },
         {
           "id": "stop_feed",
           "title": "2. Прекращение подачи сырья Н-20",
           "hint_training": "Остановите Н-20 и закройте V-1 после насоса.",
           "hint_exam": "Прекратить поступление загрязнённого сырья в К-1.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "pump_is", "target": "N_20", "expected": false },
-            { "type": "valve_is", "target": "V_1", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "pump_is",
+                "target": "N_20",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_1",
+                "expected": false
+              }
+            ]
+          }
         },
         {
           "id": "k1_hot_circulation",
           "title": "3. Горячая циркуляция К-1 через Н-2 и Н-3",
           "hint_training": "Оставьте Н-2/Н-3 в работе и включите HC П-1/П-3.",
           "hint_exam": "Перевести К-1 на внутреннюю горячую циркуляцию.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "pump_is", "target": "N_2", "expected": true },
-            { "type": "pump_is", "target": "N_3", "expected": true },
-            { "type": "valve_is", "target": "HC_P1", "expected": true },
-            { "type": "valve_is", "target": "HC_P3", "expected": true }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "pump_is",
+                "target": "N_2",
+                "expected": true
+              },
+              {
+                "type": "pump_is",
+                "target": "N_3",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "HC_P1",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "HC_P3",
+                "expected": true
+              }
+            ]
+          }
         },
         {
           "id": "reduce_heat",
           "title": "4. Снижение нагрева обеих печей",
           "hint_training": "Снизьте отдельные уставки П-1 и П-3 до 200°C или ниже и дождитесь фактических T-1/T-3 не выше 200°C.",
           "hint_exam": "Уменьшить тепловую нагрузку после изоляции ЭЛОУ и дождаться охлаждения обеих печей до 200°C.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "setpoint_lte", "target": "T_1_Sp", "expected": 200.0 },
-            { "type": "setpoint_lte", "target": "T_3_Sp", "expected": 200.0 },
-            { "type": "sensor_lte", "target": "T_1", "expected": 200.0 },
-            { "type": "sensor_lte", "target": "T_3", "expected": 200.0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "setpoint_lte",
+                "target": "T_1_Sp",
+                "expected": 200.0
+              },
+              {
+                "type": "setpoint_lte",
+                "target": "T_3_Sp",
+                "expected": 200.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_1",
+                "expected": 200.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 200.0
+              }
+            ]
+          }
         }
       ],
-      "golden_sequence": ["V_ELOU_CLOSE", "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "SP_DOWN", "SP3_DOWN"]
+      "golden_sequence": [
+        "V_ELOU_CLOSE",
+        "N_20_STOP",
+        "V1_CLOSE",
+        "HC_P1_OPEN",
+        "HC_P3_OPEN",
+        "SP_DOWN",
+        "SP3_DOWN"
+      ]
     },
     {
       "id": "vt_vacuum_failure",
@@ -488,44 +1008,173 @@
           "title": "1. Снижение нагрузки и прекращение подачи",
           "hint_training": "Снизьте уставки П-1 и П-3 до 200°C или ниже. Сразу остановите Н-20 и закройте V-1: это не даст уровню К-1 расти при потере вакуума. Затем дождитесь фактических T-1 и T-3 не выше 200°C.",
           "hint_exam": "Снизить тепловую нагрузку обеих печей до 200°C, прекратить подачу Н-20 и закрыть V-1; дождаться охлаждения обеих печей до 200°C.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "setpoint_lte", "target": "T_1_Sp", "expected": 200.0 },
-            { "type": "setpoint_lte", "target": "T_3_Sp", "expected": 200.0 },
-            { "type": "pump_is", "target": "N_20", "expected": false },
-            { "type": "valve_is", "target": "V_1", "expected": false },
-            { "type": "sensor_lte", "target": "T_1", "expected": 200.0 },
-            { "type": "sensor_lte", "target": "T_3", "expected": 200.0 }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "setpoint_lte",
+                "target": "T_1_Sp",
+                "expected": 200.0
+              },
+              {
+                "type": "setpoint_lte",
+                "target": "T_3_Sp",
+                "expected": 200.0
+              },
+              {
+                "type": "pump_is",
+                "target": "N_20",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_1",
+                "expected": false
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_1",
+                "expected": 200.0
+              },
+              {
+                "type": "sensor_lte",
+                "target": "T_3",
+                "expected": 200.0
+              }
+            ]
+          }
         },
         {
           "id": "preserve_vacuum",
           "title": "2. Закрытие «Пар К-2» без открытия газового сброса",
           "hint_training": "Во вкладке «Управление» выключите переключатель «Пар К-2». «Пар К-1» не отключайте. «Газовый сброс К-2» не нажимайте: он должен остаться в положении «ЗАКР».",
           "hint_exam": "Закрыть «Пар К-2», не отключая «Пар К-1» и не открывая газовый сброс К-2.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "V_STEAM_K2", "expected": false },
-            { "type": "valve_is", "target": "V_STEAM_K1", "expected": true },
-            { "type": "valve_is", "target": "V_K2_RELIEF", "expected": false }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "V_STEAM_K2",
+                "expected": false
+              },
+              {
+                "type": "valve_is",
+                "target": "V_STEAM_K1",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "V_K2_RELIEF",
+                "expected": false
+              }
+            ]
+          }
         },
         {
           "id": "hot_circulation",
           "title": "3. Горячая циркуляция печных контуров и откачка К-2",
           "hint_training": "Включите оба переключателя «Печь П-1» и «Печь П-3» в блоке «Горячая циркуляция». Н-2, Н-3 и хотя бы один насос откачки К-2 (Н-4 или Н-32) оставьте в положении «ПУСК».",
           "hint_exam": "Сохранить циркуляцию П-1/П-3 и откачку К-2 одним из насосов Н-4/Н-32 до решения об останове.",
-          "condition": { "type": "composite_and", "conditions": [
-            { "type": "valve_is", "target": "HC_P1", "expected": true },
-            { "type": "valve_is", "target": "HC_P3", "expected": true },
-            { "type": "pump_is", "target": "N_2", "expected": true },
-            { "type": "pump_is", "target": "N_3", "expected": true },
-            { "type": "composite_or", "conditions": [
-              { "type": "pump_is", "target": "N_4", "expected": true },
-              { "type": "pump_is", "target": "N_32", "expected": true }
-            ] }
-          ] }
+          "condition": {
+            "type": "composite_and",
+            "conditions": [
+              {
+                "type": "valve_is",
+                "target": "HC_P1",
+                "expected": true
+              },
+              {
+                "type": "valve_is",
+                "target": "HC_P3",
+                "expected": true
+              },
+              {
+                "type": "pump_is",
+                "target": "N_2",
+                "expected": true
+              },
+              {
+                "type": "pump_is",
+                "target": "N_3",
+                "expected": true
+              },
+              {
+                "type": "composite_or",
+                "conditions": [
+                  {
+                    "type": "pump_is",
+                    "target": "N_4",
+                    "expected": true
+                  },
+                  {
+                    "type": "pump_is",
+                    "target": "N_32",
+                    "expected": true
+                  }
+                ]
+              }
+            ]
+          }
         }
       ],
-      "golden_sequence": ["SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "V_STEAM_K2_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN", "CALL_DISPATCHER"]
+      "golden_sequence": [
+        "SP_DOWN",
+        "SP3_DOWN",
+        "N_20_STOP",
+        "V1_CLOSE",
+        "V_STEAM_K2_CLOSE",
+        "HC_P1_OPEN",
+        "HC_P3_OPEN",
+        "CALL_DISPATCHER"
+      ]
+    },
+    {
+      "id": "test_elou",
+      "title": "Проверка промывки ЭЛОУ",
+      "short_name": "Промывка ЭЛОУ",
+      "description": "Запуск промывочной воды Н-82 и отсечка подачи сырья V-1",
+      "initial_state": {
+        "T_1": 280.0,
+        "T_3": 280.0,
+        "P_1": 0.35,
+        "L_1": 50.0,
+        "L_2": 50.0,
+        "T_1_Sp": 280.0,
+        "T_3_Sp": 280.0,
+        "V_1": true,
+        "V_2": false,
+        "V_3": true,
+        "N_82": false
+      },
+      "checklist": [
+        {
+          "id": "step_1",
+          "title": "1. Включение подачи промывочной воды",
+          "hint_training": "Нажмите на насос Н-82 на схеме ЭЛОУ для запуска",
+          "hint_exam": "Подать промывочную воду в дегидраторы",
+          "condition": {
+            "type": "pump_is",
+            "target": "N_82",
+            "expected": true
+          }
+        },
+        {
+          "id": "step_2",
+          "title": "2. Отсечка подачи сырья",
+          "hint_training": "Переведите клапан V-1 в положение ЗАКРЫТО",
+          "hint_exam": "Отсечь сырьевую линию",
+          "condition": {
+            "type": "valve_is",
+            "target": "V_1",
+            "expected": false
+          }
+        }
+      ],
+      "golden_sequence": [
+        "N_82_START",
+        "V1_CLOSE"
+      ],
+      "is_custom": true
     }
   ]
 }

@@ -80,6 +80,9 @@ ALLOWED_ORIGINS = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=os.environ.get(
+        "ALLOWED_ORIGIN_REGEX", r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$"
+    ),
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],

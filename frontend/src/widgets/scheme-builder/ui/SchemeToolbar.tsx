@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Select, Space, Tooltip, message } from 'antd';
+import { Select, Space, Tooltip, App } from 'antd';
 import {
   Save,
   Copy,
@@ -62,6 +62,7 @@ export const SchemeToolbar: React.FC<SchemeToolbarProps> = ({
   onDelete,
   onReset,
 }) => {
+  const { message } = App.useApp();
   const { presets, activePresetId, selectPreset, exportPresetJson, importPresetJson } = useMnemoscheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

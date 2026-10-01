@@ -81,6 +81,18 @@ class TestScenarioImportValidation(unittest.TestCase):
         })
         self.assertEqual(resp.status_code, 201, resp.text)
 
+    def test_scenarios_list_does_not_duplicate_on_repeated_reads(self):
+        """Многократное чтение сценариев не должно дублировать записи."""
+        resp1 = self.client.get("/api/scenarios", headers={"Authorization": f"Bearer {self.token}"})
+        self.assertEqual(resp1.status_code, 200)
+        count1 = len(resp1.json())
+
+        resp2 = self.client.get("/api/scenarios", headers={"Authorization": f"Bearer {self.token}"})
+        self.assertEqual(resp2.status_code, 200)
+        count2 = len(resp2.json())
+
+        self.assertEqual(count1, count2)
+
 
 class TestSetpointBounds(unittest.TestCase):
     """Уставка температуры печи ограничена физическим диапазоном КИПиА."""

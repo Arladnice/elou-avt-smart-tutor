@@ -110,17 +110,22 @@ def init_db():
     seed_users()
 
 def seed_users():
-    """Добавляет недостающие демо-учётные записи, не изменяя существующие."""
+    """Добавляет демо-учётные записи или обновляет их хэш, если он устарел."""
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT username FROM users")
-        existing_usernames = {row[0] for row in cursor.fetchall()}
-        missing_users = [user for user in DEFAULT_USERS if user[0] not in existing_usernames]
+        cursor.execute("SELECT username, password_hash FROM users")
+        existing = {row[0]: row[1] for row in cursor.fetchall()}
 
-        if missing_users:
-            hashed_password = get_password_hash("Ktk_2026!")
-            cursor.executemany(
-                "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-                [(username, hashed_password, role) for username, role in missing_users],
-            )
-            conn.commit()
+        hashed_password = get_password_hash("Ktk_2026!")
+        for username, role in DEFAULT_USERS:
+            if username not in existing:
+                cursor.execute(
+                    "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                    (username, hashed_password, role),
+                )
+            elif not existing[username].startswith("$2b$"):
+                cursor.execute(
+                    "UPDATE users SET password_hash = ?, role = ? WHERE username = ?",
+                    (hashed_password, role, username),
+                )
+        conn.commit()

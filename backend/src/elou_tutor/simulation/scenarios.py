@@ -37,9 +37,16 @@ def _merge_with_package_defaults(
     stored: List[Dict[str, Any]],
     defaults: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Обновляет штатные сценарии, сохраняя сценарии инструктора."""
-    custom = [scenario for scenario in stored if scenario.get("is_custom") is True]
-    return [*defaults, *custom]
+    """Обновляет штатные сценарии, сохраняя сценарии инструктора без дубликатов."""
+    builtin = [s for s in defaults if not s.get("is_custom")]
+    custom_map: Dict[str, Dict[str, Any]] = {}
+    for s in stored:
+        if s.get("is_custom") and s.get("id"):
+            custom_map[s["id"]] = s
+    for s in defaults:
+        if s.get("is_custom") and s.get("id") and s["id"] not in custom_map:
+            custom_map[s["id"]] = s
+    return [*builtin, *custom_map.values()]
 
 
 def load_scenarios() -> List[Dict[str, Any]]:
@@ -52,8 +59,23 @@ def load_scenarios() -> List[Dict[str, Any]]:
     устаревшие версии встроенных заданий.
     """
     stored = _read_registry(SCENARIOS_FILE_PATH)
-    defaults = _read_registry(PACKAGE_SCENARIOS_PATH)
 
+    # Если рабочий файл совпадает с поставкой (локальная разработка без Docker):
+    if os.path.abspath(SCENARIOS_FILE_PATH) == os.path.abspath(PACKAGE_SCENARIOS_PATH):
+        if stored is None:
+            logger.error(f"Файл сценариев не найден: {SCENARIOS_FILE_PATH}")
+            return []
+        builtin = [s for s in stored if not s.get("is_custom")]
+        custom_map: Dict[str, Dict[str, Any]] = {}
+        for s in stored:
+            if s.get("is_custom") and s.get("id"):
+                custom_map[s["id"]] = s
+        cleaned = [*builtin, *custom_map.values()]
+        if len(cleaned) != len(stored):
+            save_scenarios(cleaned)
+        return cleaned
+
+    defaults = _read_registry(PACKAGE_SCENARIOS_PATH)
     if stored is not None:
         if defaults is None:
             logger.error("Поставка сценариев недоступна, используем рабочий реестр")
@@ -65,10 +87,6 @@ def load_scenarios() -> List[Dict[str, Any]]:
             if not save_scenarios(merged):
                 logger.error("Не удалось обновить рабочий реестр, используем данные из памяти")
         return merged
-
-    if os.path.abspath(SCENARIOS_FILE_PATH) == os.path.abspath(PACKAGE_SCENARIOS_PATH):
-        logger.error(f"Файл сценариев не найден: {SCENARIOS_FILE_PATH}")
-        return []
 
     if defaults is None:
         logger.error(f"Поставка сценариев недоступна: {PACKAGE_SCENARIOS_PATH}")
@@ -111,7 +129,16 @@ def save_scenarios(scenarios: List[Dict[str, Any]]) -> bool:
             json.dump({"scenarios": scenarios}, f, ensure_ascii=False, indent=2)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_path, SCENARIOS_FILE_PATH)
+        try:
+            os.replace(tmp_path, SCENARIOS_FILE_PATH)
+        except PermissionError:
+            import shutil
+            shutil.copyfile(tmp_path, SCENARIOS_FILE_PATH)
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
         return True
     except Exception as e:
         logger.error(f"Ошибка записи в файл сценариев: {e}")
@@ -165,3 +192,36 @@ def delete_scenario(scenario_id: str) -> tuple[bool, str]:
     if save_scenarios(updated):
         return True, "Сценарий успешно удален."
     return False, "Ошибка при удалении сценария."
+
+
+def update_custom_scenario(scenario_id: str, scenario_data: Dict[str, Any]) -> tuple[bool, str]:
+    """Обновляет существующий пользовательский сценарий инструктора."""
+    target_id = scenario_id.strip()
+    if not target_id:
+        return False, "Идентификатор сценария (id) не может быть пустым."
+
+    title = scenario_data.get("title", "").strip()
+    if not title:
+        return False, "Название сценария не может быть пустым."
+
+    scenarios = load_scenarios()
+    idx = -1
+    for i, s in enumerate(scenarios):
+        if s.get("id") == target_id:
+            idx = i
+            break
+
+    if idx == -1:
+        return False, f"Сценарий с id '{target_id}' не найден."
+
+    if not scenarios[idx].get("is_custom", False):
+        return False, "Запрещено редактировать встроенные сценарии техрегламента."
+
+    scenario_data["id"] = target_id
+    scenario_data["is_custom"] = True
+    scenarios[idx] = scenario_data
+
+    if save_scenarios(scenarios):
+        return True, "Сценарий успешно обновлен."
+    return False, "Не удалось сохранить изменения на диске."
+

@@ -610,6 +610,12 @@ class TestBackendRoutesAndIntegrity(unittest.TestCase):
             websocket.send_json({"type": "toggle_valve", "valve_id": "V_1", "state": True})
             data = websocket.receive_json()
             self.assertIn("sensors", data)
+
+            # Отправка команды пуска насоса Н-82 (разрешено оператору)
+            websocket.send_json({"type": "toggle_pump", "pump_id": "N_82", "state": True})
+            pump_data = websocket.receive_json()
+            self.assertIn("pumps", pump_data)
+            self.assertTrue(pump_data["pumps"]["N_82"])
             
             # Отправка команды инжекции дефекта (ЗАПРЕЩЕНО оператору)
             websocket.send_json({"type": "trigger_defect", "defect_id": "pump_fail", "state": True})

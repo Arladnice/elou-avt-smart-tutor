@@ -26,6 +26,10 @@ export interface ScenarioInitialState {
   V_1: boolean;
   V_2: boolean;
   V_3: boolean;
+  N_20?: boolean;
+  N_82?: boolean;
+  N_4?: boolean;
+  [key: string]: unknown;
 }
 
 export interface ScenarioItem {

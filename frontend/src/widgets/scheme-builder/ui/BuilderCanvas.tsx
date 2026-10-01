@@ -97,23 +97,41 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
   const hasMovedRef = useRef<boolean>(false);
   const [activeSnapPort, setActiveSnapPort] = useState<SnapPort | null>(null);
 
-  const snap = (val: number) => {
-    if (gridSnap <= 1) return Math.round(val);
-    return Math.round(val / gridSnap) * gridSnap;
-  };
+  const snap = useCallback(
+    (val: number) => {
+      if (gridSnap <= 1) return Math.round(val);
+      return Math.round(val / gridSnap) * gridSnap;
+    },
+    [gridSnap]
+  );
 
-  const getSvgCoordinates = (event: React.MouseEvent<SVGSVGElement>): { x: number; y: number } => {
-    if (!svgRef.current) return { x: 0, y: 0 };
-    const rect = svgRef.current.getBoundingClientRect();
-    const currentViewWidth = scheme.width / zoom;
-    const currentViewHeight = scheme.height / zoom;
-    const scaleX = currentViewWidth / rect.width;
-    const scaleY = currentViewHeight / rect.height;
-    return {
-      x: pan.x + (event.clientX - rect.left) * scaleX,
-      y: pan.y + (event.clientY - rect.top) * scaleY,
-    };
-  };
+  const getSvgCoordinates = useCallback(
+    (clientX: number, clientY: number): { x: number; y: number } => {
+      if (!svgRef.current) return { x: 0, y: 0 };
+      const svg = svgRef.current;
+      const ctm = svg.getScreenCTM();
+      if (!ctm) {
+        const rect = svg.getBoundingClientRect();
+        const currentViewWidth = scheme.width / zoom;
+        const currentViewHeight = scheme.height / zoom;
+        const scaleX = currentViewWidth / (rect.width || 1);
+        const scaleY = currentViewHeight / (rect.height || 1);
+        return {
+          x: pan.x + (clientX - rect.left) * scaleX,
+          y: pan.y + (clientY - rect.top) * scaleY,
+        };
+      }
+      const pt = svg.createSVGPoint();
+      pt.x = clientX;
+      pt.y = clientY;
+      const svgPoint = pt.matrixTransform(ctm.inverse());
+      return {
+        x: svgPoint.x,
+        y: svgPoint.y,
+      };
+    },
+    [scheme.width, scheme.height, zoom, pan.x, pan.y]
+  );
 
   const handleItemClick = (
     e: React.MouseEvent,
@@ -136,7 +154,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     onSelectElement({ category, id });
 
     if (mode === 'edit') {
-      const { x, y } = getSvgCoordinates(e as any);
+      const { x, y } = getSvgCoordinates(e.clientX, e.clientY);
       setDragging({
         category,
         id,
@@ -154,7 +172,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     onSelectElement({ category: 'pipes', id: pipe.id });
 
     if (mode === 'edit') {
-      const { x, y } = getSvgCoordinates(e as any);
+      const { x, y } = getSvgCoordinates(e.clientX, e.clientY);
       setPipeDragging({
         id: pipe.id,
         startX: x,
@@ -190,130 +208,163 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     setPipeMidDragging({ id, axis });
   };
 
-  const handlePointerMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    hasMovedRef.current = true;
-    // 1. Панорамирование
-    if (panning) {
-      if (!svgRef.current) return;
-      const rect = svgRef.current.getBoundingClientRect();
-      const scaleX = (scheme.width / zoom) / rect.width;
-      const scaleY = (scheme.height / zoom) / rect.height;
-      const deltaX = (e.clientX - panning.startClientX) * scaleX;
-      const deltaY = (e.clientY - panning.startClientY) * scaleY;
-      onSetPan({
-        x: Math.round(panning.startPanX - deltaX),
-        y: Math.round(panning.startPanY - deltaY),
-      });
-      return;
-    }
+  const handleMove = useCallback(
+    (clientX: number, clientY: number, shiftKey: boolean) => {
+      hasMovedRef.current = true;
 
-    if (mode !== 'edit') return;
-
-    // 2. Регулировка изгиба Z-ступеньки
-    if (pipeMidDragging) {
-      const { x, y } = getSvgCoordinates(e);
-      if (pipeMidDragging.axis === 'x') {
-        onUpdateItem('pipes', pipeMidDragging.id, { midX: snap(x) });
-      } else {
-        onUpdateItem('pipes', pipeMidDragging.id, { midY: snap(y) });
-      }
-      return;
-    }
-
-    // 3. Редактирование конца прямолинейной трубы через ручку с магнитной привязкой к портам
-    if (pipeHandleDragging) {
-      const { x, y } = getSvgCoordinates(e);
-      const targetPipe = scheme.pipes.find(p => p.id === pipeHandleDragging.id);
-      const otherX = pipeHandleDragging.handle === 'start' ? targetPipe?.x2 : targetPipe?.x1;
-      const otherY = pipeHandleDragging.handle === 'start' ? targetPipe?.y2 : targetPipe?.y1;
-
-      // Поиск ближайшего технологического порта подключения (порог 24 px)
-      const ports = getSnapPorts(scheme, pipeHandleDragging.id);
-      let closestPort: SnapPort | null = null;
-      let minDistance = 24;
-
-      for (const port of ports) {
-        const dist = Math.hypot(port.x - x, port.y - y);
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestPort = port;
-        }
-      }
-
-      let finalX = snap(x);
-      let finalY = snap(y);
-
-      if (closestPort) {
-        finalX = closestPort.x;
-        finalY = closestPort.y;
-        setActiveSnapPort(closestPort);
-      } else {
-        setActiveSnapPort(null);
-        // Ортогональное выравнивание, если угол близок к горизонтали/вертикали (в пределах 12px) или зажат Shift
-        if (otherY !== undefined && (Math.abs(y - otherY) < 12 || e.shiftKey)) {
-          finalY = otherY;
-        }
-        if (otherX !== undefined && (Math.abs(x - otherX) < 12 || e.shiftKey)) {
-          finalX = otherX;
-        }
-      }
-
-      if (pipeHandleDragging.handle === 'start') {
-        onUpdateItem('pipes', pipeHandleDragging.id, {
-          x1: finalX,
-          y1: finalY,
-          startAnchor: closestPort ? closestPort.id : undefined,
+      // 1. Панорамирование
+      if (panning) {
+        if (!svgRef.current) return;
+        const ctm = svgRef.current.getScreenCTM();
+        const scaleX = ctm && ctm.a !== 0 ? ctm.a : 1;
+        const scaleY = ctm && ctm.d !== 0 ? ctm.d : 1;
+        const deltaX = (clientX - panning.startClientX) / scaleX;
+        const deltaY = (clientY - panning.startClientY) / scaleY;
+        onSetPan({
+          x: Math.round(panning.startPanX - deltaX),
+          y: Math.round(panning.startPanY - deltaY),
         });
-      } else {
-        onUpdateItem('pipes', pipeHandleDragging.id, {
-          x2: finalX,
-          y2: finalY,
-          endAnchor: closestPort ? closestPort.id : undefined,
-        });
+        return;
       }
-      return;
-    }
 
-    // 4. Перетаскивание трубы целиком
-    if (pipeDragging) {
-      const { x, y } = getSvgCoordinates(e);
-      const deltaX = snap(x - pipeDragging.startX);
-      const deltaY = snap(y - pipeDragging.startY);
+      if (mode !== 'edit') return;
 
-      if (pipeDragging.initialD) {
-        const newD = translateSvgPath(pipeDragging.initialD, deltaX, deltaY);
-        onUpdateItem('pipes', pipeDragging.id, { d: newD });
-      } else if (pipeDragging.initialX1 !== undefined) {
-        onUpdateItem('pipes', pipeDragging.id, {
-          x1: pipeDragging.initialX1 + deltaX,
-          y1: pipeDragging.initialY1! + deltaY,
-          x2: pipeDragging.initialX2! + deltaX,
-          y2: pipeDragging.initialY2! + deltaY,
-          midX:
-            pipeDragging.initialMidX !== undefined
-              ? pipeDragging.initialMidX + deltaX
-              : undefined,
-          midY:
-            pipeDragging.initialMidY !== undefined
-              ? pipeDragging.initialMidY + deltaY
-              : undefined,
-        });
+      // 2. Регулировка изгиба Z-ступеньки
+      if (pipeMidDragging) {
+        const { x, y } = getSvgCoordinates(clientX, clientY);
+        if (pipeMidDragging.axis === 'x') {
+          onUpdateItem('pipes', pipeMidDragging.id, { midX: snap(x) });
+        } else {
+          onUpdateItem('pipes', pipeMidDragging.id, { midY: snap(y) });
+        }
+        return;
       }
-      return;
-    }
 
-    // 5. Перетаскивание оборудования / датчиков / меток
-    if (dragging) {
-      const { x, y } = getSvgCoordinates(e);
-      const deltaX = x - dragging.startX;
-      const deltaY = y - dragging.startY;
-      const newX = snap(dragging.initialX + deltaX);
-      const newY = snap(dragging.initialY + deltaY);
-      onUpdateElementPosition(dragging.category, dragging.id, newX, newY);
-    }
-  };
+      // 3. Редактирование конца прямолинейной трубы через ручку с магнитной привязкой к портам
+      if (pipeHandleDragging) {
+        const { x, y } = getSvgCoordinates(clientX, clientY);
+        const targetPipe = scheme.pipes.find(p => p.id === pipeHandleDragging.id);
+        const otherX = pipeHandleDragging.handle === 'start' ? targetPipe?.x2 : targetPipe?.x1;
+        const otherY = pipeHandleDragging.handle === 'start' ? targetPipe?.y2 : targetPipe?.y1;
+
+        // Поиск ближайшего технологического порта подключения (порог 24 px)
+        const ports = getSnapPorts(scheme, pipeHandleDragging.id);
+        let closestPort: SnapPort | null = null;
+        let minDistance = 24;
+
+        for (const port of ports) {
+          const dist = Math.hypot(port.x - x, port.y - y);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestPort = port;
+          }
+        }
+
+        let finalX = snap(x);
+        let finalY = snap(y);
+
+        if (closestPort) {
+          finalX = closestPort.x;
+          finalY = closestPort.y;
+          setActiveSnapPort(closestPort);
+        } else {
+          setActiveSnapPort(null);
+          // Ортогональное выравнивание, если угол близок к горизонтали/вертикали (в пределах 12px) или зажат Shift
+          if (otherY !== undefined && (Math.abs(clientY - otherY) < 12 || shiftKey)) {
+            finalY = otherY;
+          }
+          if (otherX !== undefined && (Math.abs(clientX - otherX) < 12 || shiftKey)) {
+            finalX = otherX;
+          }
+        }
+
+        if (pipeHandleDragging.handle === 'start') {
+          onUpdateItem('pipes', pipeHandleDragging.id, {
+            x1: finalX,
+            y1: finalY,
+            startAnchor: closestPort ? closestPort.id : undefined,
+          });
+        } else {
+          onUpdateItem('pipes', pipeHandleDragging.id, {
+            x2: finalX,
+            y2: finalY,
+            endAnchor: closestPort ? closestPort.id : undefined,
+          });
+        }
+        return;
+      }
+
+      // 4. Перетаскивание трубы целиком
+      if (pipeDragging) {
+        const { x, y } = getSvgCoordinates(clientX, clientY);
+        const deltaX = snap(x - pipeDragging.startX);
+        const deltaY = snap(y - pipeDragging.startY);
+
+        if (pipeDragging.initialD) {
+          const newD = translateSvgPath(pipeDragging.initialD, deltaX, deltaY);
+          onUpdateItem('pipes', pipeDragging.id, { d: newD });
+        } else if (pipeDragging.initialX1 !== undefined) {
+          onUpdateItem('pipes', pipeDragging.id, {
+            x1: pipeDragging.initialX1 + deltaX,
+            y1: pipeDragging.initialY1! + deltaY,
+            x2: pipeDragging.initialX2! + deltaX,
+            y2: pipeDragging.initialY2! + deltaY,
+            midX:
+              pipeDragging.initialMidX !== undefined
+                ? pipeDragging.initialMidX + deltaX
+                : undefined,
+            midY:
+              pipeDragging.initialMidY !== undefined
+                ? pipeDragging.initialMidY + deltaY
+                : undefined,
+          });
+        }
+        return;
+      }
+
+      // 5. Перетаскивание оборудования / датчиков / меток
+      if (dragging) {
+        const { x, y } = getSvgCoordinates(clientX, clientY);
+        const deltaX = x - dragging.startX;
+        const deltaY = y - dragging.startY;
+        const newX = snap(dragging.initialX + deltaX);
+        const newY = snap(dragging.initialY + deltaY);
+        onUpdateElementPosition(dragging.category, dragging.id, newX, newY);
+      }
+    },
+    [
+      panning,
+      mode,
+      pipeMidDragging,
+      pipeHandleDragging,
+      pipeDragging,
+      dragging,
+      getSvgCoordinates,
+      onSetPan,
+      onUpdateItem,
+      onUpdateElementPosition,
+      snap,
+      scheme,
+    ]
+  );
+
+  const moveEventRef = useRef<{ clientX: number; clientY: number; shiftKey: boolean } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   const handlePointerUp = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    if (moveEventRef.current) {
+      handleMove(
+        moveEventRef.current.clientX,
+        moveEventRef.current.clientY,
+        moveEventRef.current.shiftKey
+      );
+      moveEventRef.current = null;
+    }
+
     if (dragging || pipeDragging || pipeHandleDragging || pipeMidDragging) {
       onCommitHistory?.();
     }
@@ -323,20 +374,74 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
     setPipeMidDragging(null);
     setActiveSnapPort(null);
     setPanning(null);
-  }, [dragging, pipeDragging, pipeHandleDragging, pipeMidDragging, onCommitHistory]);
+  }, [
+    dragging,
+    pipeDragging,
+    pipeHandleDragging,
+    pipeMidDragging,
+    onCommitHistory,
+    handleMove,
+  ]);
 
-  // Глобальный сброс перетаскивания при отпускании кнопки мыши в любой точке окна
+  // Глобальный слушатель движения и отпускания мыши во время активного перетаскивания
   useEffect(() => {
     const isInteracting = Boolean(
       dragging || pipeDragging || pipeHandleDragging || pipeMidDragging || panning
     );
     if (!isInteracting) return;
 
-    window.addEventListener('mouseup', handlePointerUp);
-    return () => {
-      window.removeEventListener('mouseup', handlePointerUp);
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      moveEventRef.current = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        shiftKey: e.shiftKey,
+      };
+
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          if (moveEventRef.current) {
+            handleMove(
+              moveEventRef.current.clientX,
+              moveEventRef.current.clientY,
+              moveEventRef.current.shiftKey
+            );
+          }
+        });
+      }
     };
-  }, [dragging, pipeDragging, pipeHandleDragging, pipeMidDragging, panning, handlePointerUp]);
+
+    const handleWindowMouseUp = () => {
+      handlePointerUp();
+    };
+
+    window.addEventListener('mousemove', handleWindowMouseMove);
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, [
+    dragging,
+    pipeDragging,
+    pipeHandleDragging,
+    pipeMidDragging,
+    panning,
+    handleMove,
+    handlePointerUp,
+  ]);
+
+  const handlePointerMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const isInteracting = Boolean(
+      dragging || pipeDragging || pipeHandleDragging || pipeMidDragging || panning
+    );
+    if (!isInteracting) return;
+    handleMove(e.clientX, e.clientY, e.shiftKey);
+  };
 
   const handleCanvasMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     hasMovedRef.current = false;
@@ -375,30 +480,27 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
     if (!svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
 
     const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
     const nextZoom = Math.max(0.4, Math.min(3.0, Math.round(zoom * zoomFactor * 100) / 100));
     if (nextZoom === zoom) return;
 
-    // Относительные координаты курсора мыши внутри видимой области SVG [0, 1]
-    const mouseRatioX = (e.clientX - rect.left) / rect.width;
-    const mouseRatioY = (e.clientY - rect.top) / rect.height;
-
     // Мировые координаты точки под курсором в системе координат схемы
+    const { x: focusSvgX, y: focusSvgY } = getSvgCoordinates(e.clientX, e.clientY);
+
+    // Относительные координаты точки внутри текущего viewBox
     const currentViewWidth = scheme.width / zoom;
     const currentViewHeight = scheme.height / zoom;
-    const focusSvgX = pan.x + mouseRatioX * currentViewWidth;
-    const focusSvgY = pan.y + mouseRatioY * currentViewHeight;
+    const ratioX = (focusSvgX - pan.x) / currentViewWidth;
+    const ratioY = (focusSvgY - pan.y) / currentViewHeight;
 
     // Новые размеры видимой области
     const nextViewWidth = scheme.width / nextZoom;
     const nextViewHeight = scheme.height / nextZoom;
 
-    // Корректировка смещения pan для сохранения точки под курсором
-    const nextPanX = focusSvgX - mouseRatioX * nextViewWidth;
-    const nextPanY = focusSvgY - mouseRatioY * nextViewHeight;
+    // Корректировка смещения pan для сохранения точки ровно под курсором
+    const nextPanX = focusSvgX - ratioX * nextViewWidth;
+    const nextPanY = focusSvgY - ratioY * nextViewHeight;
 
     onSetZoom(nextZoom);
     onSetPan({
@@ -779,6 +881,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                 rotate={v.rotate}
                 vertical={v.vertical}
                 hideLabel={v.hideLabel}
+                labelOffsetY={v.labelOffsetY}
                 label={v.label}
                 isOpen={isOpen}
                 interactive={mode === 'preview'}

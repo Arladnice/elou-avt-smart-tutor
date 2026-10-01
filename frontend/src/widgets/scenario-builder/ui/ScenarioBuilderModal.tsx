@@ -1,92 +1,38 @@
 import React, { useState } from 'react';
-import { Modal, Tabs, Form, Input, InputNumber, Switch, Button, Select, App, Upload, Card, Popconfirm } from 'antd';
-import { PlusOutlined, DeleteOutlined, UploadOutlined, FileTextOutlined, CodeOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Tabs, Form, Input, InputNumber, Switch, Button, Select, App, Upload, Popconfirm } from 'antd';
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+  FileTextOutlined,
+  CodeOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  SaveOutlined,
+} from '@ant-design/icons';
 import {
   createScenario,
+  updateScenario,
   importScenario,
   deleteScenario,
   type ScenarioItem,
-  type ScenarioCondition,
 } from '@/entities/scenario';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
+import {
+  type ScenarioFormValues,
+  presetToCondition,
+  conditionToPreset,
+  CONDITION_OPTIONS,
+  GOLDEN_SEQUENCE_OPTIONS,
+  FORM_INITIAL_VALUES,
+} from './ScenarioBuilderModal.config';
+import * as S from './ScenarioBuilderModal.styles';
 
 interface ScenarioBuilderModalProps {
   visible: boolean;
   onClose: () => void;
 }
-
-/** Пресеты условий завершения шага — то, что оператор выбирает в выпадающем списке */
-type ConditionPreset =
-  | 'V_1_CLOSE' | 'V_1_OPEN'
-  | 'V_2_OPEN' | 'V_2_CLOSE'
-  | 'V_3_OPEN' | 'V_3_CLOSE'
-  | 'T_1_LTE' | 'T_1_GTE'
-  | 'L_1_LTE' | 'L_1_GTE'
-  | 'L_2_LTE' | 'L_2_GTE';
-
-/** Строка чек-листа в том виде, в каком её отдаёт Form.List */
-interface ChecklistFormRow {
-  id?: string;
-  title: string;
-  hint_training?: string;
-  hint_exam?: string;
-  conditionType: ConditionPreset;
-  /** Порог для условий по датчикам; для условий по клапанам не используется */
-  targetVal?: number;
-}
-
-/** Значения формы визуального конструктора */
-interface ScenarioFormValues {
-  id: string;
-  title: string;
-  short_name: string;
-  description?: string;
-  T_1?: number;
-  P_1?: number;
-  L_1?: number;
-  L_2?: number;
-  T_1_Sp?: number;
-  V_1?: boolean;
-  V_2?: boolean;
-  V_3?: boolean;
-  checklist?: ChecklistFormRow[];
-  golden_sequence?: string[];
-}
-
-/** Пресеты по клапанам разворачиваются в условие «клапан в положении» */
-const VALVE_PRESETS: Record<string, { target: string; expected: boolean }> = {
-  V_1_CLOSE: { target: 'V_1', expected: false },
-  V_1_OPEN: { target: 'V_1', expected: true },
-  V_2_OPEN: { target: 'V_2', expected: true },
-  V_2_CLOSE: { target: 'V_2', expected: false },
-  V_3_OPEN: { target: 'V_3', expected: true },
-  V_3_CLOSE: { target: 'V_3', expected: false },
-};
-
-/** Пресеты по датчикам: тип сравнения, параметр и порог по умолчанию */
-const SENSOR_PRESETS: Record<string, { type: 'sensor_lte' | 'sensor_gte'; target: string; fallback: number }> = {
-  T_1_LTE: { type: 'sensor_lte', target: 'T_1', fallback: 245.0 },
-  T_1_GTE: { type: 'sensor_gte', target: 'T_1', fallback: 285.0 },
-  L_1_LTE: { type: 'sensor_lte', target: 'L_1', fallback: 25.0 },
-  L_1_GTE: { type: 'sensor_gte', target: 'L_1', fallback: 20.0 },
-  L_2_LTE: { type: 'sensor_lte', target: 'L_2', fallback: 18.0 },
-  L_2_GTE: { type: 'sensor_gte', target: 'L_2', fallback: 50.0 },
-};
-
-/** Разворачивает выбранный в форме пресет в условие реестра сценариев */
-const presetToCondition = (row: ChecklistFormRow): ScenarioCondition => {
-  const valve = VALVE_PRESETS[row.conditionType];
-  if (valve) {
-    return { type: 'valve_is', target: valve.target, expected: valve.expected };
-  }
-  const sensor = SENSOR_PRESETS[row.conditionType];
-  if (sensor) {
-    return { type: sensor.type, target: sensor.target, expected: row.targetVal ?? sensor.fallback };
-  }
-  // Неизвестный пресет: безопасный дефолт, совпадающий с первым пунктом списка
-  return { type: 'valve_is', target: 'V_1', expected: false };
-};
 
 /** Текст ошибки из отказа API или JSON.parse */
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -98,42 +44,19 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
   const [activeTab, setActiveTab] = useState('1');
   const [jsonText, setJsonText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [editingScenarioId, setEditingScenarioId] = useState<string | null>(null);
   const [form] = Form.useForm();
 
-  // Начальный пустой шаблон для визуального конструктора
-  const initialValues: Partial<ScenarioItem> = {
-    id: '',
-    title: '',
-    short_name: '',
-    description: '',
-    initial_state: {
-      T_1: 280.0,
-      P_1: 0.35,
-      L_1: 50.0,
-      L_2: 50.0,
-      T_1_Sp: 280.0,
-      V_1: true,
-      V_2: false,
-      V_3: true,
-    },
-    checklist: [
-      {
-        id: 'step_1',
-        title: '1. Перекрытие подачи сырья V-1',
-        hint_training: 'Переведите клапан V-1 в положение ЗАКРЫТО',
-        hint_exam: 'Отсечь подачу сырья в печь П-1.',
-        condition: { type: 'valve_is', target: 'V_1', expected: false },
-      },
-    ],
-    golden_sequence: ['V1_CLOSE'],
+  const resetToCreateMode = () => {
+    setEditingScenarioId(null);
+    form.resetFields();
   };
 
   const handleVisualSubmit = async (values: ScenarioFormValues) => {
     try {
       setLoading(true);
-      // Преобразуем формы в объект ScenarioItem
       const newScenario: ScenarioItem = {
-        id: values.id.trim(),
+        id: (editingScenarioId || values.id).trim(),
         title: values.title.trim(),
         short_name: values.short_name.trim(),
         description: values.description || '',
@@ -143,9 +66,12 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
           L_1: values.L_1 ?? 50.0,
           L_2: values.L_2 ?? 50.0,
           T_1_Sp: values.T_1_Sp ?? 280.0,
-          V_1: !!values.V_1,
-          V_2: !!values.V_2,
-          V_3: !!values.V_3,
+          V_1: Boolean(values.V_1),
+          V_2: Boolean(values.V_2),
+          V_3: Boolean(values.V_3),
+          N_20: values.N_20 !== undefined ? Boolean(values.N_20) : true,
+          N_82: values.N_82 !== undefined ? Boolean(values.N_82) : false,
+          N_4: values.N_4 !== undefined ? Boolean(values.N_4) : true,
         },
         checklist: (values.checklist || []).map((row, index) => ({
           id: row.id || `step_${index + 1}`,
@@ -157,17 +83,23 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
         golden_sequence: values.golden_sequence || [],
       };
 
-      await createScenario(newScenario);
-      message.success(`Сценарий '${newScenario.title}' успешно создан и добавлен в реестр КТК!`);
+      if (editingScenarioId) {
+        await updateScenario(editingScenarioId, newScenario);
+        message.success(`Сценарий '${newScenario.title}' успешно обновлен в реестре КТК!`);
+      } else {
+        await createScenario(newScenario);
+        message.success(`Сценарий '${newScenario.title}' успешно создан и добавлен в реестр КТК!`);
+      }
       await reloadScenarios();
-      form.resetFields();
+      resetToCreateMode();
       onClose();
     } catch (e) {
-      message.error(`Ошибка создания сценария: ${errorText(e)}`);
+      message.error(`Ошибка сохранения сценария: ${errorText(e)}`);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleJsonSubmit = async () => {
     try {
@@ -230,20 +162,58 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
     }
   };
 
+  const handleEditVisual = (scenario: ScenarioItem) => {
+    setEditingScenarioId(scenario.id);
+    form.setFieldsValue({
+      id: scenario.id,
+      title: scenario.title,
+      short_name: scenario.short_name,
+      description: scenario.description || '',
+      T_1: scenario.initial_state?.T_1 ?? 280,
+      P_1: scenario.initial_state?.P_1 ?? 0.35,
+      L_1: scenario.initial_state?.L_1 ?? 50,
+      L_2: scenario.initial_state?.L_2 ?? 50,
+      T_1_Sp: scenario.initial_state?.T_1_Sp ?? 280,
+      V_1: scenario.initial_state?.V_1 ?? true,
+      V_2: scenario.initial_state?.V_2 ?? false,
+      V_3: scenario.initial_state?.V_3 ?? true,
+      N_20: scenario.initial_state?.N_20 ?? true,
+      N_82: scenario.initial_state?.N_82 ?? false,
+      N_4: scenario.initial_state?.N_4 ?? true,
+      checklist: (scenario.checklist || []).map((row, index) => {
+        const { conditionType, targetVal } = conditionToPreset(row.condition);
+        return {
+          id: row.id || `step_${index + 1}`,
+          title: row.title,
+          hint_training: row.hint_training ?? '',
+          hint_exam: row.hint_exam ?? '',
+          conditionType,
+          targetVal,
+        };
+      }),
+      golden_sequence: scenario.golden_sequence || [],
+    });
+    setActiveTab('1');
+    message.info(`Сценарий '${scenario.title}' загружен для редактирования.`);
+  };
+
   return (
-    <Modal
+    <S.StyledModal
       title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#e6f7ff' }}>
-          <FileTextOutlined style={{ color: '#1890ff' }} />
+        <S.ModalTitleWrapper>
+          <FileTextOutlined className="title-icon" />
           <span>Конструктор Учебных Сценариев АРМ Инструктора</span>
-        </div>
+        </S.ModalTitleWrapper>
       }
       open={visible}
-      onCancel={onClose}
+      onCancel={() => {
+        resetToCreateMode();
+        onClose();
+      }}
       footer={null}
-      width={780}
+      width={820}
       destroyOnHidden
-      style={{ top: 20 }}
+      centered
     >
       <Tabs
         activeKey={activeTab}
@@ -253,53 +223,35 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
             key: '1',
             label: (
               <span>
-                <FileTextOutlined /> Визуальный конструктор
+                <FileTextOutlined /> Визуальный конструктор {editingScenarioId ? '(Редактирование)' : ''}
               </span>
             ),
             children: (
               <Form
                 form={form}
                 layout="vertical"
-                initialValues={{
-                  T_1: 280,
-                  P_1: 0.35,
-                  L_1: 50,
-                  L_2: 50,
-                  T_1_Sp: 280,
-                  V_1: true,
-                  V_2: false,
-                  V_3: true,
-                  checklist: [
-                    {
-                      id: 'step_1',
-                      title: '1. Перекрытие подачи сырья V-1',
-                      hint_training: 'Переведите клапан V-1 в положение ЗАКРЫТО',
-                      hint_exam: 'Отсечь подачу сырья в печь П-1.',
-                      conditionType: 'V_1_CLOSE',
-                    },
-                  ],
-                  golden_sequence: ['V1_CLOSE'],
-                }}
+                initialValues={FORM_INITIAL_VALUES}
                 onFinish={handleVisualSubmit}
               >
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <S.TopInputsGrid>
                   <Form.Item name="id" label="ID Сценария (англ.)" rules={[{ required: true, message: 'Введите ID' }]}>
-                    <Input placeholder="например: desalter_flush" />
+                    <Input placeholder="например: desalter_flush" disabled={Boolean(editingScenarioId)} />
                   </Form.Item>
+
                   <Form.Item name="title" label="Название Сценария" rules={[{ required: true, message: 'Введите название' }]}>
                     <Input placeholder="например: Промывка ЭЛОУ" />
                   </Form.Item>
                   <Form.Item name="short_name" label="Короткое имя (в меню)" rules={[{ required: true, message: 'Введите имя' }]}>
                     <Input placeholder="например: Промывка" />
                   </Form.Item>
-                </div>
+                </S.TopInputsGrid>
 
                 <Form.Item name="description" label="Описание учебно-тренировочной задачи">
                   <Input.TextArea rows={2} placeholder="Опишите цель сценария для оператора..." />
                 </Form.Item>
 
-                <Card size="small" title="Начальные физические параметры симулятора" style={{ marginBottom: 16, background: '#141414' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                <S.SectionCard size="small" title="Начальные физические параметры симулятора">
+                  <S.ParametersGrid>
                     <Form.Item name="T_1" label="Т-1 Печь (°C)">
                       <InputNumber min={20} max={500} style={{ width: '100%' }} />
                     </Form.Item>
@@ -312,11 +264,13 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                     <Form.Item name="L_2" label="L-2 Уровень К-2 (%)">
                       <InputNumber min={0} max={100} style={{ width: '100%' }} />
                     </Form.Item>
+                  </S.ParametersGrid>
+                  <div style={{ maxWidth: 220 }}>
                     <Form.Item name="T_1_Sp" label="Уставка T_Sp (°C)">
                       <InputNumber min={20} max={400} style={{ width: '100%' }} />
                     </Form.Item>
                   </div>
-                  <div style={{ display: 'flex', gap: 24, marginTop: 4 }}>
+                  <S.SwitchesRow>
                     <Form.Item name="V_1" label="Задвижка V-1 (Сырьё)" valuePropName="checked">
                       <Switch checkedChildren="ОТКР" unCheckedChildren="ЗАКР" />
                     </Form.Item>
@@ -326,16 +280,25 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                     <Form.Item name="V_3" label="Дренаж V-3 (Куб)" valuePropName="checked">
                       <Switch checkedChildren="ОТКР" unCheckedChildren="ЗАКР" />
                     </Form.Item>
-                  </div>
-                </Card>
+                    <Form.Item name="N_20" label="Насос Н-20 (Сырьё)" valuePropName="checked">
+                      <Switch checkedChildren="ПУСК" unCheckedChildren="СТОП" />
+                    </Form.Item>
+                    <Form.Item name="N_82" label="Насос Н-82 (Промывка)" valuePropName="checked">
+                      <Switch checkedChildren="ПУСК" unCheckedChildren="СТОП" />
+                    </Form.Item>
+                    <Form.Item name="N_4" label="Насос Н-4 (Откачка К-2)" valuePropName="checked">
+                      <Switch checkedChildren="ПУСК" unCheckedChildren="СТОП" />
+                    </Form.Item>
+                  </S.SwitchesRow>
+                </S.SectionCard>
 
-                <Card size="small" title="Задачи и шаги Чек-листа" style={{ marginBottom: 16, background: '#141414' }}>
+                <S.SectionCard size="small" title="Задачи и шаги Чек-листа">
                   <Form.List name="checklist">
                     {(fields, { add, remove }) => (
                       <>
                         {fields.map(({ key, name, ...restField }) => (
-                          <div key={key} style={{ padding: 8, border: '1px solid #303030', borderRadius: 6, marginBottom: 8 }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', gap: 8 }}>
+                          <S.ChecklistItem key={key}>
+                            <S.ChecklistGridTop>
                               <Form.Item
                                 {...restField}
                                 name={[name, 'title']}
@@ -350,20 +313,7 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                                 label="Тип условия завершения"
                                 rules={[{ required: true }]}
                               >
-                                <Select options={[
-                                  { value: 'V_1_CLOSE', label: 'V-1 Закрыт' },
-                                  { value: 'V_1_OPEN', label: 'V-1 Открыт' },
-                                  { value: 'V_2_OPEN', label: 'V-2 Открыт' },
-                                  { value: 'V_2_CLOSE', label: 'V-2 Закрыт' },
-                                  { value: 'V_3_OPEN', label: 'V-3 Открыт' },
-                                  { value: 'V_3_CLOSE', label: 'V-3 Закрыт' },
-                                  { value: 'T_1_LTE', label: 'Температура Т-1 <= X °C' },
-                                  { value: 'T_1_GTE', label: 'Температура Т-1 >= X °C' },
-                                  { value: 'L_1_LTE', label: 'Уровень L-1 <= X %' },
-                                  { value: 'L_1_GTE', label: 'Уровень L-1 >= X %' },
-                                  { value: 'L_2_LTE', label: 'Уровень L-2 <= X %' },
-                                  { value: 'L_2_GTE', label: 'Уровень L-2 >= X %' },
-                                ]} />
+                                <Select options={CONDITION_OPTIONS} />
                               </Form.Item>
                               <Form.Item
                                 {...restField}
@@ -372,19 +322,25 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                               >
                                 <InputNumber placeholder="Число" style={{ width: '100%' }} />
                               </Form.Item>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: 8 }}>
+                            </S.ChecklistGridTop>
+                            <S.ChecklistGridBottom>
                               <Form.Item {...restField} name={[name, 'hint_training']} label="Подсказка (Режим Обучения)">
                                 <Input placeholder="Подсказка с текущими датчиками..." />
                               </Form.Item>
                               <Form.Item {...restField} name={[name, 'hint_exam']} label="Подсказка (Режим Экзамена ГОСТ)">
                                 <Input placeholder="Технологическая формулировка техрегламента..." />
                               </Form.Item>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 16 }}>
-                                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(name)} />
-                              </div>
-                            </div>
-                          </div>
+                              <S.DeleteButtonWrapper>
+                                <Button
+                                  type="text"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => remove(name)}
+                                  title="Удалить шаг"
+                                />
+                              </S.DeleteButtonWrapper>
+                            </S.ChecklistGridBottom>
+                          </S.ChecklistItem>
                         ))}
                         <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
                           Добавить шаг в чек-лист
@@ -392,32 +348,33 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                       </>
                     )}
                   </Form.List>
-                </Card>
+                </S.SectionCard>
 
                 <Form.Item name="golden_sequence" label="Эталонная последовательность действий (Golden Sequence для LCS)">
                   <Select
                     mode="tags"
                     placeholder="Выберите действия в порядке их выполнения..."
-                    options={[
-                      { value: 'V1_OPEN', label: 'V1_OPEN (Открыть сырье)' },
-                      { value: 'V1_CLOSE', label: 'V1_CLOSE (Перекрыть сырье)' },
-                      { value: 'V2_OPEN', label: 'V2_OPEN (Открыть сброс газа)' },
-                      { value: 'V2_CLOSE', label: 'V2_CLOSE (Закрыть сброс газа)' },
-                      { value: 'V3_OPEN', label: 'V3_OPEN (Открыть дренаж куба)' },
-                      { value: 'V3_CLOSE', label: 'V3_CLOSE (Прекратить дренаж)' },
-                      { value: 'SP_UP', label: 'SP_UP (Поднять температуру)' },
-                      { value: 'SP_DOWN', label: 'SP_DOWN (Снизить температуру)' },
-                      { value: 'ESD', label: 'ESD (Аварийный останов ПАЗ)' },
-                    ]}
+                    options={GOLDEN_SEQUENCE_OPTIONS}
                   />
                 </Form.Item>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
-                  <Button onClick={onClose}>Отмена</Button>
-                  <Button type="primary" htmlType="submit" loading={loading} icon={<PlusOutlined />}>
-                    Сохранить сценарий в реестр КТК
+                <S.ModalFooterActions>
+                  {editingScenarioId && (
+                    <Button onClick={resetToCreateMode}>
+                      Отменить редактирование
+                    </Button>
+                  )}
+                  <Button onClick={() => { resetToCreateMode(); onClose(); }}>Отмена</Button>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={loading}
+                    icon={editingScenarioId ? <SaveOutlined /> : <PlusOutlined />}
+                  >
+                    {editingScenarioId ? 'Сохранить изменения в сценарии' : 'Сохранить сценарий в реестр КТК'}
                   </Button>
-                </div>
+                </S.ModalFooterActions>
+
               </Form>
             ),
           },
@@ -430,34 +387,41 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
             ),
             children: (
               <div>
-                <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <S.JsonControlsRow>
                   <Upload beforeUpload={handleFileUpload} showUploadList={false} accept=".json">
                     <Button icon={<UploadOutlined />}>Загрузить JSON-файл сценария</Button>
                   </Upload>
                   <Button
                     onClick={() => {
                       const sample = {
-                        scenario: initialValues,
+                        scenario: {
+                          id: 'sample_scenario',
+                          title: 'Пример учебного сценария',
+                          short_name: 'Пример',
+                          description: 'Описание учебной задачи',
+                          initial_state: FORM_INITIAL_VALUES,
+                          checklist: FORM_INITIAL_VALUES.checklist,
+                          golden_sequence: FORM_INITIAL_VALUES.golden_sequence,
+                        },
                       };
                       setJsonText(JSON.stringify(sample, null, 2));
                     }}
                   >
                     Вставить шаблон JSON
                   </Button>
-                </div>
-                <Input.TextArea
+                </S.JsonControlsRow>
+                <S.JsonTextArea
                   rows={14}
                   value={jsonText}
                   onChange={(e) => setJsonText(e.target.value)}
                   placeholder="Вставьте JSON-конфигурацию сценария..."
-                  style={{ fontFamily: 'monospace', fontSize: 12, background: '#0a0a0a', color: '#52c41a' }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+                <S.ModalFooterActions>
                   <Button onClick={onClose}>Отмена</Button>
                   <Button type="primary" onClick={handleJsonSubmit} loading={loading} icon={<UploadOutlined />}>
                     Импортировать JSON
                   </Button>
-                </div>
+                </S.ModalFooterActions>
               </div>
             ),
           },
@@ -465,12 +429,11 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
             key: '3',
             label: <span>Управление реестром ({scenarios.length})</span>,
             children: (
-              <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+              <S.RegistryContainer>
                 {scenarios.map((s) => (
-                  <Card
+                  <S.RegistryCard
                     key={s.id}
                     size="small"
-                    style={{ marginBottom: 8, background: '#141414' }}
                     extra={
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Button
@@ -489,33 +452,45 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                           title="Открыть в JSON-редакторе (для копии или правки)"
                         />
                         {s.is_custom ? (
-                          <Popconfirm
-                            title="Удалить пользовательский сценарий?"
-                            onConfirm={() => handleDeleteScenario(s.id)}
-                            okText="Да"
-                            cancelText="Отмена"
-                          >
-                            <Button danger size="small" icon={<DeleteOutlined />}>
-                              Удалить
+                          <>
+                            <Button
+                              size="small"
+                              icon={<EditOutlined />}
+                              onClick={() => handleEditVisual(s)}
+                              title="Редактировать сценарий в визуальном конструкторе"
+                            >
+                              Редактировать
                             </Button>
-                          </Popconfirm>
+                            <Popconfirm
+                              title="Удалить пользовательский сценарий?"
+                              onConfirm={() => handleDeleteScenario(s.id)}
+                              okText="Да"
+                              cancelText="Отмена"
+                            >
+                              <Button danger size="small" icon={<DeleteOutlined />}>
+                                Удалить
+                              </Button>
+                            </Popconfirm>
+                          </>
                         ) : (
-                          <span style={{ color: '#8c8c8c', fontSize: 12 }}>Встроенный техрегламент</span>
+                          <S.BuiltinTag>Встроенный техрегламент</S.BuiltinTag>
                         )}
+
                       </div>
                     }
                   >
-                    <div style={{ fontWeight: 600, color: '#e6f7ff' }}>
-                      {s.title} <span style={{ color: '#8c8c8c', fontWeight: 400 }}>[{s.id}]</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: '#8c8c8c' }}>{s.description}</div>
-                  </Card>
+                    <S.ScenarioTitle>
+                      <span>{s.title}</span>
+                      <S.ScenarioIdBadge>[{s.id}]</S.ScenarioIdBadge>
+                    </S.ScenarioTitle>
+                    <S.ScenarioDescription>{s.description}</S.ScenarioDescription>
+                  </S.RegistryCard>
                 ))}
-              </div>
+              </S.RegistryContainer>
             ),
           },
         ]}
       />
-    </Modal>
+    </S.StyledModal>
   );
 };

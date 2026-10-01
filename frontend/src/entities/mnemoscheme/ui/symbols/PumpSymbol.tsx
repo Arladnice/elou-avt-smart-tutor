@@ -39,6 +39,12 @@ export const PumpSymbol: React.FC<PumpSymbolProps> = ({
     if (interactive && onToggle) onToggle(equipmentId);
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (interactive) {
+      e.preventDefault();
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent<SVGGElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -56,6 +62,7 @@ export const PumpSymbol: React.FC<PumpSymbolProps> = ({
       $isControllable={interactive}
       $isRunning={isRunning}
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
       onContextMenu={handleContextMenu}
       onKeyDown={e => {
         if (!interactive) return;

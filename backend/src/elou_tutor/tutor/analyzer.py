@@ -654,14 +654,17 @@ class ErrorAnalyzer:
                 scenario_id == "overpressure_relief"
                 and "SP3_DOWN" in actions[:v1_close_idx]
             )
+            is_golden_exception = "V1_CLOSE" in golden and "SP_DOWN" not in golden
             if (
-                "SP_DOWN" not in actions[:v1_close_idx]
+                not is_golden_exception
+                and "SP_DOWN" not in actions[:v1_close_idx]
                 and not fuel_isolated
                 and not p3_load_reduced
                 and not pump_stopped
             ):
                 violations["HOT_CUT"] = True
                 positions["HOT_CUT"] = v1_close_idx
+
 
         # в) Перекрытие дренажа при открытой подаче
         if "V3_CLOSE" in actions and scenario_id != "shutdown":

@@ -56,6 +56,20 @@ export const GlobalStyle = createGlobalStyle<{ theme: ScadaThemeType }>`
     box-shadow: 0 0 0 3px ${props => props.theme.colors.focusRing};
   }
 
+  /* Запрет браузерной рамки фокуса для интерактивных элементов SVG мнемосхемы */
+  svg, svg * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  svg:focus,
+  svg *:focus,
+  svg:focus-visible,
+  svg *:focus-visible,
+  svg:active,
+  svg *:active {
+    outline: none;
+  }
+
   div.ant-modal-content {
     color: ${props => props.theme.colors.text};
     background: ${props => props.theme.colors.surface};
@@ -107,4 +121,21 @@ export const GlobalStyle = createGlobalStyle<{ theme: ScadaThemeType }>`
   .ant-switch {
     box-shadow: inset 0 0 0 1px ${props => props.theme.colors.borderStrong};
   }
+
+  /* Стилизация всплывающих уведомлений Ant Design под тему SCADA */
+  body &&& .ant-message {
+    color: ${props => props.theme.colors.text};
+  }
+
+  body &&& .ant-message .ant-message-notice .ant-message-notice-content {
+    background: ${props => props.theme.colors.surface};
+    color: ${props => props.theme.colors.text};
+    border: 1px solid ${props => props.theme.colors.border};
+    box-shadow: 0 6px 20px ${props => props.theme.colors.shadow};
+  }
+
+  body &&& .ant-message .ant-message-notice .ant-message-notice-content .ant-message-custom-content {
+    color: ${props => props.theme.colors.text};
+  }
 `;
+

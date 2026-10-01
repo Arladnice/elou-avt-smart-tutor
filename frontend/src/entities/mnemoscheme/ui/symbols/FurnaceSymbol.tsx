@@ -28,6 +28,12 @@ export const FurnaceSymbol: React.FC<FurnaceSymbolProps> = ({
     if (interactive && onOpen) onOpen(equipmentId);
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (interactive) {
+      e.preventDefault();
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent<SVGGElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -44,6 +50,7 @@ export const FurnaceSymbol: React.FC<FurnaceSymbolProps> = ({
       $isAlert={isAlert}
       $isControllable={interactive}
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
       onContextMenu={handleContextMenu}
       onKeyDown={e => {
         if (!interactive) return;

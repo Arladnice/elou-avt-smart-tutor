@@ -14,6 +14,7 @@ export interface ValveSymbolProps {
   isOpen: boolean;
   vertical?: boolean;
   hideLabel?: boolean;
+  labelOffsetY?: number;
   onToggle?: (valveId: ValveId | string) => void;
   onOpen?: (equipmentId: EquipmentId) => void;
   interactive?: boolean;
@@ -54,6 +55,7 @@ export const ValveSymbol: React.FC<ValveSymbolProps> = ({
   isOpen,
   vertical = false,
   hideLabel = false,
+  labelOffsetY,
   onToggle,
   onOpen,
   interactive = true,
@@ -64,6 +66,12 @@ export const ValveSymbol: React.FC<ValveSymbolProps> = ({
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (interactive && onToggle) onToggle(valveId);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (interactive) {
+      e.preventDefault();
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent<SVGGElement>) => {
@@ -81,6 +89,7 @@ export const ValveSymbol: React.FC<ValveSymbolProps> = ({
       tabIndex={interactive ? 0 : undefined}
       aria-label={`Переключить ${kind === 'mixer' ? 'смеситель' : 'клапан'} ${label}`}
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
       onContextMenu={handleContextMenu}
       onKeyDown={e => {
         if (!interactive) return;
@@ -95,7 +104,7 @@ export const ValveSymbol: React.FC<ValveSymbolProps> = ({
       {!hideLabel && (
         <text
           x={vertical ? -24 : 0}
-          y={vertical ? -39 : kind === 'mixer' ? -26 : -34}
+          y={labelOffsetY !== undefined ? labelOffsetY : vertical ? -39 : kind === 'mixer' ? -26 : -34}
           className="valve-tag"
           transform={vertical ? 'rotate(-90)' : undefined}
         >

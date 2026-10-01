@@ -468,7 +468,7 @@ export const ELOU_DETAILED_PRESET: MnemoschemeConfig = {
     { id: 'valve-v1-elou', label: 'V-1', valveId: 'V_1', equipmentId: 'V_1', x: 1120, y: 330 },
 
     // Обвязка промывочной воды Н-82
-    { id: 'valve-water-main', label: 'Вода напор', valveId: 'V_WATER_MAIN', x: 190, y: 35 },
+    { id: 'valve-water-main', label: 'Вода напор', valveId: 'V_WATER_MAIN', x: 190, y: 35, labelOffsetY: 28 },
     { id: 'valve-water-stage2', label: 'Вода II ст', valveId: 'V_WATER_ST2', x: 630, y: 70, vertical: true, rotate: 90 },
     { id: 'valve-water-stage1', label: 'Вода I ст', valveId: 'V_WATER_ST1', x: 280, y: 115, vertical: true, rotate: 90 },
 
@@ -596,7 +596,6 @@ export const ELOU_DETAILED_PRESET: MnemoschemeConfig = {
   ],
   labels: [
     { id: 'lbl-feed-title', x: 20, y: 305, text: 'Из блока подготовки сырой нефти', className: 'source-label' },
-    { id: 'lbl-water-title', x: 80, y: 25, text: 'Н-82 (вода)', className: 'utility-label' },
     { id: 'lbl-to-k1', x: 1280, y: 315, text: '(В К-1)', className: 'source-label', textAnchor: 'middle' },
     { id: 'lbl-trapped-oil', x: 1220, y: 580, text: 'Уловленная нефть', className: 'source-label' },
     { id: 'lbl-drain-water', x: 1140, y: 705, text: 'Дренажная вода', className: 'utility-label' },
@@ -724,7 +723,7 @@ export const ELOU_AVT_INTEGRATED_PRESET: MnemoschemeConfig = {
     { id: 'valve-v1', label: 'V-1', valveId: 'V_1', equipmentId: 'V_1', x: 1255, y: 330 },
 
     // Промывочная вода
-    { id: 'valve-water-main', label: 'Вода напор', valveId: 'V_WATER_MAIN', x: 190, y: 35 },
+    { id: 'valve-water-main', label: 'Вода напор', valveId: 'V_WATER_MAIN', x: 190, y: 35, labelOffsetY: 28 },
     { id: 'valve-water-stage2', label: 'Вода II ст', valveId: 'V_WATER_ST2', x: 630, y: 70, vertical: true, rotate: 90 },
     { id: 'valve-water-stage1', label: 'Вода I ст', valveId: 'V_WATER_ST1', x: 280, y: 115, vertical: true, rotate: 90 },
 
@@ -871,7 +870,6 @@ export const ELOU_AVT_INTEGRATED_PRESET: MnemoschemeConfig = {
   ],
   labels: [
     { id: 'lbl-feed-main', x: 20, y: 305, text: 'Из блока подготовки сырой нефти', className: 'source-label' },
-    { id: 'lbl-water-h82', x: 80, y: 25, text: 'Н-82 (вода)', className: 'utility-label' },
     { id: 'lbl-demuls-int', x: 100, y: 200, text: 'ДЕЭМУЛЬГАТОР', className: 'utility-label' },
     { id: 'lbl-st1-title', x: 440, y: 130, text: 'I СТУПЕНЬ ОБЕССОЛИВАНИЯ', className: 'equipment-tag', textAnchor: 'middle' },
     { id: 'lbl-st2-title', x: 780, y: 130, text: 'II СТУПЕНЬ ГЛУБОКОГО ОБЕССОЛИВАНИЯ', className: 'equipment-tag', textAnchor: 'middle' },

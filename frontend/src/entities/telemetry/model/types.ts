@@ -175,7 +175,7 @@ export const INITIAL_VALVES: Valves = {
   V_DR_COL: true, V_DR_WATER: true,
 };
 
-export const INITIAL_PUMPS: Pumps = { N_20: true, N_2: true, N_3: true, N_4: true, N_32: true, N_82: true };
+export const INITIAL_PUMPS: Pumps = { N_20: true, N_2: true, N_3: true, N_4: true, N_32: true, N_82: false };
 
 export const INITIAL_SENSORS: Sensors = {
   T_1: 280, T_3: 280, P_1: 0.25, L_1: 50, Sal_1: 4.2, W_1: 0.15,

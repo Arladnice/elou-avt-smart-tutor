@@ -82,10 +82,10 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         if pump_id not in session.simulator.pumps:
             raise ValueError(f"неизвестный насос: {pump_id}")
         state = bool(cmd.get("state"))
+        pump_label = f"Н-{pump_id.removeprefix('N_')}"
         session.simulator.set_pump(pump_id, state)
         actual_state = session.simulator.pumps[pump_id]
         if actual_state != state:
-            pump_label = f"Н-{pump_id.removeprefix('N_')}"
             if (
                 state
                 and pump_id in {"N_4", "N_32"}
@@ -298,7 +298,16 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         session.reset_session()
         await log_audit_event_async(session.active_operator_name, "SESSION_RESET", "Перезапуск тренировочной сессии")
 
+    elif action_type == "notify_catalog_changed":
+        for ws in list(session.operator_sockets | session.instructor_sockets):
+            try:
+                await ws.send_json({"type": "catalog_updated"})
+            except Exception:
+                pass
+        return False
+
     return True
+
 
 
 @router.websocket("/ws")
