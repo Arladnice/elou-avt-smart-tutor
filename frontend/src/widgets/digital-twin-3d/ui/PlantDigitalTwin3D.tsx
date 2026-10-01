@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
+import { useTheme } from 'styled-components';
 import { useTelemetry, type PumpId, type ValveId } from '@/entities/telemetry';
 import { useSimulatorActions } from '@/entities/simulator';
 import type { EquipmentId } from '@/entities/mnemoscheme/model/types';
-import { Globe, Zap, Flame, RotateCcw, Video, Eye, Droplets, Tag } from 'lucide-react';
-import { CAMERA_PRESETS } from '../model/PlantDigitalTwin3D.config';
+import {
+  Globe,
+  Zap,
+  Flame,
+  RotateCcw,
+  Video,
+  Eye,
+  Droplets,
+  Tag,
+  FolderTree,
+  X,
+  ChevronRight,
+  Info,
+} from 'lucide-react';
+import { CAMERA_PRESETS, PLANT_HIERARCHY } from '../model/PlantDigitalTwin3D.config';
 import type { CameraPreset } from '../model/types';
 import { useThreeTwin } from '../model/useThreeTwin';
 import * as S from './PlantDigitalTwin3D.styles';
@@ -13,6 +27,7 @@ interface PlantDigitalTwin3DProps {
 }
 
 export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEquipment }) => {
+  const theme = useTheme();
   const { sensors, valves, pumps, setpoints, status } = useTelemetry();
   const { togglePump, toggleValve } = useSimulatorActions();
 
@@ -20,6 +35,7 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
   const [showXRay, setShowXRay] = useState(true);
   const [showFlows, setShowFlows] = useState(true);
   const [showHUD, setShowHUD] = useState(true);
+  const [isNavigatorOpen, setIsNavigatorOpen] = useState(false);
 
   const handleOpenEquipmentSafe = (id: EquipmentId) => {
     if (onOpenEquipment) {
@@ -33,6 +49,7 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
     hoveredName,
     handlePointerMove,
     handleClick,
+    focusOnCoordinates,
   } = useThreeTwin({
     sensors,
     valves,
@@ -40,6 +57,7 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
     setpoints,
     status,
     activePreset,
+    themeMode: theme.mode,
     showXRay,
     showFlows,
     onTogglePump: (pId: PumpId) => togglePump(pId),
@@ -69,7 +87,17 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
 
       {/* Верхняя плавающая панель режимов и камер */}
       <S.TopControlsBar>
-        <S.ControlGroup aria-label="Пресеты ракурсов камеры 3D">
+        <S.ControlGroup aria-label="Навигация и ракурсы">
+          <S.NavigatorToggleBtn
+            type="button"
+            $isOpen={isNavigatorOpen}
+            title="Открыть структуру установки и технологические узлы"
+            onClick={() => setIsNavigatorOpen(!isNavigatorOpen)}
+          >
+            <FolderTree size={13} />
+            Структура
+          </S.NavigatorToggleBtn>
+
           {CAMERA_PRESETS.map(preset => (
             <S.ViewpointBtn
               key={preset.id}
@@ -117,6 +145,69 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
           </S.ToggleBtn>
         </S.ControlGroup>
       </S.TopControlsBar>
+
+      {/* Выдвижная боковая панель «Навигатор установки» (как на скриншоте 2 КАТКИ) */}
+      <S.NavigatorDrawer $isOpen={isNavigatorOpen}>
+        <S.NavigatorHeader>
+          <S.DrawerTitleGroup>
+            <FolderTree size={14} />
+            <span>Структура установки ЭЛОУ-АВТ-6</span>
+          </S.DrawerTitleGroup>
+          <S.DrawerCloseBtn
+            type="button"
+            onClick={() => setIsNavigatorOpen(false)}
+            aria-label="Закрыть"
+          >
+            <X size={15} />
+          </S.DrawerCloseBtn>
+        </S.NavigatorHeader>
+
+        <S.NavigatorBody>
+          {PLANT_HIERARCHY.map(unit => (
+            <S.UnitSection key={unit.id}>
+              <S.UnitSectionHeader
+                onClick={() => focusOnCoordinates(unit.cameraPosition, unit.cameraTarget)}
+                title="Навести камеру на блок"
+              >
+                <span>{unit.label}</span>
+                <ChevronRight size={13} />
+              </S.UnitSectionHeader>
+
+              {unit.children && (
+                <S.UnitNodeList>
+                  {unit.children.map(child => (
+                    <S.UnitNodeItem
+                      key={child.id}
+                      type="button"
+                      onClick={() => focusOnCoordinates(child.cameraPosition, child.cameraTarget)}
+                      title={`Фокус на ${child.label}`}
+                    >
+                      <S.NodeLabelGroup>
+                        <span className="node-tag">{child.tag}</span>
+                        <span>{child.label}</span>
+                      </S.NodeLabelGroup>
+                      {child.equipmentId && (
+                        <S.NodeInfoBtn
+                          role="button"
+                          tabIndex={0}
+                          title="Паспорт оборудования"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEquipmentSafe(child.equipmentId as EquipmentId);
+                          }}
+                        >
+                          <Info size={12} />
+                        </S.NodeInfoBtn>
+                      )}
+                    </S.UnitNodeItem>
+                  ))}
+                </S.UnitNodeList>
+              )}
+            </S.UnitSection>
+          ))}
+        </S.NavigatorBody>
+      </S.NavigatorDrawer>
+
 
       <S.HintOverlay>
         ЛКМ — вращение · ПКМ — панорама · Колесо — зум · Клик — переключение

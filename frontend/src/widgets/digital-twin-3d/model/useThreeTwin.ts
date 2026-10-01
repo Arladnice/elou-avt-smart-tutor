@@ -6,7 +6,7 @@ import type { EquipmentId } from '@/entities/mnemoscheme/model/types';
 import type { PumpId, ValveId } from '@/entities/telemetry';
 import {
   CAMERA_PRESETS,
-  TWIN_COLORS,
+  TWIN_THEMES,
   TWIN_HOTSPOTS,
 } from './PlantDigitalTwin3D.config';
 import type { CameraPreset, Hotspot3D, InteractiveMeshUserData } from './types';
@@ -16,8 +16,10 @@ import {
   createDesalter,
   createFurnace,
   createIndustrialGround,
+  createMainPipeRack,
   createPump3D,
   createTwinMaterials,
+  applyThemeToMaterials,
   createValve3D,
   type TwinMaterials,
 } from './twinGeometry';
@@ -30,6 +32,7 @@ interface UseThreeTwinProps {
   setpoints: Setpoints;
   status: string;
   activePreset: CameraPreset;
+  themeMode?: 'light' | 'dark';
   showXRay: boolean;
   showFlows: boolean;
   onTogglePump: (pumpId: PumpId) => void;
@@ -51,6 +54,7 @@ export const useThreeTwin = ({
   setpoints,
   status,
   activePreset,
+  themeMode = 'dark',
   showXRay,
   showFlows,
   onTogglePump,
@@ -68,6 +72,11 @@ export const useThreeTwin = ({
   const controlsRef = useRef<OrbitControls | null>(null);
   const materialsRef = useRef<TwinMaterials | null>(null);
 
+  const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
+  const sunLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const blueBacklightRef = useRef<THREE.DirectionalLight | null>(null);
+  const groundGridRef = useRef<THREE.GridHelper | null>(null);
+
   const k1LiquidRef = useRef<THREE.Mesh | null>(null);
   const k2LiquidRef = useRef<THREE.Mesh | null>(null);
   const p1LightRef = useRef<THREE.PointLight | null>(null);
@@ -82,7 +91,7 @@ export const useThreeTwin = ({
   const interactiveObjectsRef = useRef<THREE.Object3D[]>([]);
   const cinematicAngleRef = useRef(0);
 
-  // Ссылки на актуальные пропсы для цикла анимации
+  // Актуальные пропсы для цикла анимации
   const latestPropsRef = useRef({
     sensors,
     valves,
@@ -111,11 +120,12 @@ export const useThreeTwin = ({
 
     const width = container.clientWidth || 1000;
     const height = container.clientHeight || 600;
+    const theme = TWIN_THEMES[themeMode];
 
     // Сцена
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(TWIN_COLORS.background);
-    scene.fog = new THREE.FogExp2(TWIN_COLORS.background, 0.008);
+    scene.background = new THREE.Color(theme.background);
+    scene.fog = new THREE.FogExp2(theme.fog, 0.007);
     sceneRef.current = scene;
 
     // Камера
@@ -145,32 +155,40 @@ export const useThreeTwin = ({
     controlsRef.current = controls;
 
     // Освещение
-    const ambientLight = new THREE.AmbientLight(0x64748b, 1.4);
+    const ambientLight = new THREE.AmbientLight(theme.ambientColor, theme.ambientIntensity);
     scene.add(ambientLight);
+    ambientLightRef.current = ambientLight;
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    const sunLight = new THREE.DirectionalLight(theme.sunColor, theme.sunIntensity);
     sunLight.position.set(30, 50, 40);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 10;
     sunLight.shadow.camera.far = 150;
-    sunLight.shadow.camera.left = -45;
-    sunLight.shadow.camera.right = 45;
-    sunLight.shadow.camera.top = 45;
-    sunLight.shadow.camera.bottom = -45;
+    sunLight.shadow.camera.left = -48;
+    sunLight.shadow.camera.right = 48;
+    sunLight.shadow.camera.top = 48;
+    sunLight.shadow.camera.bottom = -48;
     scene.add(sunLight);
+    sunLightRef.current = sunLight;
 
-    const blueBacklight = new THREE.DirectionalLight(0x0284c7, 1.2);
+    const blueBacklight = new THREE.DirectionalLight(theme.blueLightColor, theme.blueLightIntensity);
     blueBacklight.position.set(-40, 25, -30);
     scene.add(blueBacklight);
+    blueBacklightRef.current = blueBacklight;
 
     // Материалы и геометрия
-    const materials = createTwinMaterials();
+    const materials = createTwinMaterials(themeMode);
     materialsRef.current = materials;
 
     // Индустриальная площадка
-    scene.add(createIndustrialGround(materials));
+    const groundGroup = createIndustrialGround(materials, themeMode);
+    scene.add(groundGroup);
+    groundGridRef.current = groundGroup.getObjectByName('ground_grid') as THREE.GridHelper | null;
+
+    // Главная трубная эстакада (Pipe Rack)
+    scene.add(createMainPipeRack(materials));
 
     // Колонны К-1 и К-2
     const { group: k1Group, liquidMesh: k1Liq } = createColumnK1(materials);
@@ -192,14 +210,14 @@ export const useThreeTwin = ({
     p3LightRef.current = p3Light;
     p3PortRef.current = p3Port;
 
-    // Электродегидраторы ЭЛОУ 1 и 2 ступени
+    // Электродегидраторы ЭЛОУ 1 и 2 ступени (2 ряда по 3 аппарата)
     const desalterPositions = [
-      { tag: 'Э-1', x: -26, z: -4 },
-      { tag: 'Э-3', x: -20, z: -4 },
-      { tag: 'Э-5', x: -14, z: -4 },
-      { tag: 'Э-2', x: -26, z: 4 },
-      { tag: 'Э-4', x: -20, z: 4 },
-      { tag: 'Э-6', x: -14, z: 4 },
+      { tag: 'Э-1', x: -26, z: -5 },
+      { tag: 'Э-3', x: -20, z: -5 },
+      { tag: 'Э-5', x: -14, z: -5 },
+      { tag: 'Э-2', x: -26, z: 5 },
+      { tag: 'Э-4', x: -20, z: 5 },
+      { tag: 'Э-6', x: -14, z: 5 },
     ];
     desalterPositions.forEach(d => {
       const { group: desGroup } = createDesalter(d.tag, d.x, d.z, materials);
@@ -222,25 +240,24 @@ export const useThreeTwin = ({
       pumpBeaconsRef.current.set(p.id, beacon);
     });
 
-    // Клапаны
-    const valvesConfig: Array<{ id: 'V_1' | 'V_2' | 'V_3' | 'V_WATER_MAIN'; x: number; y: number; z: number; label: string }> = [
-      { id: 'V_1', x: -2, y: 1.4, z: 0, label: 'V-1' },
-      { id: 'V_2', x: 13, y: 20.0, z: 0, label: 'V-2' },
-      { id: 'V_3', x: 17, y: 1.2, z: 0, label: 'V-3' },
-      { id: 'V_WATER_MAIN', x: -28, y: 2.2, z: -8, label: 'Вода напор' },
+    // Задвижки и клапаны
+    const valvesConfig: Array<{ id: 'V_1' | 'V_2' | 'V_3'; pos: [number, number, number] }> = [
+      { id: 'V_1', pos: [-2, 1.4, 0] },
+      { id: 'V_2', pos: [13, 20.6, 0] },
+      { id: 'V_3', pos: [18, 1.4, 0] },
     ];
     valveWheelsRef.current.clear();
     valvesConfig.forEach(v => {
-      const { group: valveGroup, wheel } = createValve3D(v.id, v.x, v.y, v.z, v.label, materials);
+      const { group: valveGroup, wheel } = createValve3D(v.id, v.pos, materials, true);
       scene.add(valveGroup);
       valveWheelsRef.current.set(v.id, wheel);
     });
 
-    // Трубопроводная сеть и частицы
+    // Технологические трубопроводы и потоки
     const isStreamActiveHelper = (type: string) => {
       const { valves: v, pumps: p, showFlows: sf } = latestPropsRef.current;
       if (!sf) return false;
-      if (type === 'washWater') return Boolean(p.N_82 && v.V_WATER_MAIN);
+      if (type === 'washWater') return Boolean(p.N_82);
       if (type === 'elouFeed') return Boolean(p.N_20);
       if (type === 'k1Feed') return Boolean(p.N_20 && v.V_1);
       if (type === 'k2Feed') return Boolean(p.N_2 && v.V_3);
@@ -299,10 +316,10 @@ export const useThreeTwin = ({
         k2LiquidRef.current.visible = curXRay;
       }
 
-      // 2. Обновление пламени печей (мерцание и отключение)
+      // 2. Обновление пламени печей
       const isP1FlameOn = Boolean(curSens.Flame_P1 && curValves.FUEL_P1 && curSens.T_1 > 50);
       if (p1LightRef.current) {
-        p1LightRef.current.intensity = isP1FlameOn ? 2.0 + Math.sin(now * 0.01) * 0.5 : 0;
+        p1LightRef.current.intensity = isP1FlameOn ? 2.5 + Math.sin(now * 0.01) * 0.6 : 0;
       }
       if (p1PortRef.current) {
         p1PortRef.current.visible = isP1FlameOn;
@@ -310,44 +327,44 @@ export const useThreeTwin = ({
 
       const isP3FlameOn = Boolean(curSens.Flame_P3 && curValves.FUEL_P3 && curSens.T_3 > 50);
       if (p3LightRef.current) {
-        p3LightRef.current.intensity = isP3FlameOn ? 2.0 + Math.cos(now * 0.012) * 0.5 : 0;
+        p3LightRef.current.intensity = isP3FlameOn ? 2.5 + Math.cos(now * 0.012) * 0.6 : 0;
       }
       if (p3PortRef.current) {
         p3PortRef.current.visible = isP3FlameOn;
       }
 
-      // 3. Обновление статусов насосов
+      // 3. Обновление индикаторов насосов
       pumpBeaconsRef.current.forEach((beacon, pId) => {
         const isRunning = Boolean(curPumps[pId as PumpId]);
         beacon.material = isRunning ? materials.pumpRunning : materials.pumpStopped;
       });
 
-      // 4. Обновление статусов клапанов
+      // 4. Обновление клапанов
       valveWheelsRef.current.forEach((wheel, vId) => {
         const isOpen = Boolean(curValves[vId as ValveId]);
         wheel.material = isOpen ? materials.valveOpen : materials.valveClosed;
       });
 
-      // 5. Анимация движения частиц в трубах
+      // 5. Движение потоков частиц
       if (updateParticlesRef.current) {
         updateParticlesRef.current(delta);
       }
 
-      // 6. Кинематографический облёт
+      // 6. Кинематографический 360° облёт
       if (curPreset === 'cinematic' && controlsRef.current && cameraRef.current) {
         cinematicAngleRef.current += delta * 0.12;
         const angle = cinematicAngleRef.current;
         const radius = 48;
         cameraRef.current.position.x = 2 + Math.cos(angle) * radius;
         cameraRef.current.position.z = Math.sin(angle) * radius;
-        cameraRef.current.position.y = 20 + Math.sin(angle * 1.5) * 5;
+        cameraRef.current.position.y = 22 + Math.sin(angle * 1.5) * 5;
         controlsRef.current.target.set(2, 5, 0);
       }
 
       controls.update();
       renderer.render(scene, camera);
 
-      // 7. Проекция 3D точек хотспотов в 2D координаты экрана
+      // 7. Проекция 3D меток КИПиА
       if (container && cameraRef.current) {
         const rect = container.getBoundingClientRect();
         const halfW = rect.width / 2;
@@ -357,7 +374,6 @@ export const useThreeTwin = ({
           const v = new THREE.Vector3(...hs.worldPos);
           v.project(cameraRef.current!);
 
-          // Виден ли объект перед камерой
           const isVisible = v.z < 1;
           const sx = v.x * halfW + halfW;
           const sy = -(v.y * halfH) + halfH;
@@ -377,7 +393,6 @@ export const useThreeTwin = ({
 
     animationFrameId = requestAnimationFrame(animate);
 
-    // Очистка при размонтировании
     return () => {
       cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
@@ -389,20 +404,52 @@ export const useThreeTwin = ({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Плавный переход к выбранному пресету камеры
+  // 2. Реактивное обновление темы (Светлая / Тёмная)
+  useEffect(() => {
+    if (!sceneRef.current || !materialsRef.current) return;
+    const theme = TWIN_THEMES[themeMode];
+
+    // Обновляем фон и туман
+    sceneRef.current.background = new THREE.Color(theme.background);
+    sceneRef.current.fog = new THREE.FogExp2(theme.fog, 0.007);
+
+    // Обновляем материалы
+    applyThemeToMaterials(materialsRef.current, themeMode);
+
+    // Обновляем освещение
+    if (ambientLightRef.current) {
+      ambientLightRef.current.color.setHex(theme.ambientColor);
+      ambientLightRef.current.intensity = theme.ambientIntensity;
+    }
+    if (sunLightRef.current) {
+      sunLightRef.current.color.setHex(theme.sunColor);
+      sunLightRef.current.intensity = theme.sunIntensity;
+    }
+    if (blueBacklightRef.current) {
+      blueBacklightRef.current.color.setHex(theme.blueLightColor);
+      blueBacklightRef.current.intensity = theme.blueLightIntensity;
+    }
+  }, [themeMode]);
+
+  // 3. Плавный переход к выбранному пресету камеры
   useEffect(() => {
     if (activePreset === 'cinematic') return;
     const targetPreset = CAMERA_PRESETS.find(p => p.id === activePreset);
     if (!targetPreset || !cameraRef.current || !controlsRef.current) return;
 
+    focusOnCoordinates(targetPreset.position, targetPreset.target);
+  }, [activePreset]);
+
+  // Плавная фокусировка камеры на заданных координатах
+  const focusOnCoordinates = useCallback((position: [number, number, number], target: [number, number, number]) => {
+    if (!cameraRef.current || !controlsRef.current) return;
     const camera = cameraRef.current;
     const controls = controlsRef.current;
 
-    // Быстрый анимированный переход к целевой позиции
     const startPos = camera.position.clone();
-    const endPos = new THREE.Vector3(...targetPreset.position);
+    const endPos = new THREE.Vector3(...position);
     const startTarget = controls.target.clone();
-    const endTarget = new THREE.Vector3(...targetPreset.target);
+    const endTarget = new THREE.Vector3(...target);
 
     let progress = 0;
     const animateTransition = () => {
@@ -415,7 +462,7 @@ export const useThreeTwin = ({
       }
     };
     animateTransition();
-  }, [activePreset]);
+  }, []);
 
   // Обработка клика и наведения через Raycaster
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -468,14 +515,20 @@ export const useThreeTwin = ({
       while (current && (!current.userData || !current.userData.type)) {
         current = current.parent;
       }
+
       if (current && current.userData) {
         const u = current.userData as InteractiveMeshUserData;
         if (u.type === 'pump' && u.pumpId) {
           onTogglePump(u.pumpId);
-        } else if (u.type === 'valve' && u.valveId) {
+          return;
+        }
+        if (u.type === 'valve' && u.valveId) {
           onToggleValve(u.valveId);
-        } else if (u.type === 'equipment' && u.equipmentId) {
+          return;
+        }
+        if (u.equipmentId) {
           onOpenEquipment(u.equipmentId);
+          return;
         }
       }
     }
@@ -487,5 +540,6 @@ export const useThreeTwin = ({
     hoveredName,
     handlePointerMove,
     handleClick,
+    focusOnCoordinates,
   };
 };
