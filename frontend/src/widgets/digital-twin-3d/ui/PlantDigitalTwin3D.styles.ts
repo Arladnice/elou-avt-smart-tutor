@@ -271,7 +271,8 @@ export const NavigatorDrawer = styled.div<{ $isOpen: boolean }>`
   top: 64px;
   left: 14px;
   bottom: 56px;
-  width: 290px;
+  width: 320px;
+  max-height: calc(100% - 120px);
   background: ${props => props.theme.mode === 'dark' ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)'};
   backdrop-filter: blur(14px);
   border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(51, 65, 85, 0.8)' : 'rgba(203, 213, 225, 0.9)'};
@@ -281,7 +282,7 @@ export const NavigatorDrawer = styled.div<{ $isOpen: boolean }>`
   flex-direction: column;
   z-index: 20;
   overflow: hidden;
-  transform: ${props => props.$isOpen ? 'translateX(0)' : 'translateX(-320px)'};
+  transform: ${props => props.$isOpen ? 'translateX(0)' : 'translateX(-340px)'};
   opacity: ${props => props.$isOpen ? 1 : 0};
   pointer-events: ${props => props.$isOpen ? 'auto' : 'none'};
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
@@ -301,7 +302,7 @@ export const NavigatorHeader = styled.div`
 export const NavigatorBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 8px 8px 24px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -349,6 +350,7 @@ export const UnitNodeItem = styled.button`
   color: ${props => props.theme.colors.textMuted};
   text-align: left;
   cursor: pointer;
+  width: 100%;
   transition: all 0.15s ease;
 
   &:hover {
@@ -360,6 +362,9 @@ export const UnitNodeItem = styled.button`
     font-family: ${props => props.theme.fonts.mono};
     font-weight: 700;
     color: ${props => props.theme.colors.primary};
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 32px;
   }
 `;
 
@@ -390,7 +395,15 @@ export const DrawerCloseBtn = styled.button`
 export const NodeLabelGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  overflow: hidden;
+  flex: 1;
+
+  span:not(.node-tag) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 `;
 
 export const NodeInfoBtn = styled.div`
