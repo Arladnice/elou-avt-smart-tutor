@@ -138,10 +138,12 @@ export const createColumnK2 = (materials: TwinMaterials) => {
   liquidMesh.name = 'column_k2_liquid';
   group.add(liquidMesh);
 
-  // Вакуумная эжекторная линия на шлеме
-  const vacLine = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 2.0, 16), materials.gasPipe);
-  vacLine.position.set(0, 16.5, 0);
-  group.add(vacLine);
+  // Штуцер шлема вакуумной колонны К-2 под мощную паровую вакуум-магистраль
+  const vacNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 1.2, 24), materials.steelDark);
+  vacNozzle.position.set(0, 16.0, 0);
+  const vacFlange = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.14, 24), materials.steelBright);
+  vacFlange.position.set(0, 16.6, 0);
+  group.add(vacNozzle, vacFlange);
 
   const userData: InteractiveMeshUserData = { type: 'equipment', id: 'col-k2', equipmentId: 'K_2', name: 'Вакуумная колонна К-2' };
   bottomBody.userData = userData;
@@ -423,6 +425,72 @@ export const createValve3D = (
   wheel.userData = userData;
 
   return { group, wheel };
+};
+
+/** Создает трехмерную пароэжекторную вакуум-систему (Барометрический конденсатор + эжекторы ЭЖ-1/ЭЖ-2) */
+export const createVacuumEjectorSystem3D = (materials: TwinMaterials): THREE.Group => {
+  const group = new THREE.Group();
+  group.position.set(26, 0, -3.8);
+  group.name = 'vacuum_ejector_system';
+
+  // 1. Опорная этажерка под конденсатор
+  const legGeo = new THREE.BoxGeometry(0.18, 9.6, 0.18);
+  const legOffsets = [
+    [-1.0, -1.0],
+    [-1.0, 1.0],
+    [1.0, -1.0],
+    [1.0, 1.0],
+  ];
+  legOffsets.forEach(([ox, oz]) => {
+    const leg = new THREE.Mesh(legGeo, materials.steelTruss);
+    leg.position.set(ox, 4.8, oz);
+    group.add(leg);
+  });
+
+  const platformBeam = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.16, 2.2), materials.steelTruss);
+  platformBeam.position.y = 9.5;
+  group.add(platformBeam);
+
+  // 2. Барометрический конденсатор смешения
+  const condBody = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 4.8, 24), materials.steelLight);
+  condBody.position.y = 12.2;
+  condBody.castShadow = true;
+
+  const condDome = new THREE.Mesh(new THREE.SphereGeometry(0.75, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), materials.steelBright);
+  condDome.position.y = 14.6;
+
+  const condCone = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.4, 24), materials.steelDark);
+  condCone.position.y = 9.1;
+  condCone.rotation.x = Math.PI;
+
+  group.add(condBody, condDome, condCone);
+
+  // 3. Барометрическая труба гидрозатвора вниз
+  const baroPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 8.6, 16), materials.drainPipe);
+  baroPipe.position.y = 4.3;
+  group.add(baroPipe);
+
+  // 4. Паровые эжекторы ступеней вакуума
+  const ejGeo = new THREE.CylinderGeometry(0.12, 0.26, 1.6, 16);
+  const ej1 = new THREE.Mesh(ejGeo, materials.steelBright);
+  ej1.rotation.z = Math.PI / 2;
+  ej1.position.set(1.2, 13.6, 0);
+
+  const ej2 = new THREE.Mesh(ejGeo, materials.steelBright);
+  ej2.rotation.z = Math.PI / 2;
+  ej2.position.set(1.2, 11.4, 0);
+
+  group.add(ej1, ej2);
+
+  const userData: InteractiveMeshUserData = {
+    type: 'equipment',
+    id: 'eq-ej1',
+    equipmentId: 'K_2',
+    name: 'Пароэжекторная вакуум-система ЭЖ-1 / Барометрический конденсатор',
+  };
+  condBody.userData = userData;
+
+  return group;
 };
 
 export type { TwinMaterials } from './twinMaterials';

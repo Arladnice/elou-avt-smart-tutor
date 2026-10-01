@@ -133,6 +133,35 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
       medium: 'drain',
       isActive: () => isStreamActive('k2Outflow'),
     },
+    // 8. Вакуумный шлемопровод: от шлема К-2 в барометрический конденсатор ЭЖ-1
+    {
+      curve: new THREE.CatmullRomCurve3([
+        new THREE.Vector3(26, 16.6, 0),
+        new THREE.Vector3(26, 17.6, 0),
+        new THREE.Vector3(26, 17.6, -1.8),
+        new THREE.Vector3(26, 17.6, -3.8),
+        new THREE.Vector3(26, 14.7, -3.8),
+      ]),
+      material: materials.gasPipe,
+      radius: 0.26,
+      color: 0xf59e0b,
+      medium: 'gas',
+      isActive: () => isStreamActive('k2Overhead'),
+    },
+    // 9. Подвод рабочего пара к эжекторам вакуумной системы ЭЖ-1
+    {
+      curve: new THREE.CatmullRomCurve3([
+        new THREE.Vector3(22.0, 6.8, -3.8),
+        new THREE.Vector3(25.0, 6.8, -3.8),
+        new THREE.Vector3(25.0, 12.5, -3.8),
+        new THREE.Vector3(27.2, 12.5, -3.8),
+      ]),
+      material: materials.steamPipe,
+      radius: 0.12,
+      color: 0xe2e8f0,
+      medium: 'steam',
+      isActive: () => true,
+    },
   ];
 
   // Создаем физические трубы по кривым

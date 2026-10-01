@@ -237,6 +237,15 @@ export const PLANT_HIERARCHY: PlantHierarchyNode[] = [
         cameraPosition: [18, 5, 4],
         cameraTarget: [18, 1.6, -2.0],
       },
+      {
+        id: 'node-ej1',
+        equipmentId: 'K_2',
+        label: 'Пароэжекторная вакуум-система ЭЖ-1',
+        tag: 'ЭЖ-1',
+        type: 'vessel',
+        cameraPosition: [26, 16, 8],
+        cameraTarget: [26, 12, -3.8],
+      },
     ],
   },
 ];
@@ -259,6 +268,15 @@ export const TWIN_HOTSPOTS: Hotspot3D[] = [
     equipmentId: 'K_2',
     category: 'column',
     valueGetter: (sensors) => `T: ${(sensors.T_2 ?? 350).toFixed(1)}°C | P: ${(sensors.P_vac ?? 0.04).toFixed(3)} МПа | L: ${(sensors.L_2 ?? 50).toFixed(1)}%`,
+  },
+  {
+    id: 'hs-ej1',
+    label: 'ЭЖ-1',
+    sublabel: 'Вакуум-система',
+    worldPos: [26, 16.0, -3.8],
+    equipmentId: 'K_2',
+    category: 'column',
+    valueGetter: (sensors) => `Pвак: ${(sensors.P_vac ?? 0.04).toFixed(3)} МПа | Эжекторы I-III`,
   },
   {
     id: 'hs-p1',

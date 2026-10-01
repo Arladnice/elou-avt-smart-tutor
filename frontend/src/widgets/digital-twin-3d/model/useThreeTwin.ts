@@ -13,6 +13,7 @@ import type { CameraPreset, Hotspot3D, InteractiveMeshUserData } from './types';
 import {
   createColumnK1,
   createColumnK2,
+  createVacuumEjectorSystem3D,
   createDesalter,
   createFurnace,
   createIndustrialGround,
@@ -204,6 +205,9 @@ export const useThreeTwin = ({
     scene.add(k2Group);
     k2LiquidRef.current = k2Liq;
 
+    // Пароэжекторная вакуум-система (барометрический конденсатор и эжекторы)
+    scene.add(createVacuumEjectorSystem3D(materials));
+
     // Трубчатые печи П-1 и П-3
     const { group: p1Group, fireLight: p1Light, portMesh: p1Port } = createFurnace('P_1', -6, materials);
     scene.add(p1Group);
@@ -269,6 +273,7 @@ export const useThreeTwin = ({
       if (type === 'k1Loop') return Boolean(p.N_3);
       if (type === 'k1Relief') return Boolean(v.V_2);
       if (type === 'k2Outflow') return Boolean(p.N_4 || p.N_32);
+      if (type === 'k2Overhead') return Boolean(p.N_4 || p.N_32);
       return true;
     };
 
