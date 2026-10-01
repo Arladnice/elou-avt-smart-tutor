@@ -183,6 +183,15 @@ export const PLANT_HIERARCHY: PlantHierarchyNode[] = [
         cameraPosition: [14, 22, 10],
         cameraTarget: [14, 19, 0],
       },
+      {
+        id: 'node-v3',
+        equipmentId: 'V_3',
+        label: 'Отсечной клапан подачи мазута V-3',
+        tag: 'V-3',
+        type: 'valve',
+        cameraPosition: [18, 5, 4],
+        cameraTarget: [18, 1.6, -2.0],
+      },
     ],
   },
 ];
@@ -257,6 +266,15 @@ export const TWIN_HOTSPOTS: Hotspot3D[] = [
     worldPos: [-2, 3.0, -1.2],
     valveId: 'V_1',
     equipmentId: 'V_1',
+    category: 'valve',
+  },
+  {
+    id: 'hs-v3',
+    label: 'V-3',
+    sublabel: 'Подача в К-2',
+    worldPos: [18, 2.8, -2.0],
+    valveId: 'V_3',
+    equipmentId: 'V_3',
     category: 'valve',
   },
 ];

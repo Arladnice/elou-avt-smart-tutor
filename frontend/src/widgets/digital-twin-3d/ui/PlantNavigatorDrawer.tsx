@@ -8,6 +8,7 @@ import {
   Info,
   Search,
   ChevronsUpDown,
+  Crosshair,
 } from 'lucide-react';
 import { PLANT_HIERARCHY } from '../model/PlantDigitalTwin3D.config';
 import * as S from './PlantDigitalTwin3D.styles';
@@ -35,12 +36,11 @@ export const PlantNavigatorDrawer: React.FC<PlantNavigatorDrawerProps> = ({
   });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  const toggleUnit = (unitId: string, pos: [number, number, number], target: [number, number, number]) => {
+  const toggleUnit = (unitId: string) => {
     setExpandedUnits(prev => ({
       ...prev,
       [unitId]: !prev[unitId],
     }));
-    onFocusCoordinates(pos, target);
   };
 
   const areAllExpanded = PLANT_HIERARCHY.every(u => expandedUnits[u.id]);
@@ -119,13 +119,25 @@ export const PlantNavigatorDrawer: React.FC<PlantNavigatorDrawerProps> = ({
             <S.UnitSection key={unit.id}>
               <S.UnitSectionHeader
                 $isExpanded={isExpanded}
-                onClick={() => toggleUnit(unit.id, unit.cameraPosition, unit.cameraTarget)}
-                title="Нажмите для открытия/фокусировки"
+                onClick={() => toggleUnit(unit.id)}
+                title="Нажмите, чтобы развернуть/свернуть блок"
               >
-                <span>{unit.label}</span>
-                <S.UnitChevron $isExpanded={isExpanded}>
-                  <ChevronRight size={13} />
-                </S.UnitChevron>
+                <S.UnitHeaderLeft>
+                  <S.UnitChevron $isExpanded={isExpanded}>
+                    <ChevronRight size={13} />
+                  </S.UnitChevron>
+                  <span>{unit.label}</span>
+                </S.UnitHeaderLeft>
+                <S.UnitFocusBtn
+                  type="button"
+                  title="Навести 3D камеру на этот блок"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFocusCoordinates(unit.cameraPosition, unit.cameraTarget);
+                  }}
+                >
+                  <Crosshair size={13} />
+                </S.UnitFocusBtn>
               </S.UnitSectionHeader>
 
               {isExpanded && unit.children && (

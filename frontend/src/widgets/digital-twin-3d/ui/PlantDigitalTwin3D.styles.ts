@@ -351,24 +351,31 @@ export const HeaderActionBtn = styled.button`
 
 export const NavigatorBody = styled.div`
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 8px 8px 32px 8px;
+  overflow-x: hidden;
+  padding: 8px 10px 40px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 
   scrollbar-width: thin;
-  scrollbar-color: ${props => props.theme.mode === 'dark' ? 'rgba(100, 116, 139, 0.5) transparent' : 'rgba(148, 163, 184, 0.5) transparent'};
+  scrollbar-color: ${props => props.theme.colors.primary} ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(226, 232, 240, 0.7)'};
 
   &::-webkit-scrollbar {
     width: 6px;
+    display: block;
   }
   &::-webkit-scrollbar-track {
-    background: transparent;
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(226, 232, 240, 0.7)'};
+    border-radius: 4px;
   }
   &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.mode === 'dark' ? 'rgba(100, 116, 139, 0.5)' : 'rgba(148, 163, 184, 0.5)'};
+    background: ${props => props.theme.colors.primary};
     border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${props => props.theme.mode === 'dark' ? '#38bdf8' : '#0284c7'};
   }
 `;
 
@@ -388,6 +395,7 @@ export const UnitSectionHeader = styled.div<{ $isExpanded?: boolean }>`
   font-weight: 700;
   color: ${props => props.theme.colors.text};
   cursor: pointer;
+  user-select: none;
   background: ${props => props.theme.mode === 'dark'
     ? (props.$isExpanded ? 'rgba(51, 65, 85, 0.6)' : 'rgba(30, 41, 59, 0.7)')
     : (props.$isExpanded ? 'rgba(226, 232, 240, 0.85)' : 'rgba(226, 232, 240, 0.6)')};
@@ -395,6 +403,32 @@ export const UnitSectionHeader = styled.div<{ $isExpanded?: boolean }>`
 
   &:hover {
     color: ${props => props.theme.colors.primary};
+  }
+`;
+
+export const UnitHeaderLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+`;
+
+export const UnitFocusBtn = styled.button`
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: ${props => props.theme.colors.textMuted};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+  margin-left: 4px;
+
+  &:hover {
+    color: ${props => props.theme.colors.primary};
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'};
   }
 `;
 

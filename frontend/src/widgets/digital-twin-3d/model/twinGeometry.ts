@@ -404,6 +404,16 @@ export const createValve3D = (
 
   group.add(body, f1, f2, bonnet, wheel);
 
+  // Опорная стойка под клапаном до уровня пола (Pipe Support Stanchion)
+  if (pos[1] > 0.6 && pos[1] < 6.0) {
+    const standH = pos[1];
+    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, standH, 8), materials.steelDark);
+    stand.position.set(0, -standH / 2, 0);
+    const footPad = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.35), materials.concrete);
+    footPad.position.set(0, -standH + 0.04, 0);
+    group.add(stand, footPad);
+  }
+
   const userData: InteractiveMeshUserData = {
     type: 'valve',
     id: `valve-${id.toLowerCase()}`,

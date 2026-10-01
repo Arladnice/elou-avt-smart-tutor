@@ -244,7 +244,7 @@ export const useThreeTwin = ({
     const valvesConfig: Array<{ id: 'V_1' | 'V_2' | 'V_3'; pos: [number, number, number] }> = [
       { id: 'V_1', pos: [-2, 1.4, 0] },
       { id: 'V_2', pos: [13, 20.6, 0] },
-      { id: 'V_3', pos: [18, 1.4, 0] },
+      { id: 'V_3', pos: [18, 1.6, -2.0] },
     ];
     valveWheelsRef.current.clear();
     valvesConfig.forEach(v => {
