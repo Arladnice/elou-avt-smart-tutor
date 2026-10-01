@@ -5,14 +5,15 @@ import type { TwinMaterials } from './twinMaterials';
 /** Создает индустриальную площадку с координатной сеткой и фундаментами */
 export const createIndustrialGround = (materials: TwinMaterials, themeMode: 'light' | 'dark' = 'dark'): THREE.Group => {
   const group = new THREE.Group();
+  group.name = 'industrial_ground';
   const theme = TWIN_THEMES[themeMode];
 
-  // Основная бетонная плита площадки
-  const groundGeo = new THREE.PlaneGeometry(94, 46);
+  // Основная бесконечная бетонная плита площадки (260x260м без обрывов)
+  const groundGeo = new THREE.PlaneGeometry(260, 260);
   const groundMat = new THREE.MeshStandardMaterial({
     color: theme.ground,
-    roughness: 0.9,
-    metalness: 0.1,
+    roughness: 0.96,
+    metalness: 0.04,
   });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
@@ -20,27 +21,48 @@ export const createIndustrialGround = (materials: TwinMaterials, themeMode: 'lig
   ground.receiveShadow = true;
   group.add(ground);
 
-  // Инженерная координатная сетка (CAD-сетка)
-  const grid = new THREE.GridHelper(94, 47, theme.groundGridPrimary, theme.groundGridSecondary);
+  // Инженерная координатная CAD-сетка
+  const grid = new THREE.GridHelper(160, 80, theme.groundGridPrimary, theme.groundGridSecondary);
   grid.position.y = 0.01;
   grid.name = 'ground_grid';
   group.add(grid);
 
-  // Желтые сигнальные линии границ производственной зоны
-  const borderGeo = new THREE.BoxGeometry(92, 0.08, 0.35);
-  const topBorder = new THREE.Mesh(borderGeo, materials.hazardYellow);
-  topBorder.position.set(0, 0.04, -21);
-  const botBorder = new THREE.Mesh(borderGeo, materials.hazardYellow);
-  botBorder.position.set(0, 0.04, 21);
-  group.add(topBorder, botBorder);
+  // Обособленные бетонные технологические фундаменты (плиты) под блоки оборудования
+  const plinthMat = new THREE.MeshStandardMaterial({
+    color: theme.concrete,
+    roughness: 0.88,
+    metalness: 0.12,
+  });
 
-  // Асфальтовые проезды между технологическими блоками (дорожки обслуживания)
-  const roadMat = new THREE.MeshStandardMaterial({ color: theme.concrete, roughness: 0.95 });
-  const roadZ = new THREE.Mesh(new THREE.PlaneGeometry(6, 42), roadMat);
-  roadZ.rotation.x = -Math.PI / 2;
-  roadZ.position.set(-8, 0.005, 0);
-  roadZ.receiveShadow = true;
-  group.add(roadZ);
+  const foundations: Array<{ x: number; z: number; w: number; d: number }> = [
+    { x: -20, z: 0, w: 22, d: 16 }, // Фундамент батареи ЭЛОУ
+    { x: 3, z: 0, w: 12, d: 18 },   // Фундамент печного блока П-1 и П-3
+    { x: 19.5, z: 0, w: 22, d: 12 },// Фундамент ректификации К-1 и К-2
+    { x: -6, z: 0, w: 6, d: 6 },     // Насосная площадка Н-20
+  ];
+
+  foundations.forEach(f => {
+    const plinth = new THREE.Mesh(new THREE.BoxGeometry(f.w, 0.12, f.d), plinthMat);
+    plinth.position.set(f.x, 0.06, f.z);
+    plinth.receiveShadow = true;
+    group.add(plinth);
+
+    // Желтая сигнальная полоса по периметру фундамента
+    const borderGeom = new THREE.BoxGeometry(f.w + 0.2, 0.04, 0.18);
+    const borderSideGeom = new THREE.BoxGeometry(0.18, 0.04, f.d + 0.2);
+
+    const bTop = new THREE.Mesh(borderGeom, materials.hazardYellow);
+    bTop.position.set(f.x, 0.13, f.z - f.d / 2);
+    const bBot = new THREE.Mesh(borderGeom, materials.hazardYellow);
+    bBot.position.set(f.x, 0.13, f.z + f.d / 2);
+
+    const bLeft = new THREE.Mesh(borderSideGeom, materials.hazardYellow);
+    bLeft.position.set(f.x - f.w / 2, 0.13, f.z);
+    const bRight = new THREE.Mesh(borderSideGeom, materials.hazardYellow);
+    bRight.position.set(f.x + f.w / 2, 0.13, f.z);
+
+    group.add(bTop, bBot, bLeft, bRight);
+  });
 
   return group;
 };
@@ -53,18 +75,20 @@ export const createMainPipeRack = (materials: TwinMaterials): THREE.Group => {
   const startX = -36;
   const endX = 34;
   const stepX = 7;
-  const rackZ = -1.2;
-  const rackWidth = 3.2;
+  const rackZ = -3.8;          // Эстакада расположена вдоль сервисного коридора перед аппаратами
+  const rackWidth = 2.4;
   const lowerDeckY = 4.2;
   const upperDeckY = 6.8;
 
   // 1. Портальные рамы эстакады
-  const colGeo = new THREE.BoxGeometry(0.24, upperDeckY + 0.5, 0.24);
-  const beamGeo = new THREE.BoxGeometry(0.2, 0.25, rackWidth);
-  const braceGeo = new THREE.CylinderGeometry(0.06, 0.06, Math.sqrt(stepX * stepX + (upperDeckY - lowerDeckY) * (upperDeckY - lowerDeckY)), 8);
+  const colGeo = new THREE.BoxGeometry(0.22, upperDeckY + 0.5, 0.22);
+  const beamGeo = new THREE.BoxGeometry(0.18, 0.22, rackWidth);
+  const braceLen = Math.sqrt(stepX * stepX + (upperDeckY - lowerDeckY) * (upperDeckY - lowerDeckY));
+  const braceGeo = new THREE.CylinderGeometry(0.05, 0.05, braceLen, 8);
+  const braceAngle = Math.atan2(stepX, upperDeckY - lowerDeckY);
 
   for (let x = startX; x <= endX; x += stepX) {
-    // Две вертикальные колонны портала (слева и справа от оси Z)
+    // Две вертикальные колонны портала (слева и справа от оси эстакады)
     const col1 = new THREE.Mesh(colGeo, materials.steelTruss);
     col1.position.set(x, (upperDeckY + 0.5) / 2, rackZ - rackWidth / 2);
     col1.castShadow = true;
@@ -100,17 +124,27 @@ export const createMainPipeRack = (materials: TwinMaterials): THREE.Group => {
 
       rack.add(long1, long2, long3, long4);
 
-      // Диагональные X-образные раскосы на каждом втором пролете
+      // Диагональные X-образные раскосы на каждом втором пролете (аккуратно внутри яруса!)
       if (Math.round((x - startX) / stepX) % 2 === 0) {
-        const brace1 = new THREE.Mesh(braceGeo, materials.steelTruss);
-        brace1.position.set(x + stepX / 2, (lowerDeckY + upperDeckY) / 2, rackZ - rackWidth / 2);
-        brace1.rotation.z = Math.atan2(upperDeckY - lowerDeckY, stepX);
+        // Ближняя сторона
+        const b1 = new THREE.Mesh(braceGeo, materials.steelTruss);
+        b1.position.set(x + stepX / 2, (lowerDeckY + upperDeckY) / 2, rackZ - rackWidth / 2);
+        b1.rotation.z = -braceAngle;
 
-        const brace2 = new THREE.Mesh(braceGeo, materials.steelTruss);
-        brace2.position.set(x + stepX / 2, (lowerDeckY + upperDeckY) / 2, rackZ - rackWidth / 2);
-        brace2.rotation.z = -Math.atan2(upperDeckY - lowerDeckY, stepX);
+        const b2 = new THREE.Mesh(braceGeo, materials.steelTruss);
+        b2.position.set(x + stepX / 2, (lowerDeckY + upperDeckY) / 2, rackZ - rackWidth / 2);
+        b2.rotation.z = braceAngle;
 
-        rack.add(brace1, brace2);
+        // Дальняя сторона
+        const b3 = new THREE.Mesh(braceGeo, materials.steelTruss);
+        b3.position.set(x + stepX / 2, (lowerDeckY + upperDeckY) / 2, rackZ + rackWidth / 2);
+        b3.rotation.z = -braceAngle;
+
+        const b4 = new THREE.Mesh(braceGeo, materials.steelTruss);
+        b4.position.set(x + stepX / 2, (lowerDeckY + upperDeckY) / 2, rackZ + rackWidth / 2);
+        b4.rotation.z = braceAngle;
+
+        rack.add(b1, b2, b3, b4);
       }
     }
   }
@@ -121,17 +155,16 @@ export const createMainPipeRack = (materials: TwinMaterials): THREE.Group => {
 
   const rackPipelines: Array<{ y: number; offsetZ: number; radius: number; mat: THREE.Material }> = [
     // Нижний ярус: тяжелые среды (сырье, промывочная вода, мазут, дизель)
-    { y: lowerDeckY + 0.22, offsetZ: -1.1, radius: 0.18, mat: materials.crudePipe },
-    { y: lowerDeckY + 0.18, offsetZ: -0.6, radius: 0.14, mat: materials.waterPipe },
-    { y: lowerDeckY + 0.16, offsetZ: -0.1, radius: 0.12, mat: materials.steamPipe },
-    { y: lowerDeckY + 0.24, offsetZ: 0.5, radius: 0.20, mat: materials.crudePipe },
-    { y: lowerDeckY + 0.16, offsetZ: 1.1, radius: 0.12, mat: materials.drainPipe },
+    { y: lowerDeckY + 0.22, offsetZ: -0.8, radius: 0.16, mat: materials.crudePipe },
+    { y: lowerDeckY + 0.18, offsetZ: -0.3, radius: 0.13, mat: materials.waterPipe },
+    { y: lowerDeckY + 0.16, offsetZ: 0.2, radius: 0.11, mat: materials.steamPipe },
+    { y: lowerDeckY + 0.22, offsetZ: 0.7, radius: 0.15, mat: materials.drainPipe },
 
-    // Верхний ярус: газы, пары, легкие углеводороды
-    { y: upperDeckY + 0.20, offsetZ: -0.9, radius: 0.16, mat: materials.gasPipe },
-    { y: upperDeckY + 0.16, offsetZ: -0.3, radius: 0.13, mat: materials.gasPipe },
-    { y: upperDeckY + 0.24, offsetZ: 0.3, radius: 0.20, mat: materials.gasPipe },
-    { y: upperDeckY + 0.14, offsetZ: 0.9, radius: 0.11, mat: materials.steamPipe },
+    // Верхний ярус: газы, пары, светлые фракции
+    { y: upperDeckY + 0.20, offsetZ: -0.7, radius: 0.15, mat: materials.gasPipe },
+    { y: upperDeckY + 0.16, offsetZ: -0.1, radius: 0.12, mat: materials.gasPipe },
+    { y: upperDeckY + 0.22, offsetZ: 0.4, radius: 0.16, mat: materials.gasPipe },
+    { y: upperDeckY + 0.14, offsetZ: 0.8, radius: 0.11, mat: materials.steamPipe },
   ];
 
   rackPipelines.forEach(p => {
@@ -186,7 +219,6 @@ export const createColumnCatwalk = (radius: number, height: number, materials: T
     post.position.set(px, railH / 2, pz);
     catwalk.add(post);
 
-    // Кронштейн снизу
     const bx = Math.cos(angle) * ((floorInnerR + floorOuterR) / 2);
     const bz = Math.sin(angle) * ((floorInnerR + floorOuterR) / 2);
     const bracket = new THREE.Mesh(bracketGeo, materials.steelTruss);

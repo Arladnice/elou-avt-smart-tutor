@@ -364,13 +364,15 @@ export const useThreeTwin = ({
       controls.update();
       renderer.render(scene, camera);
 
-      // 7. Проекция 3D меток КИПиА
+      // 7. Проекция 3D меток КИПиА с умным алгоритмом разделения (anti-collision)
       if (container && cameraRef.current) {
         const rect = container.getBoundingClientRect();
         const halfW = rect.width / 2;
         const halfH = rect.height / 2;
 
-        const projected: ProjectedHotspot[] = TWIN_HOTSPOTS.map(hs => {
+        const visibleBadges: ProjectedHotspot[] = [];
+
+        TWIN_HOTSPOTS.forEach(hs => {
           const v = new THREE.Vector3(...hs.worldPos);
           v.project(cameraRef.current!);
 
@@ -379,16 +381,35 @@ export const useThreeTwin = ({
           const sy = -(v.y * halfH) + halfH;
           const liveVal = hs.valueGetter ? hs.valueGetter(curSens as any, curSp as any) : undefined;
 
-          return {
-            ...hs,
-            screenX: sx,
-            screenY: sy,
-            visible: isVisible && sx >= 0 && sx <= rect.width && sy >= 0 && sy <= rect.height,
-            liveValue: liveVal,
-          };
+          if (isVisible && sx >= 20 && sx <= rect.width - 20 && sy >= 30 && sy <= rect.height - 30) {
+            visibleBadges.push({
+              ...hs,
+              screenX: sx,
+              screenY: sy,
+              visible: true,
+              liveValue: liveVal,
+            });
+          }
         });
-        setProjectedHotspots(projected);
+
+        // Сортируем по высоте на экране (screenY)
+        visibleBadges.sort((a, b) => a.screenY - b.screenY);
+
+        // Устраняем наложение: если две плашки слишком близко по X (< 140px) и по Y (< 42px),
+        // смещаем нижнюю плашку вниз, чтобы плашки никогда не перекрывали друг друга
+        for (let i = 0; i < visibleBadges.length; i++) {
+          for (let j = i + 1; j < visibleBadges.length; j++) {
+            const dx = Math.abs(visibleBadges[i].screenX - visibleBadges[j].screenX);
+            const dy = visibleBadges[j].screenY - visibleBadges[i].screenY;
+            if (dx < 140 && dy < 42) {
+              visibleBadges[j].screenY += (42 - dy);
+            }
+          }
+        }
+
+        setProjectedHotspots(visibleBadges);
       }
+
     };
 
     animationFrameId = requestAnimationFrame(animate);
