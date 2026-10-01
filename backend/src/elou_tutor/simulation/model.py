@@ -88,6 +88,23 @@ class ELOUAVTSimulator:
                 pump_id: st.get(pump_id, True)
                 for pump_id in ALL_PUMP_IDS
             }
+            # Если целевое действие сценария — пуск насоса, а в initial_state он не задан,
+            # насос изначально выключен, чтобы шаг чек-листа не выполнялся заранее
+            golden = sc.get("golden_sequence") or []
+            checklist = sc.get("checklist") or []
+            for p_id in ALL_PUMP_IDS:
+                if p_id not in st:
+                    has_start = (
+                        f"{p_id}_START" in golden
+                        or any(
+                            (s.get("condition") or {}).get("type") == "pump_is"
+                            and (s.get("condition") or {}).get("target") == p_id
+                            and (s.get("condition") or {}).get("expected") is True
+                            for s in checklist
+                        )
+                    )
+                    if has_start:
+                        self.pumps[p_id] = False
             self.setpoints = {
                 "T_1_Sp": st.get("T_1_Sp", 280.0),
                 "T_3_Sp": st.get("T_3_Sp", st.get("T_1_Sp", 280.0)),

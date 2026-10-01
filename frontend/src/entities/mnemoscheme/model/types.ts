@@ -97,6 +97,7 @@ export interface ValveNodeConfig {
   rotate?: number;
   vertical?: boolean;
   hideLabel?: boolean;
+  labelOffsetY?: number;
 }
 
 export interface SensorNodeConfig {

@@ -6,12 +6,13 @@ import { Thermometer, Radio, Minus, Plus } from 'lucide-react';
 import * as S from './ControlPanel.styles';
 
 const PUMP_LABELS: Array<[PumpId, string]> = [
-  ['N_20', 'Н-20'], ['N_2', 'Н-2'], ['N_3', 'Н-3'], ['N_4', 'Н-4'], ['N_32', 'Н-32'],
+  ['N_20', 'Н-20'], ['N_2', 'Н-2'], ['N_3', 'Н-3'], ['N_4', 'Н-4'], ['N_32', 'Н-32'], ['N_82', 'Н-82 (вода)'],
 ];
 
 const PROCESS_VALVES: Array<[ValveId, string]> = [
   ['FUEL_P1', 'Топливо П-1'], ['FUEL_P3', 'Топливо П-3'],
   ['V_STEAM_K1', 'Пар К-1'], ['V_STEAM_K2', 'Пар К-2'],
+  ['V_WATER_MAIN', 'Вода напор'],
   ['V_K2_RELIEF', 'Газовый сброс К-2'], ['V_E1_DRAIN', 'Дренаж Е-1'],
   ['V_E2_DRAIN', 'Дренаж Е-2'],
 ];

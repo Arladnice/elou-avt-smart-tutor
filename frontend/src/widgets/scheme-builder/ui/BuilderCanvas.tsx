@@ -881,6 +881,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({
                 rotate={v.rotate}
                 vertical={v.vertical}
                 hideLabel={v.hideLabel}
+                labelOffsetY={v.labelOffsetY}
                 label={v.label}
                 isOpen={isOpen}
                 interactive={mode === 'preview'}

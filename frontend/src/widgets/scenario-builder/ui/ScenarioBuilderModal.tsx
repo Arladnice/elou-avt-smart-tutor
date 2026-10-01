@@ -69,6 +69,9 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
           V_1: Boolean(values.V_1),
           V_2: Boolean(values.V_2),
           V_3: Boolean(values.V_3),
+          N_20: values.N_20 !== undefined ? Boolean(values.N_20) : true,
+          N_82: values.N_82 !== undefined ? Boolean(values.N_82) : false,
+          N_4: values.N_4 !== undefined ? Boolean(values.N_4) : true,
         },
         checklist: (values.checklist || []).map((row, index) => ({
           id: row.id || `step_${index + 1}`,
@@ -174,6 +177,9 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
       V_1: scenario.initial_state?.V_1 ?? true,
       V_2: scenario.initial_state?.V_2 ?? false,
       V_3: scenario.initial_state?.V_3 ?? true,
+      N_20: scenario.initial_state?.N_20 ?? true,
+      N_82: scenario.initial_state?.N_82 ?? false,
+      N_4: scenario.initial_state?.N_4 ?? true,
       checklist: (scenario.checklist || []).map((row, index) => {
         const { conditionType, targetVal } = conditionToPreset(row.condition);
         return {
@@ -273,6 +279,15 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                     </Form.Item>
                     <Form.Item name="V_3" label="Дренаж V-3 (Куб)" valuePropName="checked">
                       <Switch checkedChildren="ОТКР" unCheckedChildren="ЗАКР" />
+                    </Form.Item>
+                    <Form.Item name="N_20" label="Насос Н-20 (Сырьё)" valuePropName="checked">
+                      <Switch checkedChildren="ПУСК" unCheckedChildren="СТОП" />
+                    </Form.Item>
+                    <Form.Item name="N_82" label="Насос Н-82 (Промывка)" valuePropName="checked">
+                      <Switch checkedChildren="ПУСК" unCheckedChildren="СТОП" />
+                    </Form.Item>
+                    <Form.Item name="N_4" label="Насос Н-4 (Откачка К-2)" valuePropName="checked">
+                      <Switch checkedChildren="ПУСК" unCheckedChildren="СТОП" />
                     </Form.Item>
                   </S.SwitchesRow>
                 </S.SectionCard>

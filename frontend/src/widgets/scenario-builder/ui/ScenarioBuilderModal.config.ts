@@ -42,6 +42,9 @@ export interface ScenarioFormValues {
   V_1?: boolean;
   V_2?: boolean;
   V_3?: boolean;
+  N_20?: boolean;
+  N_82?: boolean;
+  N_4?: boolean;
   checklist?: ChecklistFormRow[];
   golden_sequence?: string[];
 }
@@ -194,6 +197,9 @@ export const FORM_INITIAL_VALUES: Partial<ScenarioFormValues> = {
   V_1: true,
   V_2: false,
   V_3: true,
+  N_20: true,
+  N_82: false,
+  N_4: true,
   checklist: [
     {
       id: 'step_1',

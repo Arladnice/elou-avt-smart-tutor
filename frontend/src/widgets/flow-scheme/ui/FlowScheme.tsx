@@ -469,6 +469,7 @@ const FlowScheme: React.FC = () => {
                   rotate={v.rotate}
                   vertical={v.vertical}
                   hideLabel={v.hideLabel}
+                  labelOffsetY={v.labelOffsetY}
                   label={v.label}
                   isOpen={isOpen}
                   onToggle={valveId => handleValveClick(valveId as ValveId)}

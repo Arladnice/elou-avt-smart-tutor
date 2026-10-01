@@ -1143,7 +1143,8 @@
         "T_3_Sp": 280.0,
         "V_1": true,
         "V_2": false,
-        "V_3": true
+        "V_3": true,
+        "N_82": false
       },
       "checklist": [
         {
