@@ -175,6 +175,25 @@ export const createMainPipeRack = (materials: TwinMaterials): THREE.Group => {
     rack.add(pipeMesh);
   });
 
+  // 3. Факельный сбросной ствол / свеча в конце эстакады (x = endX, z = rackZ)
+  const flareStackGeo = new THREE.CylinderGeometry(0.24, 0.32, 14, 16);
+  const flareStackMesh = new THREE.Mesh(flareStackGeo, materials.steelDark);
+  flareStackMesh.position.set(endX, 7, rackZ);
+  flareStackMesh.castShadow = true;
+
+  // Оголовок факела (Flare tip) с ветрозащитным диффузором
+  const flareTipGeo = new THREE.CylinderGeometry(0.5, 0.28, 1.2, 16);
+  const flareTipMesh = new THREE.Mesh(flareTipGeo, materials.steelBright);
+  flareTipMesh.position.set(endX, 14.6, rackZ);
+
+  // Дежурная горелка / сигнальный огонек
+  const pilotLightGeo = new THREE.SphereGeometry(0.18, 12, 12);
+  const pilotLightMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+  const pilotLightMesh = new THREE.Mesh(pilotLightGeo, pilotLightMat);
+  pilotLightMesh.position.set(endX, 15.3, rackZ);
+
+  rack.add(flareStackMesh, flareTipMesh, pilotLightMesh);
+
   return rack;
 };
 

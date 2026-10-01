@@ -69,7 +69,11 @@ export const PlantNavigatorDrawer: React.FC<PlantNavigatorDrawerProps> = ({
   }).filter(Boolean) as typeof PLANT_HIERARCHY;
 
   return (
-    <S.NavigatorDrawer $isOpen={isOpen}>
+    <S.NavigatorDrawer
+      $isOpen={isOpen}
+      onClick={(e) => e.stopPropagation()}
+      onWheel={(e) => e.stopPropagation()}
+    >
       <S.NavigatorHeader>
         <S.DrawerTitleGroup>
           <FolderTree size={14} />
@@ -112,7 +116,7 @@ export const PlantNavigatorDrawer: React.FC<PlantNavigatorDrawerProps> = ({
         )}
       </S.NavigatorSearch>
 
-      <S.NavigatorBody>
+      <S.NavigatorBody onWheel={(e) => e.stopPropagation()}>
         {filteredHierarchy.map(unit => {
           const isExpanded = Boolean(expandedUnits[unit.id] || searchQuery.trim());
           return (

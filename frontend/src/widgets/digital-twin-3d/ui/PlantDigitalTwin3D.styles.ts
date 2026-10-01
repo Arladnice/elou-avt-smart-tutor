@@ -300,10 +300,11 @@ export const NavigatorDrawer = styled.div<{ $isOpen: boolean }>`
   position: absolute;
   top: 64px;
   left: 14px;
-  bottom: 52px;
+  bottom: 64px;
+  height: calc(100% - 130px);
+  max-height: calc(100% - 130px);
   width: 360px;
   max-width: calc(100vw - 28px);
-  max-height: calc(100% - 116px);
   background: ${props => props.theme.mode === 'dark' ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)'};
   backdrop-filter: blur(16px);
   border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(51, 65, 85, 0.85)' : 'rgba(203, 213, 225, 0.95)'};
@@ -311,7 +312,7 @@ export const NavigatorDrawer = styled.div<{ $isOpen: boolean }>`
   box-shadow: 0 16px 40px ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.14)'};
   display: flex;
   flex-direction: column;
-  z-index: 25;
+  z-index: 35;
   overflow: hidden;
   transform: ${props => props.$isOpen ? 'translateX(0)' : 'translateX(-390px)'};
   opacity: ${props => props.$isOpen ? 1 : 0};
@@ -380,29 +381,32 @@ export const HeaderActionBtn = styled.button`
 `;
 
 export const NavigatorBody = styled.div`
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
-  overflow-y: auto;
+  max-height: 100%;
+  overflow-y: scroll;
   overflow-x: hidden;
-  padding: 8px 10px 40px 8px;
+  scrollbar-gutter: stable;
+  padding: 8px 6px 28px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 
   scrollbar-width: thin;
-  scrollbar-color: ${props => props.theme.colors.primary} ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(226, 232, 240, 0.7)'};
+  scrollbar-color: ${props => props.theme.colors.primary} ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.7)' : 'rgba(226, 232, 240, 0.8)'};
 
   &::-webkit-scrollbar {
-    width: 6px;
+    width: 7px;
     display: block;
   }
   &::-webkit-scrollbar-track {
-    background: ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(226, 232, 240, 0.7)'};
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.7)' : 'rgba(226, 232, 240, 0.8)'};
     border-radius: 4px;
   }
   &::-webkit-scrollbar-thumb {
     background: ${props => props.theme.colors.primary};
     border-radius: 4px;
+    border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : '#ffffff'};
   }
   &::-webkit-scrollbar-thumb:hover {
     background: ${props => props.theme.mode === 'dark' ? '#38bdf8' : '#0284c7'};

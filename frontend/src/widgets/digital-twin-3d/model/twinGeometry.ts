@@ -77,14 +77,12 @@ export const createColumnK1 = (materials: TwinMaterials) => {
     group.add(tray);
   }
 
-  // Верхний узел шлема с предохранительными клапанами СППК
-  const spkBase = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.6, 16), materials.steelDark);
-  spkBase.position.set(0, 19.8, 0);
-  const spkBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.6), materials.valveClosed);
-  spkBody.position.set(0, 20.6, 0);
-  const spkVent = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2.4, 12), materials.gasPipe);
-  spkVent.position.set(0, 22.0, 0);
-  group.add(spkBase, spkBody, spkVent);
+  // Верхний штуцер шлема колонны с фланцем под клапан V-2
+  const nozzleSpk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 1.4, 16), materials.steelDark);
+  nozzleSpk.position.set(0, 19.9, 0);
+  const flangeSpk = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.12, 16), materials.steelBright);
+  flangeSpk.position.set(0, 20.55, 0);
+  group.add(nozzleSpk, flangeSpk);
 
   const userData: InteractiveMeshUserData = { type: 'equipment', id: 'col-k1', equipmentId: 'K_1', name: 'Ректификационная колонна К-1' };
   bodyMesh.userData = userData;
