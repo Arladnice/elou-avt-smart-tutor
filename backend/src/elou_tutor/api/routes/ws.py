@@ -82,10 +82,10 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
         if pump_id not in session.simulator.pumps:
             raise ValueError(f"неизвестный насос: {pump_id}")
         state = bool(cmd.get("state"))
+        pump_label = f"Н-{pump_id.removeprefix('N_')}"
         session.simulator.set_pump(pump_id, state)
         actual_state = session.simulator.pumps[pump_id]
         if actual_state != state:
-            pump_label = f"Н-{pump_id.removeprefix('N_')}"
             if (
                 state
                 and pump_id in {"N_4", "N_32"}
