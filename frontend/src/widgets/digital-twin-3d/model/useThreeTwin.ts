@@ -471,15 +471,6 @@ export const useThreeTwin = ({
     applyMediumHighlight(materialsRef.current, selectedMedium || null);
   }, [selectedMedium]);
 
-  // 3. Плавный переход к выбранному пресету камеры
-  useEffect(() => {
-    if (activePreset === 'cinematic') return;
-    const targetPreset = CAMERA_PRESETS.find(p => p.id === activePreset);
-    if (!targetPreset || !cameraRef.current || !controlsRef.current) return;
-
-    focusOnCoordinates(targetPreset.position, targetPreset.target);
-  }, [activePreset]);
-
   // Плавная фокусировка камеры на заданных координатах
   const focusOnCoordinates = useCallback((position: [number, number, number], target: [number, number, number]) => {
     if (!cameraRef.current || !controlsRef.current) return;
@@ -503,6 +494,15 @@ export const useThreeTwin = ({
     };
     animateTransition();
   }, []);
+
+  // 3. Плавный переход к выбранному пресету камеры
+  useEffect(() => {
+    if (activePreset === 'cinematic') return;
+    const targetPreset = CAMERA_PRESETS.find(p => p.id === activePreset);
+    if (!targetPreset || !cameraRef.current || !controlsRef.current) return;
+
+    focusOnCoordinates(targetPreset.position, targetPreset.target);
+  }, [activePreset, focusOnCoordinates]);
 
   // Обработка клика и наведения через Raycaster
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
