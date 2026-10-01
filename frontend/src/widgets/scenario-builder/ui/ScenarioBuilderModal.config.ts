@@ -100,6 +100,39 @@ export const presetToCondition = (row: ChecklistFormRow): ScenarioCondition => {
   return { type: 'valve_is', target: 'V_1', expected: false };
 };
 
+/** Сворачивает условие сценария обратно в пресет для формы визуального конструктора */
+export const conditionToPreset = (condition?: ScenarioCondition): { conditionType: ConditionPreset; targetVal?: number } => {
+  if (!condition) {
+    return { conditionType: 'V_1_CLOSE' };
+  }
+  if (condition.type === 'valve_is' && condition.target) {
+    for (const [preset, val] of Object.entries(VALVE_PRESETS)) {
+      if (val.target === condition.target && val.expected === condition.expected) {
+        return { conditionType: preset as ConditionPreset };
+      }
+    }
+  }
+  if (condition.type === 'pump_is' && condition.target) {
+    for (const [preset, val] of Object.entries(PUMP_PRESETS)) {
+      if (val.target === condition.target && val.expected === condition.expected) {
+        return { conditionType: preset as ConditionPreset };
+      }
+    }
+  }
+  if ((condition.type === 'sensor_lte' || condition.type === 'sensor_gte') && condition.target) {
+    for (const [preset, val] of Object.entries(SENSOR_PRESETS)) {
+      if (val.type === condition.type && val.target === condition.target) {
+        return {
+          conditionType: preset as ConditionPreset,
+          targetVal: typeof condition.expected === 'number' ? condition.expected : undefined,
+        };
+      }
+    }
+  }
+  return { conditionType: 'V_1_CLOSE' };
+};
+
+
 /** Опции выпадающего списка условий завершения шага чек-листа */
 export const CONDITION_OPTIONS = [
   { value: 'V_1_CLOSE', label: 'V-1 Закрыт (Перекрытие сырья в К-1)' },

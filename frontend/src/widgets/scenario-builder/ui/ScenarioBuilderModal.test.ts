@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   presetToCondition,
+  conditionToPreset,
   CONDITION_OPTIONS,
   GOLDEN_SEQUENCE_OPTIONS,
   FORM_INITIAL_VALUES,
@@ -155,4 +156,20 @@ describe('Конструктор Учебных Сценариев АРМ Инс
       });
     });
   });
+
+  describe('Обратная трансформация условий в пресеты (conditionToPreset)', () => {
+    it('корректно восстанавливает пресеты для клапанов, насосов и датчиков', () => {
+      expect(conditionToPreset({ type: 'valve_is', target: 'V_1', expected: false })).toEqual({
+        conditionType: 'V_1_CLOSE',
+      });
+      expect(conditionToPreset({ type: 'pump_is', target: 'N_82', expected: true })).toEqual({
+        conditionType: 'N_82_START',
+      });
+      expect(conditionToPreset({ type: 'sensor_lte', target: 'Sal_1', expected: 8.5 })).toEqual({
+        conditionType: 'Sal_1_LTE',
+        targetVal: 8.5,
+      });
+    });
+  });
 });
+

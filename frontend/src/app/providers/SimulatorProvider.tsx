@@ -154,11 +154,14 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const reloadScenarios = useCallback(async () => {
     try {
-      setScenarios(await fetchScenarios());
+      const fresh = await fetchScenarios();
+      setScenarios(fresh);
+      sendWsAction({ type: 'notify_catalog_changed' });
     } catch {
       console.warn('Не удалось загрузить список сценариев с бэкенда.');
     }
-  }, []);
+  }, [sendWsAction]);
+
 
   // Реестр сценариев закрыт авторизацией, поэтому грузим его после входа:
   // запрос на этапе логина ушёл бы без токена и вернул 401, оставив UI
@@ -473,10 +476,15 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           setWsLatency(Date.now() - data.timestamp);
           return;
         }
+        if (data.type === 'catalog_updated') {
+          fetchScenarios().then(fresh => setScenarios(fresh)).catch(() => {});
+          return;
+        }
         if (data.type === 'error') {
           setLogs(prev => [...prev, makeLog('warning', `Сервер отклонил команду: ${data.message}`)]);
           return;
         }
+
 
         setStatus(data.status);
         setTimeElapsed(data.timeElapsed);
@@ -517,8 +525,17 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (data.startupK2Prefill !== undefined) setStartupK2Prefill(Boolean(data.startupK2Prefill));
         if (data.mode) setMode(data.mode);
         if (data.operatorName) setOperatorName(data.operatorName);
-        if (data.scenarioId) setScenarioId(data.scenarioId);
+        if (data.scenarioId) {
+          setScenarioId(data.scenarioId);
+          setScenarios(current => {
+            if (current.length > 0 && !current.some(s => s.id === data.scenarioId)) {
+              fetchScenarios().then(fresh => setScenarios(fresh)).catch(() => {});
+            }
+            return current;
+          });
+        }
       };
+
 
       ws.onerror = () => {
         // Ошибка обрабатывается в onclose

@@ -170,3 +170,33 @@ def test_explicit_scenarios_path_is_respected(tmp_path, monkeypatch):
 
     assert target.exists()
     assert os.path.isdir(os.path.dirname(target))
+
+
+def test_update_custom_scenario_works_and_protects_builtin(data_dir):
+    """Кастомный сценарий обновляется, а встроенный защищён от изменений."""
+    scenarios_module.load_scenarios()
+    scenarios_module.add_custom_scenario({
+        "id": "drill_1",
+        "title": "Исходный заголовок",
+        "checklist": [],
+        "golden_sequence": [],
+    })
+
+    # Обновление кастомного
+    ok, msg = scenarios_module.update_custom_scenario("drill_1", {
+        "title": "Обновленный заголовок",
+        "checklist": [{"id": "step_1", "title": "Шаг 1"}],
+        "golden_sequence": ["V1_CLOSE"],
+    })
+    assert ok
+    sc = scenarios_module.get_scenario_by_id("drill_1")
+    assert sc["title"] == "Обновленный заголовок"
+    assert len(sc["checklist"]) == 1
+
+    # Защита встроенного от редактирования
+    ok_builtin, msg_builtin = scenarios_module.update_custom_scenario("startup", {
+        "title": "Хакерский заголовок",
+    })
+    assert not ok_builtin
+    assert "встроен" in msg_builtin.lower()
+

@@ -17,7 +17,7 @@ const scenarioNames: Record<string, string> = {
  */
 export const useScenarioInfo = () => {
   const { defects } = useTelemetry();
-  const { scenarioId, mode } = useSession();
+  const { scenarioId, mode, scenarios } = useSession();
   const isEmergency = !!(
     defects?.pump_fail ||
     defects?.coil_overheat ||
@@ -44,9 +44,13 @@ export const useScenarioInfo = () => {
     return `Авария: ${list.join(' + ')}`;
   };
 
+  const activeScen = (scenarios || []).find(s => s.id === scenarioId);
+  const scenarioTitle = activeScen?.title || scenarioNames[scenarioId] || scenarioId;
+
   const title = isEmergency
     ? getEmergencyTitle()
-    : `${mode === 'exam' ? '🎯 [ЭКЗАМЕН] ' : ''}Задачи Сценария: ${scenarioNames[scenarioId] || 'Обучение'}`;
+    : `${mode === 'exam' ? '🎯 [ЭКЗАМЕН] ' : ''}Задачи Сценария: ${scenarioTitle}`;
 
   return { title, isEmergency };
 };
+

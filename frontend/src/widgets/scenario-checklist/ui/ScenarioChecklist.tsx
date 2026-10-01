@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTelemetry, type Pumps, type Sensors, type Setpoints, type Valves } from '@/entities/telemetry';
 import { useSession } from '@/entities/session';
+import { useSimulatorActions } from '@/entities/simulator';
 import type { ScenarioCondition } from '@/entities/scenario';
 import { CheckCircle2, Circle, PlayCircle } from 'lucide-react';
 import * as S from './ScenarioChecklist.styles';
@@ -55,7 +56,16 @@ const evalCondition = (
 const ScenarioChecklist: React.FC = () => {
   const { valves, pumps, sensors, setpoints, defects, status, completedChecklistSteps } = useTelemetry();
   const { scenarioId, mode, scenarios } = useSession();
+  const { reloadScenarios } = useSimulatorActions();
   const isExam = mode === 'exam';
+
+  // Если активный сценарий не найден в списке, подтягиваем актуальный реестр
+  useEffect(() => {
+    if (scenarioId && scenarios.length > 0 && !scenarios.some(s => s.id === scenarioId)) {
+      reloadScenarios();
+    }
+  }, [scenarioId, scenarios, reloadScenarios]);
+
 
   // Определение шагов на основе текущего состояния симулятора
   const getTasks = (): TaskInfo[] => {
@@ -247,10 +257,11 @@ const ScenarioChecklist: React.FC = () => {
       {
         id: 'v1_close',
         title: '1. Перекрытие подачи сырья V-1',
-        hint: 'Переведите клапан V-1 в положение ЗАКРЫТО',
+        hint: isExam ? 'Отсечь сырьевую линию V-1' : 'Переведите клапан V-1 в положение ЗАКРЫТО',
         isDone: !valves.V_1,
       },
     ];
+
   };
 
   const tasks = getTasks();

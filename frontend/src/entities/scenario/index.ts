@@ -4,4 +4,5 @@ export type {
   ScenarioCondition,
   ScenarioInitialState,
 } from './model/types';
-export { fetchScenarios, createScenario, importScenario, deleteScenario } from './api/scenarioApi';
+export { fetchScenarios, createScenario, updateScenario, importScenario, deleteScenario } from './api/scenarioApi';
+

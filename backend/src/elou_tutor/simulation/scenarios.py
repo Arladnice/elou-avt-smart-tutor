@@ -192,3 +192,36 @@ def delete_scenario(scenario_id: str) -> tuple[bool, str]:
     if save_scenarios(updated):
         return True, "Сценарий успешно удален."
     return False, "Ошибка при удалении сценария."
+
+
+def update_custom_scenario(scenario_id: str, scenario_data: Dict[str, Any]) -> tuple[bool, str]:
+    """Обновляет существующий пользовательский сценарий инструктора."""
+    target_id = scenario_id.strip()
+    if not target_id:
+        return False, "Идентификатор сценария (id) не может быть пустым."
+
+    title = scenario_data.get("title", "").strip()
+    if not title:
+        return False, "Название сценария не может быть пустым."
+
+    scenarios = load_scenarios()
+    idx = -1
+    for i, s in enumerate(scenarios):
+        if s.get("id") == target_id:
+            idx = i
+            break
+
+    if idx == -1:
+        return False, f"Сценарий с id '{target_id}' не найден."
+
+    if not scenarios[idx].get("is_custom", False):
+        return False, "Запрещено редактировать встроенные сценарии техрегламента."
+
+    scenario_data["id"] = target_id
+    scenario_data["is_custom"] = True
+    scenarios[idx] = scenario_data
+
+    if save_scenarios(scenarios):
+        return True, "Сценарий успешно обновлен."
+    return False, "Не удалось сохранить изменения на диске."
+

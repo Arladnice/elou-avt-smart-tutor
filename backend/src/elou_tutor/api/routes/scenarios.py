@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 from elou_tutor.api.schemas import ImportScenarioModel
 
 from elou_tutor.simulation.scenarios import (
-    load_scenarios, add_custom_scenario, delete_scenario, get_scenario_by_id
+    load_scenarios, add_custom_scenario, update_custom_scenario, delete_scenario, get_scenario_by_id
 )
 from elou_tutor.api.deps import get_current_user, require_instructor
 from elou_tutor.db.audit import log_audit_event
@@ -112,3 +112,18 @@ async def remove_scenario(scenario_id: str, user: dict = Depends(require_instruc
         raise HTTPException(status_code=400, detail=message)
     log_audit_event(user["sub"], "DELETE_SCENARIO", f"Удален сценарий '{scenario_id}'")
     return {"status": "success", "message": message}
+
+
+@router.put("/{scenario_id}")
+async def update_scenario(
+    scenario_id: str,
+    payload: CreateScenarioModel,
+    user: dict = Depends(require_instructor),
+):
+    """Обновляет существующий пользовательский сценарий инструктора."""
+    success, message = update_custom_scenario(scenario_id, payload.model_dump())
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    log_audit_event(user["sub"], "UPDATE_SCENARIO", f"Обновлен сценарий '{scenario_id}': {payload.title}")
+    return {"status": "success", "message": message, "scenario_id": scenario_id}
+

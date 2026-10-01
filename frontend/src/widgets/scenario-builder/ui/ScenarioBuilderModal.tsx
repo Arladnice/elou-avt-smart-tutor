@@ -7,9 +7,12 @@ import {
   FileTextOutlined,
   CodeOutlined,
   DownloadOutlined,
+  EditOutlined,
+  SaveOutlined,
 } from '@ant-design/icons';
 import {
   createScenario,
+  updateScenario,
   importScenario,
   deleteScenario,
   type ScenarioItem,
@@ -19,6 +22,7 @@ import { useSimulatorActions } from '@/entities/simulator';
 import {
   type ScenarioFormValues,
   presetToCondition,
+  conditionToPreset,
   CONDITION_OPTIONS,
   GOLDEN_SEQUENCE_OPTIONS,
   FORM_INITIAL_VALUES,
@@ -40,13 +44,19 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
   const [activeTab, setActiveTab] = useState('1');
   const [jsonText, setJsonText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [editingScenarioId, setEditingScenarioId] = useState<string | null>(null);
   const [form] = Form.useForm();
+
+  const resetToCreateMode = () => {
+    setEditingScenarioId(null);
+    form.resetFields();
+  };
 
   const handleVisualSubmit = async (values: ScenarioFormValues) => {
     try {
       setLoading(true);
       const newScenario: ScenarioItem = {
-        id: values.id.trim(),
+        id: (editingScenarioId || values.id).trim(),
         title: values.title.trim(),
         short_name: values.short_name.trim(),
         description: values.description || '',
@@ -70,17 +80,23 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
         golden_sequence: values.golden_sequence || [],
       };
 
-      await createScenario(newScenario);
-      message.success(`Сценарий '${newScenario.title}' успешно создан и добавлен в реестр КТК!`);
+      if (editingScenarioId) {
+        await updateScenario(editingScenarioId, newScenario);
+        message.success(`Сценарий '${newScenario.title}' успешно обновлен в реестре КТК!`);
+      } else {
+        await createScenario(newScenario);
+        message.success(`Сценарий '${newScenario.title}' успешно создан и добавлен в реестр КТК!`);
+      }
       await reloadScenarios();
-      form.resetFields();
+      resetToCreateMode();
       onClose();
     } catch (e) {
-      message.error(`Ошибка создания сценария: ${errorText(e)}`);
+      message.error(`Ошибка сохранения сценария: ${errorText(e)}`);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleJsonSubmit = async () => {
     try {
@@ -143,6 +159,38 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
     }
   };
 
+  const handleEditVisual = (scenario: ScenarioItem) => {
+    setEditingScenarioId(scenario.id);
+    form.setFieldsValue({
+      id: scenario.id,
+      title: scenario.title,
+      short_name: scenario.short_name,
+      description: scenario.description || '',
+      T_1: scenario.initial_state?.T_1 ?? 280,
+      P_1: scenario.initial_state?.P_1 ?? 0.35,
+      L_1: scenario.initial_state?.L_1 ?? 50,
+      L_2: scenario.initial_state?.L_2 ?? 50,
+      T_1_Sp: scenario.initial_state?.T_1_Sp ?? 280,
+      V_1: scenario.initial_state?.V_1 ?? true,
+      V_2: scenario.initial_state?.V_2 ?? false,
+      V_3: scenario.initial_state?.V_3 ?? true,
+      checklist: (scenario.checklist || []).map((row, index) => {
+        const { conditionType, targetVal } = conditionToPreset(row.condition);
+        return {
+          id: row.id || `step_${index + 1}`,
+          title: row.title,
+          hint_training: row.hint_training ?? '',
+          hint_exam: row.hint_exam ?? '',
+          conditionType,
+          targetVal,
+        };
+      }),
+      golden_sequence: scenario.golden_sequence || [],
+    });
+    setActiveTab('1');
+    message.info(`Сценарий '${scenario.title}' загружен для редактирования.`);
+  };
+
   return (
     <S.StyledModal
       title={
@@ -152,7 +200,10 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
         </S.ModalTitleWrapper>
       }
       open={visible}
-      onCancel={onClose}
+      onCancel={() => {
+        resetToCreateMode();
+        onClose();
+      }}
       footer={null}
       width={820}
       destroyOnHidden
@@ -166,7 +217,7 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
             key: '1',
             label: (
               <span>
-                <FileTextOutlined /> Визуальный конструктор
+                <FileTextOutlined /> Визуальный конструктор {editingScenarioId ? '(Редактирование)' : ''}
               </span>
             ),
             children: (
@@ -178,8 +229,9 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
               >
                 <S.TopInputsGrid>
                   <Form.Item name="id" label="ID Сценария (англ.)" rules={[{ required: true, message: 'Введите ID' }]}>
-                    <Input placeholder="например: desalter_flush" />
+                    <Input placeholder="например: desalter_flush" disabled={Boolean(editingScenarioId)} />
                   </Form.Item>
+
                   <Form.Item name="title" label="Название Сценария" rules={[{ required: true, message: 'Введите название' }]}>
                     <Input placeholder="например: Промывка ЭЛОУ" />
                   </Form.Item>
@@ -292,11 +344,22 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                 </Form.Item>
 
                 <S.ModalFooterActions>
-                  <Button onClick={onClose}>Отмена</Button>
-                  <Button type="primary" htmlType="submit" loading={loading} icon={<PlusOutlined />}>
-                    Сохранить сценарий в реестр КТК
+                  {editingScenarioId && (
+                    <Button onClick={resetToCreateMode}>
+                      Отменить редактирование
+                    </Button>
+                  )}
+                  <Button onClick={() => { resetToCreateMode(); onClose(); }}>Отмена</Button>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={loading}
+                    icon={editingScenarioId ? <SaveOutlined /> : <PlusOutlined />}
+                  >
+                    {editingScenarioId ? 'Сохранить изменения в сценарии' : 'Сохранить сценарий в реестр КТК'}
                   </Button>
                 </S.ModalFooterActions>
+
               </Form>
             ),
           },
@@ -374,19 +437,30 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
                           title="Открыть в JSON-редакторе (для копии или правки)"
                         />
                         {s.is_custom ? (
-                          <Popconfirm
-                            title="Удалить пользовательский сценарий?"
-                            onConfirm={() => handleDeleteScenario(s.id)}
-                            okText="Да"
-                            cancelText="Отмена"
-                          >
-                            <Button danger size="small" icon={<DeleteOutlined />}>
-                              Удалить
+                          <>
+                            <Button
+                              size="small"
+                              icon={<EditOutlined />}
+                              onClick={() => handleEditVisual(s)}
+                              title="Редактировать сценарий в визуальном конструкторе"
+                            >
+                              Редактировать
                             </Button>
-                          </Popconfirm>
+                            <Popconfirm
+                              title="Удалить пользовательский сценарий?"
+                              onConfirm={() => handleDeleteScenario(s.id)}
+                              okText="Да"
+                              cancelText="Отмена"
+                            >
+                              <Button danger size="small" icon={<DeleteOutlined />}>
+                                Удалить
+                              </Button>
+                            </Popconfirm>
+                          </>
                         ) : (
                           <S.BuiltinTag>Встроенный техрегламент</S.BuiltinTag>
                         )}
+
                       </div>
                     }
                   >
