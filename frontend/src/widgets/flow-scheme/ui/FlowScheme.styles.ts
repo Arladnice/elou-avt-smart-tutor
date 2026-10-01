@@ -658,4 +658,54 @@ export const BlockFidelityBadge = styled.g<{ $level: 'aggregated' | 'detailed' }
   }
 `;
 
+export const ViewModeSegment = styled.div`
+  display: inline-flex;
+  align-items: center;
+  background: ${props => props.theme.colors.surfaceMuted};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+`;
+
+export const ViewModeButton = styled.button<{ $isActive: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  border: 1px solid ${props => props.$isActive ? props.theme.colors.primary : 'transparent'};
+  background: ${props => props.$isActive ? props.theme.colors.surface : 'transparent'};
+  color: ${props => props.$isActive ? props.theme.colors.primary : props.theme.colors.textMuted};
+  cursor: pointer;
+  box-shadow: ${props => props.$isActive ? `0 1px 3px ${props.theme.colors.shadow}` : 'none'};
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: ${props => props.theme.colors.text};
+    background: ${props => props.$isActive ? props.theme.colors.surface : props.theme.colors.surfaceLight};
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+`;
+
+export const WebGlBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ${props => props.theme.fonts.mono};
+  border-radius: 4px;
+  color: ${props => props.theme.colors.accent};
+  background: ${props => props.theme.colors.accentMuted};
+  border: 1px solid ${props => props.theme.colors.accent};
+`;
+
+
 

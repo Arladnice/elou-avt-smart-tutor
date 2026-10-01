@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { App, Button, Select, Tooltip } from 'antd';
 import { useTheme } from 'styled-components';
-import { Activity, Maximize2, TrendingUp, ZoomIn, ZoomOut, Sliders } from 'lucide-react';
+import { Activity, Maximize2, TrendingUp, ZoomIn, ZoomOut, Sliders, Box, Layers } from 'lucide-react';
 import { useSession } from '@/entities/session';
 import { useSimulatorActions } from '@/entities/simulator';
 import { useTelemetry, type PumpId, type ValveId } from '@/entities/telemetry';
+import { PlantDigitalTwin3D } from '@/widgets/digital-twin-3d';
 import {
   useMnemoscheme,
   PumpSymbol,
@@ -56,6 +57,7 @@ const FlowScheme: React.FC = () => {
   const { toggleValve, togglePump } = useSimulatorActions();
   const { activeScheme, presets, activePresetId, selectPreset, openBuilder } = useMnemoscheme();
 
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<EquipmentId | null>(null);
 
   const schemeWidth = activeScheme.width || 1260;
@@ -253,86 +255,125 @@ const FlowScheme: React.FC = () => {
           <S.HeaderLeftGroup>
             <S.HeaderTitleContainer>
               <Activity size={14} />
-              {activeScheme.name}
+              {viewMode === '2d' ? activeScheme.name : '3D Цифровой двойник ЭЛОУ-АВТ-6'}
             </S.HeaderTitleContainer>
 
-            <S.PresetSelectorWrapper>
-              <span>Схема:</span>
-              <Select
-                size="small"
-                value={activePresetId}
-                style={{ width: 230 }}
-                onChange={selectPreset}
-                options={presets.map(p => ({
-                  value: p.id,
-                  label: p.isBuiltin ? `🔒 ${p.name}` : `✏️ ${p.name}`,
-                }))}
-              />
-            </S.PresetSelectorWrapper>
-
-            <Tooltip title="Открыть интерактивный конструктор мнемосхем">
-              <Button
-                size="small"
-                icon={<Sliders size={13} />}
-                onClick={openBuilder}
+            <S.ViewModeSegment role="radiogroup" aria-label="Режим отображения мнемосхемы">
+              <S.ViewModeButton
+                type="button"
+                role="radio"
+                aria-checked={viewMode === '2d'}
+                $isActive={viewMode === '2d'}
+                onClick={() => setViewMode('2d')}
+                title="Классическая 2D мнемосхема технологического процесса"
               >
-                Конструктор
-              </Button>
-            </Tooltip>
+                <Layers size={13} />
+                2D Схема
+              </S.ViewModeButton>
+              <S.ViewModeButton
+                type="button"
+                role="radio"
+                aria-checked={viewMode === '3d'}
+                $isActive={viewMode === '3d'}
+                onClick={() => setViewMode('3d')}
+                title="Интерактивный 3D цифровой двойник установки"
+              >
+                <Box size={13} />
+                3D Двойник
+              </S.ViewModeButton>
+            </S.ViewModeSegment>
+
+            {viewMode === '2d' && (
+              <>
+                <S.PresetSelectorWrapper>
+                  <span>Схема:</span>
+                  <Select
+                    size="small"
+                    value={activePresetId}
+                    style={{ width: 230 }}
+                    onChange={selectPreset}
+                    options={presets.map(p => ({
+                      value: p.id,
+                      label: p.isBuiltin ? `🔒 ${p.name}` : `✏️ ${p.name}`,
+                    }))}
+                  />
+                </S.PresetSelectorWrapper>
+
+                <Tooltip title="Открыть интерактивный конструктор мнемосхем">
+                  <Button
+                    size="small"
+                    icon={<Sliders size={13} />}
+                    onClick={openBuilder}
+                  >
+                    Конструктор
+                  </Button>
+                </Tooltip>
+              </>
+            )}
           </S.HeaderLeftGroup>
 
           <S.HeaderStatusContainer>
+            {viewMode === '3d' && (
+              <S.WebGlBadge>
+                <Box size={12} />
+                <span>WebGL 3D · 60 FPS</span>
+              </S.WebGlBadge>
+            )}
             <TrendingUp size={12} />
             <span>Телеметрия 1 с</span>
             <S.OnlineBadge $isOnline={isOnline}>
               {isOnline ? `Online · ${wsLatency} мс` : 'Автономный режим'}
             </S.OnlineBadge>
-            <S.ZoomControls aria-label="Управление масштабом мнемосхемы">
-              <S.ZoomButton
-                type="button"
-                title="Уменьшить масштаб"
-                aria-label="Уменьшить масштаб"
-                onClick={() => scaleViewBox(1 / 1.25)}
-                disabled={zoomPercent <= 100}
-              >
-                <ZoomOut size={15} />
-              </S.ZoomButton>
-              <S.ZoomValue aria-live="polite">{zoomPercent}%</S.ZoomValue>
-              <S.ZoomButton
-                type="button"
-                title="Увеличить масштаб"
-                aria-label="Увеличить масштаб"
-                onClick={() => scaleViewBox(1.25)}
-                disabled={zoomPercent >= MAX_ZOOM * 100}
-              >
-                <ZoomIn size={15} />
-              </S.ZoomButton>
-              <S.ZoomButton
-                type="button"
-                title="Показать всю схему"
-                aria-label="Показать всю схему"
-                onClick={() => setViewBox(defaultViewBox)}
-              >
-                <Maximize2 size={14} />
-              </S.ZoomButton>
-            </S.ZoomControls>
+            {viewMode === '2d' && (
+              <S.ZoomControls aria-label="Управление масштабом мнемосхемы">
+                <S.ZoomButton
+                  type="button"
+                  title="Уменьшить масштаб"
+                  aria-label="Уменьшить масштаб"
+                  onClick={() => scaleViewBox(1 / 1.25)}
+                  disabled={zoomPercent <= 100}
+                >
+                  <ZoomOut size={15} />
+                </S.ZoomButton>
+                <S.ZoomValue aria-live="polite">{zoomPercent}%</S.ZoomValue>
+                <S.ZoomButton
+                  type="button"
+                  title="Увеличить масштаб"
+                  aria-label="Увеличить масштаб"
+                  onClick={() => scaleViewBox(1.25)}
+                  disabled={zoomPercent >= MAX_ZOOM * 100}
+                >
+                  <ZoomIn size={15} />
+                </S.ZoomButton>
+                <S.ZoomButton
+                  type="button"
+                  title="Показать всю схему"
+                  aria-label="Показать всю схему"
+                  onClick={() => setViewBox(defaultViewBox)}
+                >
+                  <Maximize2 size={14} />
+                </S.ZoomButton>
+              </S.ZoomControls>
+            )}
           </S.HeaderStatusContainer>
         </S.SchemeHeader>
 
-        <S.SchemeViewport>
-          <S.SVGCanvas
-            viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
-            role="img"
-            aria-label={`Мнемосхема ${activeScheme.name}`}
-            $isPanning={isPanning}
-            onWheel={handleWheel}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={stopPanning}
-            onPointerCancel={stopPanning}
-          >
-            <defs>
-              <linearGradient id="scheme-panel" x1="0" y1="0" x2="0" y2="1">
+        {viewMode === '2d' ? (
+          <S.SchemeViewport>
+            <S.SVGCanvas
+              viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
+              role="img"
+              aria-label={`Мнемосхема ${activeScheme.name}`}
+              $isPanning={isPanning}
+              onWheel={handleWheel}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={stopPanning}
+              onPointerCancel={stopPanning}
+            >
+              <defs>
+                <linearGradient id="scheme-panel" x1="0" y1="0" x2="0" y2="1">
+
                 <stop offset="0%" stopColor={theme.colors.mnemonicPanelTop} />
                 <stop offset="100%" stopColor={theme.colors.mnemonicPanelBottom} />
               </linearGradient>
@@ -529,7 +570,12 @@ const FlowScheme: React.FC = () => {
           </S.SVGCanvas>
           <S.ZoomHint>Колесо — масштаб · перетаскивание — перемещение</S.ZoomHint>
         </S.SchemeViewport>
-      </S.SchemeContainer>
+      ) : (
+        <PlantDigitalTwin3D onOpenEquipment={(id) => setSelectedEquipmentId(id as EquipmentId)} />
+      )}
+
+    </S.SchemeContainer>
+
 
       <EquipmentDrawer equipmentId={selectedEquipmentId} onClose={() => setSelectedEquipmentId(null)} />
     </>
