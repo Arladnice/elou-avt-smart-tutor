@@ -19,6 +19,7 @@ export const createIndustrialGround = (materials: TwinMaterials, themeMode: 'lig
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.05;
   ground.receiveShadow = true;
+  ground.name = 'ground_plane';
   group.add(ground);
 
   // Инженерная координатная CAD-сетка
@@ -45,6 +46,7 @@ export const createIndustrialGround = (materials: TwinMaterials, themeMode: 'lig
     const plinth = new THREE.Mesh(new THREE.BoxGeometry(f.w, 0.12, f.d), plinthMat);
     plinth.position.set(f.x, 0.06, f.z);
     plinth.receiveShadow = true;
+    plinth.name = 'ground_plinth';
     group.add(plinth);
 
     // Желтая сигнальная полоса по периметру фундамента
@@ -295,4 +297,37 @@ export const createCagedLadder = (
   }
 
   return ladderGroup;
+};
+
+/** Реактивно обновляет цвета плиты площадки, технологических фундаментов и сетки при смене темы */
+export const applyThemeToGround = (groundGroup: THREE.Group, themeMode: 'light' | 'dark') => {
+  const theme = TWIN_THEMES[themeMode];
+
+  // 1. Основная бетонная плита
+  const groundMesh = groundGroup.getObjectByName('ground_plane') as THREE.Mesh | null;
+  if (groundMesh && groundMesh.material) {
+    (groundMesh.material as THREE.MeshStandardMaterial).color.setHex(theme.ground);
+    (groundMesh.material as THREE.MeshStandardMaterial).needsUpdate = true;
+  }
+
+  // 2. Бетонные технологические фундаменты оборудования
+  groundGroup.traverse(child => {
+    if (child.name === 'ground_plinth' && (child as THREE.Mesh).material) {
+      ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(theme.concrete);
+      ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).needsUpdate = true;
+    }
+  });
+
+  // 3. Координатная CAD-сетка
+  const oldGrid = groundGroup.getObjectByName('ground_grid');
+  if (oldGrid) {
+    groundGroup.remove(oldGrid);
+    if ('dispose' in oldGrid) {
+      (oldGrid as any).dispose();
+    }
+  }
+  const newGrid = new THREE.GridHelper(160, 80, theme.groundGridPrimary, theme.groundGridSecondary);
+  newGrid.position.y = 0.01;
+  newGrid.name = 'ground_grid';
+  groundGroup.add(newGrid);
 };

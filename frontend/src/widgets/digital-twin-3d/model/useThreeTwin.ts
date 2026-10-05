@@ -22,6 +22,9 @@ import {
   createTwinMaterials,
   applyThemeToMaterials,
   applyMediumHighlight,
+  applyXRayToMaterials,
+  applyFlowsToMaterials,
+  applyThemeToGround,
   createValve3D,
   type TwinMaterials,
 } from './twinGeometry';
@@ -37,10 +40,12 @@ interface UseThreeTwinProps {
   themeMode?: 'light' | 'dark';
   showXRay: boolean;
   showFlows: boolean;
+  showHUD?: boolean;
   selectedMedium?: string | null;
   onTogglePump: (pumpId: PumpId) => void;
   onToggleValve: (valveId: ValveId) => void;
   onOpenEquipment: (equipmentId: EquipmentId) => void;
+  onFpsUpdate?: (fps: number) => void;
 }
 
 export interface ProjectedHotspot extends Hotspot3D {
@@ -60,14 +65,31 @@ export const useThreeTwin = ({
   themeMode = 'dark',
   showXRay,
   showFlows,
+  showHUD = true,
   selectedMedium = null,
   onTogglePump,
   onToggleValve,
   onOpenEquipment,
+  onFpsUpdate,
 }: UseThreeTwinProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [projectedHotspots, setProjectedHotspots] = useState<ProjectedHotspot[]>([]);
   const [hoveredName, setHoveredName] = useState<string | null>(null);
+
+  // Ссылки на DOM элементы плашек телеметрии для прямого аппаратного позиционирования без ререндеров
+  const badgeElementsRef = useRef<Map<string, HTMLElement>>(new Map());
+  const containerSizeRef = useRef({ width: 800, height: 600 });
+  const cameraForwardRef = useRef(new THREE.Vector3());
+  const tempTargetRef = useRef(new THREE.Vector3());
+  const toTargetRef = useRef(new THREE.Vector3());
+  const tempVecRef = useRef(new THREE.Vector3());
+
+  const registerBadgeRef = useCallback((id: string, el: HTMLElement | null) => {
+    if (el) {
+      badgeElementsRef.current.set(id, el);
+    } else {
+      badgeElementsRef.current.delete(id);
+    }
+  }, []);
 
   // Ссылки на живые изменяемые объекты Three.js
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -79,10 +101,24 @@ export const useThreeTwin = ({
   const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
   const sunLightRef = useRef<THREE.DirectionalLight | null>(null);
   const blueBacklightRef = useRef<THREE.DirectionalLight | null>(null);
+  const groundGroupRef = useRef<THREE.Group | null>(null);
   const groundGridRef = useRef<THREE.GridHelper | null>(null);
 
+  const fpsCountRef = useRef(0);
+  const lastFpsTimeRef = useRef(performance.now());
+  const onFpsUpdateRef = useRef(onFpsUpdate);
+  onFpsUpdateRef.current = onFpsUpdate;
+
   const k1LiquidRef = useRef<THREE.Mesh | null>(null);
+  const k1LevelRingRef = useRef<THREE.Mesh | null>(null);
+  const k1LevelCapRef = useRef<THREE.Mesh | null>(null);
+  const k1GaugePipRef = useRef<THREE.Mesh | null>(null);
   const k2LiquidRef = useRef<THREE.Mesh | null>(null);
+  const k2LevelRingRef = useRef<THREE.Mesh | null>(null);
+  const k2LevelCapRef = useRef<THREE.Mesh | null>(null);
+  const k2GaugePipRef = useRef<THREE.Mesh | null>(null);
+  const desalterWaterLayersRef = useRef<THREE.Mesh[]>([]);
+  const desalterGridsRef = useRef<THREE.Mesh[]>([]);
   const p1LightRef = useRef<THREE.PointLight | null>(null);
   const p3LightRef = useRef<THREE.PointLight | null>(null);
   const p1PortRef = useRef<THREE.Mesh | null>(null);
@@ -105,6 +141,7 @@ export const useThreeTwin = ({
     activePreset,
     showXRay,
     showFlows,
+    showHUD,
     selectedMedium,
   });
   latestPropsRef.current = {
@@ -116,6 +153,7 @@ export const useThreeTwin = ({
     activePreset,
     showXRay,
     showFlows,
+    showHUD,
     selectedMedium,
   };
 
@@ -144,6 +182,7 @@ export const useThreeTwin = ({
     // Рендерер
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
+    containerSizeRef.current = { width, height };
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -184,26 +223,39 @@ export const useThreeTwin = ({
     scene.add(blueBacklight);
     blueBacklightRef.current = blueBacklight;
 
+    // Мягкий рассеянный полусферический свет для устранения провалов в глубокую черноту
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.7);
+    scene.add(hemiLight);
+
     // Материалы и геометрия
     const materials = createTwinMaterials(themeMode);
     materialsRef.current = materials;
+    applyXRayToMaterials(materials, showXRay, themeMode);
+    applyFlowsToMaterials(materials, showFlows, selectedMedium);
 
     // Индустриальная площадка
     const groundGroup = createIndustrialGround(materials, themeMode);
     scene.add(groundGroup);
+    groundGroupRef.current = groundGroup;
     groundGridRef.current = groundGroup.getObjectByName('ground_grid') as THREE.GridHelper | null;
 
     // Главная трубная эстакада (Pipe Rack)
     scene.add(createMainPipeRack(materials));
 
-    // Колонны К-1 и К-2
-    const { group: k1Group, liquidMesh: k1Liq } = createColumnK1(materials);
+    // Колонны К-1 и К-2 со светящимися индикаторами зеркала уровня и рейками КИПиА
+    const { group: k1Group, liquidMesh: k1Liq, levelRing: k1Ring, levelCap: k1Cap, gaugePip: k1Pip } = createColumnK1(materials);
     scene.add(k1Group);
     k1LiquidRef.current = k1Liq;
+    k1LevelRingRef.current = k1Ring;
+    k1LevelCapRef.current = k1Cap;
+    k1GaugePipRef.current = k1Pip;
 
-    const { group: k2Group, liquidMesh: k2Liq } = createColumnK2(materials);
+    const { group: k2Group, liquidMesh: k2Liq, levelRing: k2Ring, levelCap: k2Cap, gaugePip: k2Pip } = createColumnK2(materials);
     scene.add(k2Group);
     k2LiquidRef.current = k2Liq;
+    k2LevelRingRef.current = k2Ring;
+    k2LevelCapRef.current = k2Cap;
+    k2GaugePipRef.current = k2Pip;
 
     // Пароэжекторная вакуум-система (барометрический конденсатор и эжекторы)
     scene.add(createVacuumEjectorSystem3D(materials));
@@ -228,9 +280,13 @@ export const useThreeTwin = ({
       { tag: 'Э-4', x: -20, z: 5 },
       { tag: 'Э-6', x: -14, z: 5 },
     ];
+    desalterWaterLayersRef.current = [];
+    desalterGridsRef.current = [];
     desalterPositions.forEach(d => {
-      const { group: desGroup } = createDesalter(d.tag, d.x, d.z, materials);
+      const { group: desGroup, waterLayer, grid1, grid2 } = createDesalter(d.tag, d.x, d.z, materials);
       scene.add(desGroup);
+      desalterWaterLayersRef.current.push(waterLayer);
+      desalterGridsRef.current.push(grid1, grid2);
     });
 
     // Насосы
@@ -279,7 +335,10 @@ export const useThreeTwin = ({
 
     const { group: pipeGroup, updateParticles } = createRefineryPipes(materials, isStreamActiveHelper);
     scene.add(pipeGroup);
-    updateParticlesRef.current = (delta: number) => updateParticles(delta, latestPropsRef.current.selectedMedium || null);
+    updateParticlesRef.current = (delta: number) => {
+      const { selectedMedium: sm, showFlows: sf } = latestPropsRef.current;
+      updateParticles(delta, sm || null, sf);
+    };
 
     // Интерактивные объекты для raycasting
     const interactives: THREE.Object3D[] = [];
@@ -295,6 +354,7 @@ export const useThreeTwin = ({
       if (!container || !rendererRef.current || !cameraRef.current) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
+      containerSizeRef.current = { width: w, height: h };
       cameraRef.current.aspect = w / h;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(w, h);
@@ -312,35 +372,84 @@ export const useThreeTwin = ({
       const delta = (now - lastTime) / 1000;
       lastTime = now;
 
-      const { sensors: curSens, valves: curValves, pumps: curPumps, setpoints: curSp, activePreset: curPreset, showXRay: curXRay } = latestPropsRef.current;
+      const {
+        sensors: curSens,
+        valves: curValves,
+        pumps: curPumps,
+        activePreset: curPreset,
+        showXRay: curXRay,
+        showHUD: curShowHUD = true,
+      } = latestPropsRef.current;
 
       // 1. Обновление уровней жидкостей в К-1 и К-2
       if (k1LiquidRef.current) {
         const levelNorm = Math.max(0.05, Math.min(1.0, (curSens.L_1 ?? 50) / 100));
-        k1LiquidRef.current.scale.set(1, levelNorm * 4.2, 1);
+        const h1 = levelNorm * 4.2;
+        k1LiquidRef.current.scale.set(1, h1, 1);
         k1LiquidRef.current.visible = curXRay;
+        const topY1 = 3.6 + h1;
+        if (k1LevelRingRef.current) {
+          k1LevelRingRef.current.position.y = topY1;
+          k1LevelRingRef.current.visible = curXRay;
+        }
+        if (k1LevelCapRef.current) {
+          k1LevelCapRef.current.position.y = topY1;
+          k1LevelCapRef.current.visible = curXRay;
+        }
+        if (k1GaugePipRef.current) {
+          k1GaugePipRef.current.position.y = topY1;
+        }
       }
       if (k2LiquidRef.current) {
         const levelNorm = Math.max(0.05, Math.min(1.0, (curSens.L_2 ?? 50) / 100));
-        k2LiquidRef.current.scale.set(1, levelNorm * 4.0, 1);
+        const h2 = levelNorm * 4.0;
+        k2LiquidRef.current.scale.set(1, h2, 1);
         k2LiquidRef.current.visible = curXRay;
+        const topY2 = 1.4 + h2;
+        if (k2LevelRingRef.current) {
+          k2LevelRingRef.current.position.y = topY2;
+          k2LevelRingRef.current.visible = curXRay;
+        }
+        if (k2LevelCapRef.current) {
+          k2LevelCapRef.current.position.y = topY2;
+          k2LevelCapRef.current.visible = curXRay;
+        }
+        if (k2GaugePipRef.current) {
+          k2GaugePipRef.current.position.y = topY2;
+        }
       }
 
-      // 2. Обновление пламени печей
+      // Внутренние элементы дегидраторов видны только в режиме X-Ray
+      desalterWaterLayersRef.current.forEach(w => {
+        w.visible = curXRay;
+      });
+      desalterGridsRef.current.forEach(g => {
+        g.visible = curXRay;
+      });
+
+      // 2. Обновление пламени печей с живым эффектом мерцания огня
       const isP1FlameOn = Boolean(curSens.Flame_P1 && curValves.FUEL_P1 && curSens.T_1 > 50);
       if (p1LightRef.current) {
-        p1LightRef.current.intensity = isP1FlameOn ? 2.5 + Math.sin(now * 0.01) * 0.6 : 0;
+        p1LightRef.current.intensity = isP1FlameOn ? 3.0 + Math.sin(now * 0.01) * 0.8 : 0;
       }
       if (p1PortRef.current) {
         p1PortRef.current.visible = isP1FlameOn;
+        if (isP1FlameOn) {
+          const fl1 = 0.9 + Math.sin(now * 0.014) * 0.1;
+          p1PortRef.current.scale.set(1, fl1, 1);
+        }
       }
 
       const isP3FlameOn = Boolean(curSens.Flame_P3 && curValves.FUEL_P3 && curSens.T_3 > 50);
       if (p3LightRef.current) {
-        p3LightRef.current.intensity = isP3FlameOn ? 2.5 + Math.cos(now * 0.012) * 0.6 : 0;
+        p3LightRef.current.intensity = isP3FlameOn ? 3.0 + Math.cos(now * 0.012) * 0.8 : 0;
       }
       if (p3PortRef.current) {
         p3PortRef.current.visible = isP3FlameOn;
+        if (isP3FlameOn) {
+          const fl3 = 0.9 + Math.cos(now * 0.016) * 0.1;
+          p3PortRef.current.scale.set(1, fl3, 1);
+        }
       }
 
       // 3. Обновление индикаторов насосов
@@ -374,50 +483,87 @@ export const useThreeTwin = ({
       controls.update();
       renderer.render(scene, camera);
 
-      // 7. Проекция 3D меток КИПиА с умным алгоритмом разделения (anti-collision)
-      if (container && cameraRef.current) {
-        const rect = container.getBoundingClientRect();
-        const halfW = rect.width / 2;
-        const halfH = rect.height / 2;
+      // 7. Проекция 3D меток КИПиА с прямым аппаратным позиционированием (Zero-React-Rerender)
+      if (curShowHUD && cameraRef.current) {
+        const { width: wWidth, height: wHeight } = containerSizeRef.current;
+        const halfW = wWidth / 2;
+        const halfH = wHeight / 2;
+        const cam = cameraRef.current;
+        cam.getWorldDirection(cameraForwardRef.current);
 
-        const visibleBadges: ProjectedHotspot[] = [];
+        const visibleBadges: Array<{ id: string; sx: number; sy: number }> = [];
 
-        TWIN_HOTSPOTS.forEach(hs => {
-          const v = new THREE.Vector3(...hs.worldPos);
-          v.project(cameraRef.current!);
+        for (let k = 0; k < TWIN_HOTSPOTS.length; k++) {
+          const hs = TWIN_HOTSPOTS[k];
+          const el = badgeElementsRef.current.get(hs.id);
+          if (!el) continue;
 
-          const isVisible = v.z < 1;
-          const sx = v.x * halfW + halfW;
-          const sy = -(v.y * halfH) + halfH;
-          const liveVal = hs.valueGetter ? hs.valueGetter(curSens as any, curSp as any) : undefined;
-
-          if (isVisible && sx >= 20 && sx <= rect.width - 20 && sy >= 30 && sy <= rect.height - 30) {
-            visibleBadges.push({
-              ...hs,
-              screenX: sx,
-              screenY: sy,
-              visible: true,
-              liveValue: liveVal,
-            });
+          // Проверка: находится ли точка строго перед плоскостью камеры (отсечение объектов сзади при 360 облёте)
+          tempTargetRef.current.set(hs.worldPos[0], hs.worldPos[1], hs.worldPos[2]);
+          toTargetRef.current.subVectors(tempTargetRef.current, cam.position);
+          const dot = toTargetRef.current.dot(cameraForwardRef.current);
+          if (dot <= 0) {
+            if (el.style.display !== 'none') el.style.display = 'none';
+            continue;
           }
-        });
 
-        // Сортируем по высоте на экране (screenY)
-        visibleBadges.sort((a, b) => a.screenY - b.screenY);
+          // Проецируем в NDC координаты
+          tempVecRef.current.copy(tempTargetRef.current).project(cam);
+          if (tempVecRef.current.z < -1 || tempVecRef.current.z > 1) {
+            if (el.style.display !== 'none') el.style.display = 'none';
+            continue;
+          }
 
-        // Устраняем наложение: если две плашки слишком близко по X (< 140px) и по Y (< 42px),
-        // смещаем нижнюю плашку вниз, чтобы плашки никогда не перекрывали друг друга
+          const sx = tempVecRef.current.x * halfW + halfW;
+          const sy = -(tempVecRef.current.y * halfH) + halfH;
+
+          // Отсекаем выход за границы экрана
+          if (sx >= 40 && sx <= wWidth - 40 && sy >= 30 && sy <= wHeight - 30) {
+            visibleBadges.push({ id: hs.id, sx: Math.round(sx), sy: Math.round(sy) });
+          } else {
+            if (el.style.display !== 'none') el.style.display = 'none';
+          }
+        }
+
+        // Сортировка по высоте на экране (screenY) и анти-коллизия
+        visibleBadges.sort((a, b) => a.sy - b.sy);
         for (let i = 0; i < visibleBadges.length; i++) {
           for (let j = i + 1; j < visibleBadges.length; j++) {
-            const dx = Math.abs(visibleBadges[i].screenX - visibleBadges[j].screenX);
-            const dy = visibleBadges[j].screenY - visibleBadges[i].screenY;
-            if (dx < 140 && dy < 42) {
-              visibleBadges[j].screenY += (42 - dy);
+            const dx = Math.abs(visibleBadges[i].sx - visibleBadges[j].sx);
+            const dy = visibleBadges[j].sy - visibleBadges[i].sy;
+            if (dx < 190 && dy < 44) {
+              visibleBadges[j].sy += (44 - dy);
             }
           }
         }
 
-        setProjectedHotspots(visibleBadges);
+        // Аппаратное позиционирование через GPU compositor (transform: translate3d)
+        for (let i = 0; i < visibleBadges.length; i++) {
+          const b = visibleBadges[i];
+          const el = badgeElementsRef.current.get(b.id);
+          if (el) {
+            el.style.transform = `translate3d(${b.sx}px, ${b.sy}px, 0) translate(-50%, -100%)`;
+            if (el.style.display !== 'block') {
+              el.style.display = 'block';
+            }
+          }
+        }
+      } else if (!curShowHUD) {
+        // Если тумблер выключен, скрываем все плашки
+        badgeElementsRef.current.forEach(el => {
+          if (el.style.display !== 'none') el.style.display = 'none';
+        });
+      }
+
+      // 8. Подсчет реального FPS для индикатора статуса
+      fpsCountRef.current++;
+      if (now - lastFpsTimeRef.current >= 600) {
+        const measuredFps = Math.round((fpsCountRef.current * 1000) / (now - lastFpsTimeRef.current));
+        fpsCountRef.current = 0;
+        lastFpsTimeRef.current = now;
+        if (onFpsUpdateRef.current) {
+          onFpsUpdateRef.current(measuredFps);
+        }
       }
 
     };
@@ -450,6 +596,11 @@ export const useThreeTwin = ({
       applyMediumHighlight(materialsRef.current, latestPropsRef.current.selectedMedium);
     }
 
+    // Реактивно обновляем цвета пола, плит фундаментов и координатной сетки
+    if (groundGroupRef.current) {
+      applyThemeToGround(groundGroupRef.current, themeMode);
+    }
+
     // Обновляем освещение
     if (ambientLightRef.current) {
       ambientLightRef.current.color.setHex(theme.ambientColor);
@@ -470,6 +621,18 @@ export const useThreeTwin = ({
     if (!materialsRef.current) return;
     applyMediumHighlight(materialsRef.current, selectedMedium || null);
   }, [selectedMedium]);
+
+  // 2.2. Реактивное переключение режима X-Ray (прозрачность корпусов аппаратов и уровни)
+  useEffect(() => {
+    if (!materialsRef.current) return;
+    applyXRayToMaterials(materialsRef.current, showXRay, themeMode);
+  }, [showXRay, themeMode]);
+
+  // 2.3. Реактивное переключение режима визуализации потоков в трубопроводах
+  useEffect(() => {
+    if (!materialsRef.current) return;
+    applyFlowsToMaterials(materialsRef.current, showFlows, selectedMedium);
+  }, [showFlows, selectedMedium]);
 
   // Плавная фокусировка камеры на заданных координатах
   const focusOnCoordinates = useCallback((position: [number, number, number], target: [number, number, number]) => {
@@ -576,7 +739,8 @@ export const useThreeTwin = ({
 
   return {
     containerRef,
-    projectedHotspots,
+    projectedHotspots: [] as ProjectedHotspot[],
+    registerBadgeRef,
     hoveredName,
     handlePointerMove,
     handleClick,

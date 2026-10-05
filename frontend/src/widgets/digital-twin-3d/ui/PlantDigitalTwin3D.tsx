@@ -14,7 +14,7 @@ import {
   Tag,
   FolderTree,
 } from 'lucide-react';
-import { CAMERA_PRESETS } from '../model/PlantDigitalTwin3D.config';
+import { CAMERA_PRESETS, TWIN_HOTSPOTS } from '../model/PlantDigitalTwin3D.config';
 import type { CameraPreset } from '../model/types';
 import { useThreeTwin } from '../model/useThreeTwin';
 import { PlantNavigatorDrawer } from './PlantNavigatorDrawer';
@@ -22,9 +22,13 @@ import * as S from './PlantDigitalTwin3D.styles';
 
 interface PlantDigitalTwin3DProps {
   onOpenEquipment?: (equipmentId: EquipmentId) => void;
+  onFpsUpdate?: (fps: number) => void;
 }
 
-export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEquipment }) => {
+export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({
+  onOpenEquipment,
+  onFpsUpdate,
+}) => {
   const theme = useTheme();
   const { sensors, valves, pumps, setpoints, status } = useTelemetry();
   const { togglePump, toggleValve } = useSimulatorActions();
@@ -48,7 +52,7 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
 
   const {
     containerRef,
-    projectedHotspots,
+    registerBadgeRef,
     hoveredName,
     handlePointerMove,
     handleClick,
@@ -63,10 +67,12 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
     themeMode: theme.mode,
     showXRay,
     showFlows,
+    showHUD,
     selectedMedium,
     onTogglePump: (pId: PumpId) => togglePump(pId),
     onToggleValve: (vId: ValveId) => toggleValve(vId),
     onOpenEquipment: handleOpenEquipmentSafe,
+    onFpsUpdate,
   });
 
   const getPresetIcon = (id: CameraPreset) => {
@@ -161,20 +167,17 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
       />
 
 
-      <S.HintOverlay>
-        ЛКМ — вращение · ПКМ — панорама · Колесо — зум · Клик — переключение
-      </S.HintOverlay>
+
 
       {/* Проекция 2D HUD меток над 3D оборудованием */}
       {showHUD && (
         <S.HotspotOverlayContainer>
-          {projectedHotspots.map(hs => {
-            if (!hs.visible) return null;
+          {TWIN_HOTSPOTS.map(hs => {
+            const liveValue = hs.valueGetter ? hs.valueGetter(sensors as any, setpoints as any) : undefined;
             return (
               <S.HotspotBadge
                 key={hs.id}
-                $left={hs.screenX}
-                $top={hs.screenY}
+                ref={(el) => registerBadgeRef(hs.id, el)}
                 $category={hs.category}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -187,7 +190,7 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
                   {hs.label}
                   {hs.sublabel && <span>· {hs.sublabel}</span>}
                 </S.BadgeTitle>
-                {hs.liveValue && <S.BadgeValue>{hs.liveValue}</S.BadgeValue>}
+                {liveValue && <S.BadgeValue>{liveValue}</S.BadgeValue>}
               </S.HotspotBadge>
             );
           })}
@@ -255,6 +258,10 @@ export const PlantDigitalTwin3D: React.FC<PlantDigitalTwin3DProps> = ({ onOpenEq
             </S.LegendResetBtn>
           )}
         </S.LegendContainer>
+
+        <S.HintOverlay>
+          ЛКМ — вращение · ПКМ — панорама · Колесо — зум · Клик — переключение
+        </S.HintOverlay>
       </S.BottomBar>
     </S.TwinWrapper>
   );

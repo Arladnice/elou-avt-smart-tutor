@@ -52,8 +52,11 @@ const OperatorPage: React.FC = () => {
         <S.MainArea>
           <S.LeftColumn>
             <FlowScheme
-              render3D={(onOpenEquipment) => (
-                <PlantDigitalTwin3D onOpenEquipment={onOpenEquipment} />
+              render3D={(onOpenEquipment, onFpsUpdate) => (
+                <PlantDigitalTwin3D
+                  onOpenEquipment={onOpenEquipment}
+                  onFpsUpdate={onFpsUpdate}
+                />
               )}
             />
             <S.SidebarLogWrapper>

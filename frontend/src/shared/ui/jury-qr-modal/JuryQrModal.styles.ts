@@ -183,3 +183,50 @@ export const ItemDesc = styled.div`
   color: ${props => props.theme.colors.textMuted};
   line-height: 1.4;
 `;
+
+export const CredentialsBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(2, 132, 199, 0.12)' : 'rgba(2, 132, 199, 0.08)'};
+  border: 1px solid ${props => props.theme.colors.primary};
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: ${props => props.theme.colors.text};
+`;
+
+export const CredentialsHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: ${props => props.theme.colors.primary};
+  font-size: 11px;
+`;
+
+export const CredentialsContent = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: ${props => props.theme.colors.text};
+
+  code {
+    font-family: ${props => props.theme.fonts.mono};
+    background: ${props => props.theme.colors.canvas};
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: ${props => props.theme.colors.accent};
+    border: 1px solid ${props => props.theme.colors.border};
+    font-weight: 600;
+  }
+`;
+
+export const CredentialsNote = styled.div`
+  font-size: 10px;
+  color: ${props => props.theme.colors.textMuted};
+  font-style: italic;
+`;
+

@@ -27,10 +27,11 @@ export const createColumnK1 = (materials: TwinMaterials) => {
   manhole.position.set(0, 2.2, 2.2);
   group.add(manhole);
 
-  // Корпус колонны (16м в высоту, радиус 1.9м)
-  const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 15, 32), materials.steelLight);
+  // Корпус колонны (16м в высоту, радиус 1.9м) — использует vesselShell для прозрачности в режиме X-Ray
+  const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 15, 32), materials.vesselShell);
   bodyMesh.position.y = 11.1;
   bodyMesh.castShadow = true;
+  bodyMesh.renderOrder = 3;
   group.add(bodyMesh);
 
   // Сферический купол шлема
@@ -55,25 +56,49 @@ export const createColumnK1 = (materials: TwinMaterials) => {
   // Вертикальная переходная лестница с корзиной безопасности
   group.add(createCagedLadder(3.0, 17.6, 1.9, Math.PI * 0.75, materials));
 
-  // Смотровая стеклянная секция (X-Ray окно на кубе колонны)
-  const windowMesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.92, 1.92, 4.5, 32, 1, true, -Math.PI / 3, (2 * Math.PI) / 3),
-    materials.glassCutaway
-  );
-  windowMesh.position.y = 6.2;
-  group.add(windowMesh);
-
-  // Внутренний динамический уровень жидкости (L_1)
+  // Внутренний динамический уровень жидкости (L_1) — растет от отметки 3.6м вверх
   const liquidGeo = new THREE.CylinderGeometry(1.85, 1.85, 1, 32);
+  liquidGeo.translate(0, 0.5, 0);
   const liquidMesh = new THREE.Mesh(liquidGeo, materials.crudeLiquid);
-  liquidMesh.position.set(0, 3.8, 0);
+  liquidMesh.position.set(0, 3.6, 0);
+  liquidMesh.renderOrder = 1;
   liquidMesh.name = 'column_k1_liquid';
   group.add(liquidMesh);
 
-  // Перегонные тарелки
+  // Светящееся кольцо мениска зеркала уровня L_1
+  const ringGeo = new THREE.TorusGeometry(1.85, 0.045, 8, 32);
+  const levelRing = new THREE.Mesh(ringGeo, materials.levelRing);
+  levelRing.rotation.x = Math.PI / 2;
+  levelRing.position.set(0, 3.6, 0);
+  levelRing.renderOrder = 2;
+  levelRing.name = 'column_k1_level_ring';
+
+  // Светящийся горизонтальный диск зеркала уровня L_1 (видимый при виде сверху под любым углом)
+  const capGeo = new THREE.CylinderGeometry(1.84, 1.84, 0.04, 32);
+  const levelCap = new THREE.Mesh(capGeo, materials.levelCap);
+  levelCap.position.set(0, 3.6, 0);
+  levelCap.renderOrder = 2;
+  levelCap.name = 'column_k1_level_cap';
+  group.add(levelRing, levelCap);
+
+  // Вертикальная уровнемерная рейка КИПиА на корпусе куба
+  const gaugeTrack = new THREE.Mesh(new THREE.BoxGeometry(0.06, 4.4, 0.04), materials.levelGaugeTrack);
+  gaugeTrack.position.set(1.95, 5.7, 0.2);
+  for (let i = 0; i <= 4; i++) {
+    const mark = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.02), materials.steelBright);
+    mark.position.set(1.97, 3.6 + i * 1.05, 0.2);
+    group.add(mark);
+  }
+  const gaugePip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.06), materials.levelGaugePip);
+  gaugePip.position.set(1.98, 3.6, 0.2);
+  gaugePip.name = 'column_k1_gauge_pip';
+  group.add(gaugeTrack, gaugePip);
+
+  // Перегонные тарелки (видны сквозь полупрозрачный корпус в режиме X-Ray)
   for (let y = 8.5; y <= 16.5; y += 1.6) {
     const tray = new THREE.Mesh(new THREE.CylinderGeometry(1.82, 1.82, 0.05, 24), materials.steelDark);
     tray.position.y = y;
+    tray.renderOrder = 1;
     group.add(tray);
   }
 
@@ -87,7 +112,7 @@ export const createColumnK1 = (materials: TwinMaterials) => {
   const userData: InteractiveMeshUserData = { type: 'equipment', id: 'col-k1', equipmentId: 'K_1', name: 'Ректификационная колонна К-1' };
   bodyMesh.userData = userData;
 
-  return { group, liquidMesh };
+  return { group, liquidMesh, levelRing, levelCap, gaugePip };
 };
 
 /** Создает вакуумную колонну К-2 */
@@ -101,16 +126,18 @@ export const createColumnK2 = (materials: TwinMaterials) => {
   baseMesh.receiveShadow = true;
   group.add(baseMesh);
 
-  // Нижняя широкая часть куба (flash-секция)
-  const bottomBody = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 6, 32), materials.steelLight);
+  // Нижняя широкая часть куба (flash-секция) — использует vesselShell
+  const bottomBody = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 6, 32), materials.vesselShell);
   bottomBody.position.y = 4.4;
   bottomBody.castShadow = true;
+  bottomBody.renderOrder = 3;
   group.add(bottomBody);
 
-  // Конический переход
-  const cone = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.2, 2.5, 32), materials.steelLight);
+  // Конический переход — использует vesselShell
+  const cone = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.2, 2.5, 32), materials.vesselShell);
   cone.position.y = 8.65;
   cone.castShadow = true;
+  cone.renderOrder = 3;
   group.add(cone);
 
   // Верхняя вакуумная секция
@@ -132,11 +159,43 @@ export const createColumnK2 = (materials: TwinMaterials) => {
   // Вертикальная лестница с защитой
   group.add(createCagedLadder(2.5, 14.6, 1.9, Math.PI * 0.75, materials));
 
-  // Внутренний динамический уровень L_2
-  const liquidMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 1, 32), materials.crudeLiquid);
-  liquidMesh.position.set(0, 2.4, 0);
+  // Внутренний динамический уровень L_2 (растет от отметки 1.4м вверх)
+  const liquidGeo = new THREE.CylinderGeometry(2.1, 2.1, 1, 32);
+  liquidGeo.translate(0, 0.5, 0);
+  const liquidMesh = new THREE.Mesh(liquidGeo, materials.k2Liquid);
+  liquidMesh.position.set(0, 1.4, 0);
+  liquidMesh.renderOrder = 1;
   liquidMesh.name = 'column_k2_liquid';
   group.add(liquidMesh);
+
+  // Светящееся кольцо мениска зеркала уровня L_2
+  const ringGeo = new THREE.TorusGeometry(2.1, 0.045, 8, 32);
+  const levelRing = new THREE.Mesh(ringGeo, materials.levelRingK2);
+  levelRing.rotation.x = Math.PI / 2;
+  levelRing.position.set(0, 1.4, 0);
+  levelRing.renderOrder = 2;
+  levelRing.name = 'column_k2_level_ring';
+
+  // Светящийся горизонтальный диск зеркала уровня L_2
+  const capGeo = new THREE.CylinderGeometry(2.08, 2.08, 0.04, 32);
+  const levelCap = new THREE.Mesh(capGeo, materials.levelCapK2);
+  levelCap.position.set(0, 1.4, 0);
+  levelCap.renderOrder = 2;
+  levelCap.name = 'column_k2_level_cap';
+  group.add(levelRing, levelCap);
+
+  // Вертикальная уровнемерная рейка КИПиА на корпусе куба К-2
+  const gaugeTrack = new THREE.Mesh(new THREE.BoxGeometry(0.06, 4.2, 0.04), materials.levelGaugeTrack);
+  gaugeTrack.position.set(2.25, 3.4, 0.2);
+  for (let i = 0; i <= 4; i++) {
+    const mark = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.02), materials.steelBright);
+    mark.position.set(2.27, 1.4 + i * 1.0, 0.2);
+    group.add(mark);
+  }
+  const gaugePip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.06), materials.levelRingK2);
+  gaugePip.position.set(2.28, 1.4, 0.2);
+  gaugePip.name = 'column_k2_gauge_pip';
+  group.add(gaugeTrack, gaugePip);
 
   // Штуцер шлема вакуумной колонны К-2 под мощную паровую вакуум-магистраль
   const vacNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 1.2, 24), materials.steelDark);
@@ -148,7 +207,7 @@ export const createColumnK2 = (materials: TwinMaterials) => {
   const userData: InteractiveMeshUserData = { type: 'equipment', id: 'col-k2', equipmentId: 'K_2', name: 'Вакуумная колонна К-2' };
   bottomBody.userData = userData;
 
-  return { group, liquidMesh };
+  return { group, liquidMesh, levelRing, levelCap, gaugePip };
 };
 
 /** Создает трубчатую нагревательную печь с внешним металлокаркасом и дымовой трубой */
@@ -209,10 +268,16 @@ export const createFurnace = (name: 'P_1' | 'P_3', posZ: number, materials: Twin
   const stackPlatform = createColumnCatwalk(0.85, 12.0, materials);
   group.add(stackPlatform);
 
-  // Красный сигнальный оголовок трубы
-  const stackTop = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.78, 1.2, 24), materials.valveClosed);
-  stackTop.position.y = 18.8;
-  group.add(stackTop);
+  // Сигнальная дневная маркировка оголовка дымовой трубы (чередование красно-белых полос по ПБ)
+  for (let s = 0; s < 4; s++) {
+    const isRed = s % 2 === 0;
+    const band = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.77, 0.77, 0.55, 24),
+      isRed ? materials.valveClosed : materials.steelBright,
+    );
+    band.position.y = 17.6 + s * 0.55;
+    group.add(band);
+  }
 
   // Смотровые окна радиантной камеры с пламенем
   const portMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.2), materials.flameCore);
@@ -253,11 +318,12 @@ export const createDesalter = (tag: string, x: number, z: number, materials: Twi
   saddle2.position.set(1.8, 0.6, 0);
   group.add(saddle1, saddle2);
 
-  // Горизонтальный стальной цилиндрический корпус (длина 4.8м, радиус 1.25м)
-  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 4.6, 24), materials.steelLight);
+  // Горизонтальный корпус — использует vesselShell (рентген-прозрачность)
+  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 4.6, 24), materials.vesselShell);
   cyl.rotation.z = Math.PI / 2;
   cyl.position.y = 2.45;
   cyl.castShadow = true;
+  cyl.renderOrder = 3;
   const userData: InteractiveMeshUserData = {
     type: 'equipment',
     id: `ed-${tag.toLowerCase()}`,
@@ -267,14 +333,35 @@ export const createDesalter = (tag: string, x: number, z: number, materials: Twi
   cyl.userData = userData;
   group.add(cyl);
 
-  // Эллиптические днища
-  const cap1 = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), materials.steelLight);
+  // Эллиптические днища — используют vesselShell
+  const cap1 = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), materials.vesselShell);
   cap1.rotation.z = -Math.PI / 2;
   cap1.position.set(-2.3, 2.45, 0);
-  const cap2 = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), materials.steelLight);
+  cap1.renderOrder = 3;
+  const cap2 = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), materials.vesselShell);
   cap2.rotation.z = Math.PI / 2;
   cap2.position.set(2.3, 2.45, 0);
+  cap2.renderOrder = 3;
   group.add(cap1, cap2);
+
+  // Внутренние электроды высокого напряжения (видны в режиме X-Ray)
+  const grid1 = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.04, 1.3), materials.desalterElectrode);
+  grid1.position.set(0, 2.7, 0);
+  grid1.renderOrder = 2;
+  const grid2 = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.04, 1.3), materials.desalterElectrode);
+  grid2.position.set(0, 2.3, 0);
+  grid2.renderOrder = 2;
+  grid1.name = 'desalter_grid';
+  grid2.name = 'desalter_grid';
+  group.add(grid1, grid2);
+
+  // Внутренний аккуратный слой пластовой воды в нижней трети аппарата (разделение фаз)
+  const waterGeo = new THREE.BoxGeometry(3.8, 0.48, 1.4);
+  const waterLayer = new THREE.Mesh(waterGeo, materials.desalterWater);
+  waterLayer.position.set(0, 1.65, 0);
+  waterLayer.renderOrder = 1;
+  waterLayer.name = 'desalter_water';
+  group.add(waterLayer);
 
   // Верхняя площадка обслуживания с высоковольтным трансформатором
   const transPlatform = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.12, 1.4), materials.steelTruss);
@@ -299,7 +386,7 @@ export const createDesalter = (tag: string, x: number, z: number, materials: Twi
   halo2.position.set(0.9, 4.4, 0);
   group.add(halo1, halo2);
 
-  return { group, halo1, halo2 };
+  return { group, halo1, halo2, waterLayer, grid1, grid2 };
 };
 
 /** Создает центробежный насос с фундаментом, электромотором и манометром */
@@ -494,5 +581,11 @@ export const createVacuumEjectorSystem3D = (materials: TwinMaterials): THREE.Gro
 };
 
 export type { TwinMaterials } from './twinMaterials';
-export { createTwinMaterials, applyThemeToMaterials, applyMediumHighlight } from './twinMaterials';
-export { createIndustrialGround, createMainPipeRack } from './twinStructure';
+export {
+  createTwinMaterials,
+  applyThemeToMaterials,
+  applyMediumHighlight,
+  applyXRayToMaterials,
+  applyFlowsToMaterials,
+} from './twinMaterials';
+export { createIndustrialGround, createMainPipeRack, applyThemeToGround } from './twinStructure';

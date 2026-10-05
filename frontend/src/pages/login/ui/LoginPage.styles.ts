@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { Brain, User } from 'lucide-react';
+import { Brain, User, KeyRound } from 'lucide-react';
 import { Button, Card, Input, Select } from 'antd';
 
 export const Container = styled.div`
@@ -160,3 +160,95 @@ export const BrainIcon = styled(Brain)`
   flex-shrink: 0;
   color: ${props => props.theme.colors.accent};
 `;
+
+export const KeyIcon = styled(KeyRound)`
+  display: inline;
+  margin-right: 4px;
+  vertical-align: middle;
+`;
+
+export const DemoSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: ${props => props.theme.colors.surfaceLight};
+  border: 1px dashed ${props => props.theme.colors.primary};
+  border-radius: 6px;
+  margin-bottom: 6px;
+`;
+
+export const DemoTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: ${props => props.theme.colors.primary};
+`;
+
+export const DemoButtonGroup = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+
+  @media (max-width: 400px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const DemoButton = styled(Button)`
+  && {
+    height: 38px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(2, 132, 199, 0.15)' : 'rgba(2, 132, 199, 0.1)'};
+    border-color: ${props => props.theme.colors.primary};
+    color: ${props => props.theme.colors.text};
+
+    &:hover {
+      background: ${props => props.theme.colors.primary};
+      border-color: ${props => props.theme.colors.primary};
+      color: #ffffff;
+    }
+  }
+`;
+
+export const CredentialsHint = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10.5px;
+  color: ${props => props.theme.colors.textMuted};
+  line-height: 1.4;
+
+  code {
+    font-family: ${props => props.theme.fonts.mono};
+    background: ${props => props.theme.colors.canvas};
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: ${props => props.theme.colors.accent};
+    border: 1px solid ${props => props.theme.colors.border};
+  }
+`;
+
+export const AutoLoginOverlay = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px 16px;
+  text-align: center;
+`;
+
+export const AutoLoginText = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+`;
+

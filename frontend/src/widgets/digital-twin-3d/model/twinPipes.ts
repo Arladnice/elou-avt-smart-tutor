@@ -180,19 +180,28 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
     group.add(nozzle);
   });
 
-  // Система светящихся анимированных частиц технологического потока
-  const particleCountPerStream = 12;
-  const particleGeometry = new THREE.SphereGeometry(0.11, 10, 10);
-  const particleMeshes: Array<{ mesh: THREE.Mesh; stream: PipeStream; progress: number }> = [];
+  // Система светящихся анимированных импульсов технологического потока (видны поверх труб)
+  const particleCountPerStream = 16;
+  const particleMeshes: Array<{
+    mesh: THREE.Mesh;
+    stream: PipeStream;
+    progress: number;
+  }> = [];
 
   streams.forEach((stream) => {
+    // Радиус светящегося импульса аккуратно огибает трубу без эффекта «бус»
+    const pRadius = stream.radius * 1.18;
+    const particleGeometry = new THREE.SphereGeometry(pRadius, 12, 10);
     const pMat = new THREE.MeshBasicMaterial({
       color: stream.color,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.95,
+      depthWrite: false,
     });
+
     for (let i = 0; i < particleCountPerStream; i++) {
       const pMesh = new THREE.Mesh(particleGeometry, pMat);
+      pMesh.renderOrder = 4; // Отрисовка поверх тел трубопроводов
       group.add(pMesh);
       particleMeshes.push({
         mesh: pMesh,
@@ -202,18 +211,50 @@ export const createRefineryPipes = (materials: TwinMaterials, isStreamActive: (t
     }
   });
 
-  const updateParticles = (delta: number, activeMedium: string | null = null) => {
-    particleMeshes.forEach((item) => {
-      const isMediumMatch = !activeMedium || activeMedium === 'all' || item.stream.medium === activeMedium;
-      if (!item.stream.isActive() || !isMediumMatch) {
+  const forwardVec = new THREE.Vector3(0, 0, 1);
+
+  const updateParticles = (
+    delta: number,
+    activeMedium: string | null = null,
+    showFlows: boolean = true,
+  ) => {
+    particleMeshes.forEach((item, idx) => {
+      // Если тумблер «Потоки сред» выключен — скрываем все анимированные импульсы
+      if (!showFlows) {
         item.mesh.visible = false;
         return;
       }
+
+      const isMediumMatch = !activeMedium || activeMedium === 'all' || item.stream.medium === activeMedium;
+      const isLineActive = item.stream.isActive();
+
+      // Если выбран конкретный фильтр среды в легенде — показываем трассу даже при резервном насосе
+      const shouldDisplay = isMediumMatch && (isLineActive || Boolean(activeMedium));
+
+      if (!shouldDisplay) {
+        item.mesh.visible = false;
+        return;
+      }
+
       item.mesh.visible = true;
-      // Плавная, спокойная скорость потока (0.075 вместо 0.45)
-      item.progress = (item.progress + delta * 0.075) % 1.0;
+
+      // Динамичная, четко различимая глазом скорость потока
+      const speed = isLineActive ? 0.20 : 0.08;
+      item.progress = (item.progress + delta * speed) % 1.0;
       const point = item.stream.curve.getPointAt(item.progress);
       item.mesh.position.copy(point);
+
+      // Световой импульс вытягивается вдоль трубы в направлении движения среды
+      const tangent = item.stream.curve.getTangentAt(item.progress);
+      item.mesh.quaternion.setFromUnitVectors(forwardVec, tangent);
+
+      // Плавное зарождение и растворение импульсов на фланцах ввода/вывода аппаратов
+      const edgeFade = Math.sin(item.progress * Math.PI);
+      const pulse = 1.0 + Math.sin(item.progress * Math.PI * 6 + idx) * 0.08;
+      const mediumBoost = (activeMedium && item.stream.medium === activeMedium) ? 1.25 : 1.0;
+      const scaleZ = Math.max(0.2, edgeFade) * pulse * 1.8 * mediumBoost;
+      const scaleXY = Math.max(0.4, edgeFade) * pulse * mediumBoost;
+      item.mesh.scale.set(scaleXY, scaleXY, scaleZ);
     });
   };
 

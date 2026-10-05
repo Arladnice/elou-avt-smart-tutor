@@ -2,7 +2,7 @@
 
 Учебный тренажёр технологического процесса ЭЛОУ-АВТ с двумя ролями, интерактивной моделью установки, оценкой действий оператора и прогнозом параметров.
 
-**Демо:** [https://elou-avt-smart-tutor.onrender.com](https://elou-avt-smart-tutor.onrender.com)
+**Демо:** [https://elou-avt-smart-tutor-ngjl.onrender.com/](https://elou-avt-smart-tutor-ngjl.onrender.com/)
 **Дедлайн конкурсной сдачи:** 11 августа 2026 года
 
 Демо-учётные записи используют общий учебный пароль `Ktk_2026!`:

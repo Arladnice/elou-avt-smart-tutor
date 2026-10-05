@@ -49,7 +49,10 @@ interface SchemeViewBox {
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export interface FlowSchemeProps {
-  render3D?: (onOpenEquipment: (id: string) => void) => React.ReactNode;
+  render3D?: (
+    onOpenEquipment: (id: string) => void,
+    onFpsUpdate?: (fps: number) => void,
+  ) => React.ReactNode;
 }
 
 const FlowScheme: React.FC<FlowSchemeProps> = ({ render3D }) => {
@@ -62,6 +65,7 @@ const FlowScheme: React.FC<FlowSchemeProps> = ({ render3D }) => {
 
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<EquipmentId | null>(null);
+  const [liveFps, setLiveFps] = useState<number>(60);
 
   const schemeWidth = activeScheme.width || 1260;
   const schemeHeight = activeScheme.height || 620;
@@ -319,7 +323,7 @@ const FlowScheme: React.FC<FlowSchemeProps> = ({ render3D }) => {
             {viewMode === '3d' && (
               <S.WebGlBadge>
                 <Box size={12} />
-                <span>WebGL 3D · 60 FPS</span>
+                <span>WebGL 3D · {liveFps} FPS</span>
               </S.WebGlBadge>
             )}
             <TrendingUp size={12} />
@@ -574,7 +578,10 @@ const FlowScheme: React.FC<FlowSchemeProps> = ({ render3D }) => {
           <S.ZoomHint>Колесо — масштаб · перетаскивание — перемещение</S.ZoomHint>
         </S.SchemeViewport>
       ) : render3D ? (
-        render3D((id) => setSelectedEquipmentId(id as EquipmentId))
+        render3D(
+          (id) => setSelectedEquipmentId(id as EquipmentId),
+          setLiveFps,
+        )
       ) : null}
 
     </S.SchemeContainer>

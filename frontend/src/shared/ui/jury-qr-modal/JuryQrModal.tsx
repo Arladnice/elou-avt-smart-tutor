@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QRCode, message } from 'antd';
-import { QrCode, Copy, Check, Sparkles, Cpu, ShieldCheck, Flame, Layers } from 'lucide-react';
+import { QrCode, Copy, Check, Sparkles, Cpu, ShieldCheck, Flame, Layers, KeyRound } from 'lucide-react';
 import * as S from './JuryQrModal.styles';
 
 interface JuryQrModalProps {
@@ -8,13 +8,14 @@ interface JuryQrModalProps {
   onClose: () => void;
 }
 
+const DEMO_URL = 'https://elou-avt-smart-tutor-ngjl.onrender.com/?demo=operator';
+
 export const JuryQrModal: React.FC<JuryQrModalProps> = ({ isOpen, onClose }) => {
   const [copied, setCopied] = useState(false);
-  const currentUrl = typeof window !== 'undefined' ? window.location.href : 'http://localhost:5173';
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(currentUrl);
+      await navigator.clipboard.writeText(DEMO_URL);
       setCopied(true);
       message.success('Ссылка скопирована в буфер обмена');
       setTimeout(() => setCopied(false), 2500);
@@ -42,7 +43,7 @@ export const JuryQrModal: React.FC<JuryQrModalProps> = ({ isOpen, onClose }) => 
         <S.TopSection>
           <S.QrWrapper>
             <QRCode
-              value={currentUrl}
+              value={DEMO_URL}
               size={168}
               bordered={false}
               color="#0f172a"
@@ -61,8 +62,23 @@ export const JuryQrModal: React.FC<JuryQrModalProps> = ({ isOpen, onClose }) => 
               Отсканируйте QR-код для открытия веб-интерфейса прямо на мобильном устройстве или планшете жюри. Поддерживается управление арматурой, просмотр 3D-двойника и SCADA-мнемосхемы в реальном времени.
             </S.Subtext>
 
-            <S.LinkRow title={currentUrl}>
-              <span>{currentUrl}</span>
+            <S.CredentialsBox>
+              <S.CredentialsHeader>
+                <KeyRound size={12} />
+                <span>Быстрый доступ (авторизация по QR без ввода):</span>
+              </S.CredentialsHeader>
+              <S.CredentialsContent>
+                <span>Операторы: <code>operator_1</code> .. <code>operator_7</code></span>
+                <span>Инструктор: <code>instructor_1</code></span>
+                <span>Пароль: <code>Ktk_2026!</code></span>
+              </S.CredentialsContent>
+              <S.CredentialsNote>
+                При сканировании каждому эксперту автоматически выделяется независимый оператор и изолированная сессия симулятора.
+              </S.CredentialsNote>
+            </S.CredentialsBox>
+
+            <S.LinkRow title={DEMO_URL}>
+              <span>{DEMO_URL}</span>
             </S.LinkRow>
 
             <div>

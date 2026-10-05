@@ -215,13 +215,16 @@ export const HotspotOverlayContainer = styled.div`
   height: 100%;
   pointer-events: none;
   z-index: 5;
+  overflow: hidden;
 `;
 
-export const HotspotBadge = styled.div<{ $left: number; $top: number; $category?: string }>`
+export const HotspotBadge = styled.div<{ $category?: string }>`
   position: absolute;
-  left: ${props => props.$left}px;
-  top: ${props => props.$top}px;
-  transform: translate(-50%, -100%);
+  top: 0;
+  left: 0;
+  display: none;
+  will-change: transform;
+  transform-origin: 50% 100%;
   padding: 4px 8px;
   background: ${props => props.theme.mode === 'dark' ? 'rgba(10, 16, 26, 0.9)' : 'rgba(255, 255, 255, 0.95)'};
   backdrop-filter: blur(6px);
@@ -237,11 +240,11 @@ export const HotspotBadge = styled.div<{ $left: number; $top: number; $category?
   pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 4px 14px ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.12)'};
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    transform: translate(-50%, -105%) scale(1.05);
     border-color: ${props => props.theme.colors.primary};
+    box-shadow: 0 0 12px ${props => props.theme.colors.primary};
   }
 `;
 
@@ -261,18 +264,17 @@ export const BadgeValue = styled.div`
 `;
 
 export const HintOverlay = styled.div`
-  position: absolute;
-  top: 68px;
-  right: 14px;
-  padding: 6px 12px;
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(15, 23, 42, 0.75)' : 'rgba(255, 255, 255, 0.88)'};
-  backdrop-filter: blur(8px);
-  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(51, 65, 85, 0.5)' : 'rgba(203, 213, 225, 0.7)'};
-  border-radius: 4px;
+  padding: 6px 14px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.9)'};
+  backdrop-filter: blur(12px);
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(51, 65, 85, 0.7)' : 'rgba(203, 213, 225, 0.85)'};
+  border-radius: 6px;
   color: ${props => props.theme.colors.textMuted};
   font-size: 11px;
+  font-weight: 500;
   pointer-events: none;
-  z-index: 10;
+  box-shadow: 0 6px 20px ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)'};
+  white-space: nowrap;
 `;
 
 /* Боковая панель: Навигатор технологических блоков (как на скриншоте 2 КАТКИ) */
@@ -298,11 +300,10 @@ export const NavigatorToggleBtn = styled.button<{ $isOpen: boolean }>`
 
 export const NavigatorDrawer = styled.div<{ $isOpen: boolean }>`
   position: absolute;
-  top: 64px;
+  top: 56px;
   left: 14px;
-  bottom: 64px;
-  height: calc(100% - 130px);
-  max-height: calc(100% - 130px);
+  bottom: 48px;
+  max-height: calc(100% - 104px);
   width: 360px;
   max-width: calc(100vw - 28px);
   background: ${props => props.theme.mode === 'dark' ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)'};
@@ -330,6 +331,7 @@ export const NavigatorHeader = styled.div`
   font-weight: 700;
   color: ${props => props.theme.colors.text};
   gap: 8px;
+  flex-shrink: 0;
 `;
 
 export const NavigatorSearch = styled.div`
@@ -340,6 +342,7 @@ export const NavigatorSearch = styled.div`
   border-bottom: 1px solid ${props => props.theme.colors.border};
   background: ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.4)' : 'rgba(241, 245, 249, 0.5)'};
   color: ${props => props.theme.colors.textMuted};
+  flex-shrink: 0;
 `;
 
 export const SearchInput = styled.input`
@@ -381,13 +384,13 @@ export const HeaderActionBtn = styled.button`
 `;
 
 export const NavigatorBody = styled.div`
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   min-height: 0;
-  max-height: 100%;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  padding: 8px 6px 28px 8px;
+  padding: 8px 6px 20px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -418,6 +421,7 @@ export const UnitSection = styled.div`
   background: ${props => props.theme.mode === 'dark' ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.6)'};
   border: 1px solid ${props => props.theme.colors.border};
   overflow: hidden;
+  flex-shrink: 0;
 `;
 
 export const UnitSectionHeader = styled.div<{ $isExpanded?: boolean }>`
@@ -426,6 +430,7 @@ export const UnitSectionHeader = styled.div<{ $isExpanded?: boolean }>`
   justify-content: space-between;
   padding: 8px 10px;
   font-size: 11px;
+  flex-shrink: 0;
   font-weight: 700;
   color: ${props => props.theme.colors.text};
   cursor: pointer;
@@ -480,6 +485,7 @@ export const UnitNodeList = styled.div`
   flex-direction: column;
   padding: 4px;
   gap: 2px;
+  flex-shrink: 0;
 `;
 
 export const UnitNodeItem = styled.button<{ $isSelected?: boolean }>`
@@ -487,6 +493,7 @@ export const UnitNodeItem = styled.button<{ $isSelected?: boolean }>`
   align-items: center;
   justify-content: space-between;
   padding: 6px 8px;
+  min-height: 28px;
   font-size: 11px;
   border-radius: 4px;
   border: 1px solid ${props => props.$isSelected ? props.theme.colors.primary : 'transparent'};
@@ -497,6 +504,7 @@ export const UnitNodeItem = styled.button<{ $isSelected?: boolean }>`
   text-align: left;
   cursor: pointer;
   width: 100%;
+  flex-shrink: 0;
   transition: all 0.15s ease;
 
   &:hover {
