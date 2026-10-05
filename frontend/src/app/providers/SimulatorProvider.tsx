@@ -613,13 +613,13 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Проверка аварийных пределов в mock-режиме
   useEffect(() => {
     if (isOnline || status !== 'running') return;
-    setRiskLevel(evaluateMockRisk(sensors, startupK2Prefill, defects));
+    setRiskLevel(evaluateMockRisk(sensors, startupK2Prefill, defects, valves));
     const reason = detectMockAccident(sensors);
     if (reason) {
       setStatus('accident');
       setAccidentReason(reason);
     }
-  }, [sensors, status, isOnline, startupK2Prefill, defects]);
+  }, [sensors, status, isOnline, startupK2Prefill, defects, valves]);
 
   useEffect(() => {
     if (!isOnline && scenarioId === 'startup' && startupK2Prefill && sensors.L_2 >= 20) {

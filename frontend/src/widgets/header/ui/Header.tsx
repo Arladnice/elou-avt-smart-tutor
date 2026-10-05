@@ -8,7 +8,7 @@ import { Play, RotateCcw, ShieldAlert, User, CheckCircle, ClipboardList, FlaskCo
 import * as S from './Header.styles';
 
 const Header: React.FC = () => {
-  const { status, timeElapsed } = useTelemetry();
+  const { status, timeElapsed, defects } = useTelemetry();
   const { username, role, scenarioId, isDemoMode } = useSession();
   const { triggerEsd, resetSession, logoutUser, completeSession } = useSimulatorActions();
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -39,6 +39,22 @@ const Header: React.FC = () => {
     }
   };
 
+  const getEmergencySuffix = () => {
+    if (!defects) return '';
+    const list: string[] = [];
+    if (defects.coil_overheat) list.push('Прогар П-1');
+    if (defects.pump_fail) list.push('Отказ Н-20');
+    if (defects.valve_jam) list.push('Зависание V-2');
+    if (defects.power_fail) list.push('Обесточивание');
+    if (defects.air_fail) list.push('Отказ КИПиА');
+    if (defects.steam_fail) list.push('Срыв отпарки');
+    if (defects.elou_desalt_fail) list.push('Проскок ЭЛОУ');
+    if (defects.vt_vacuum_loss) list.push('Срыв вакуума ВТ');
+    if (defects.k2_pump_fail) list.push('Отказ Н-4/Н-32');
+    if (list.length === 0) return '';
+    return ` (Авария: ${list.join(' + ')})`;
+  };
+
   return (
     <S.HeaderContainer>
       <S.Title>КТК ЭЛОУ-АВТ <span>Рабочее место оператора</span></S.Title>
@@ -61,7 +77,7 @@ const Header: React.FC = () => {
         </S.InfoItem>
         <S.InfoItem>
           <ClipboardList size={14} />
-          Сценарий: <strong>{getScenarioTitle(scenarioId)}</strong>
+          Сценарий: <strong>{getScenarioTitle(scenarioId)}{getEmergencySuffix()}</strong>
         </S.InfoItem>
         <S.InfoItem>
           <Play size={14} />

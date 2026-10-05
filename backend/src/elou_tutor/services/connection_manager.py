@@ -245,6 +245,7 @@ class SimulationSession:
             k2_sensors=sensors,
             startup_k2_prefill=sim_state["startupK2Prefill"],
             defects=sim_state.get("defects"),
+            valves=sim_state.get("valves"),
         )
         
         final_sensors = {**sensors, **sim_state.get("setpoints", {})}

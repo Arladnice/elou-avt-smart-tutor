@@ -97,15 +97,25 @@ export const evaluateMockRisk = (
   sensors: Sensors,
   startupK2Prefill = false,
   defects?: Defects,
+  valves?: Valves,
 ): number => {
   let risk = 5;
+  const hasDefects = Boolean(defects && Object.values(defects).some(Boolean));
   if (defects?.coil_overheat) {
-    const tempExcess = Math.max(0, sensors.T_1 - 260);
-    risk = Math.max(risk, 60 + Math.min(35, (tempExcess / 60) * 35));
+    const isFuelCut = valves ? !valves.FUEL_P1 : !sensors.Flame_P1;
+    const isLocalized = isFuelCut && sensors.T_1 <= 245;
+    if (!isLocalized) {
+      const tempExcess = Math.max(0, sensors.T_1 - 245);
+      risk = Math.max(risk, 60 + Math.min(35, (tempExcess / 60) * 35));
+    }
   }
   if (sensors.T_1 > 310) risk += 30;
   if (sensors.P_1 > PRES_WARNING) risk += 40;
-  if (sensors.L_1 > LEVEL_HIGH || sensors.L_1 < LEVEL_LOW) risk += 25;
+  if (!hasDefects) {
+    if (sensors.L_1 > LEVEL_HIGH || sensors.L_1 < LEVEL_LOW) risk += 25;
+  } else {
+    if (sensors.L_1 > LEVEL_HIGH) risk += 25;
+  }
   if (
     sensors.L_2 > K2_LEVEL_HIGH ||
     (!startupK2Prefill && sensors.L_2 < K2_LEVEL_LOW) ||

@@ -16,7 +16,7 @@ import * as S from './AiAssistant.styles';
 /** Постоянно видимая оценка риска и краткая технологическая рекомендация. */
 const RiskAssessment: React.FC = () => {
   const theme = useTheme();
-  const { riskLevel, sensors, status, timeElapsed } = useTelemetry();
+  const { riskLevel, sensors, status, timeElapsed, defects, valves, startupK2Prefill } = useTelemetry();
   const { scenarioId } = useSession();
 
   const isStartupFilling = scenarioId === 'startup' && timeElapsed <= STARTUP_FILLING_TIME_LIMIT_SEC;
@@ -27,8 +27,30 @@ const RiskAssessment: React.FC = () => {
       return 'Сработала защита блокировки. Проанализируйте журнал тревог для выявления причин перегрузки.';
     }
 
+    // 1. Приоритет: ликвидация аварии печи П-1 (прогар змеевика)
+    if (defects?.coil_overheat) {
+      const isFuelCut = !valves?.FUEL_P1;
+      const isCooled = sensors.T_1 <= 245;
+      if (isFuelCut && isCooled) {
+        return `Аварийная ситуация локализована: подача топлива отсечена, змеевик изолирован, температура снижена до безопасного уровня (${sensors.T_1.toFixed(1)}°C).`;
+      }
+      return `АВАРИЙНАЯ СИТУАЦИЯ: Прогар змеевика П-1! Снизьте уставку Т-1, откройте сброс V-2 и отсеките подачу топлива FUEL_P1.`;
+    }
+
+    if (defects?.pump_fail) {
+      if (valves?.V_3 || !valves?.V_1) {
+        return 'Отказ насоса Н-20: подача сырья остановлена. Переведите контур на циркуляцию и контролируйте уровень.';
+      }
+      return 'АВАРИЙНАЯ СИТУАЦИЯ: Отказ сырьевого насоса Н-20! Запустите резерв или переведите установку на циркуляцию.';
+    }
+
+    if (defects?.valve_jam) {
+      return 'АВАРИЙНАЯ СИТУАЦИЯ: Зависание клапана V-2! Активируйте систему ПАЗ (ESD) для стравливания избыточного давления.';
+    }
+
     const k1LowCritical = sensors.L_1 <= 5 && !isStartupFilling;
-    const k2LowCritical = sensors.L_2 <= 8;
+    const isK2Prefill = startupK2Prefill || scenarioId === 'startup';
+    const k2LowCritical = sensors.L_2 <= 8 && !isK2Prefill;
     const critical = riskLevel >= 75;
 
     if (k1LowCritical && critical) {
@@ -49,7 +71,7 @@ const RiskAssessment: React.FC = () => {
     if (!isStartupFilling && sensors.L_1 < 20) {
       return `ПРЕДУПРЕЖДЕНИЕ: Низкий уровень куба К-1 (${sensors.L_1.toFixed(1)}%). Откройте V-1 и контролируйте заполнение.`;
     }
-    if (sensors.L_2 < 20) {
+    if (!isK2Prefill && sensors.L_2 < 20) {
       return `ПРЕДУПРЕЖДЕНИЕ: Низкий уровень куба К-2 (${sensors.L_2.toFixed(1)}%). Не запускайте Н-4/Н-32 до восстановления уровня выше ${K2_LEVEL_LOW_INTERLOCK}%.`;
     }
     if (sensors.P_1 > PRES_WARNING) {

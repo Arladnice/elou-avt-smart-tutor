@@ -92,7 +92,7 @@ class RiskPredictor:
 
     def predict_risk(self, window_data, time_elapsed: int = 100, scenario_id: str = "shutdown",
                      k2_sensors: dict = None, startup_k2_prefill: bool = False,
-                     defects: dict = None):
+                     defects: dict = None, valves: dict = None):
         """
         Принимает window_data: список или numpy array размерности (30, 7):
         каждая строка — [valve_V1, valve_V2, valve_V3, furnaceTempSp,
@@ -193,10 +193,14 @@ class RiskPredictor:
         elif pred_temp > FURNACE_TEMP_WARNING and not is_startup_heating and not is_normal_heating:
             risk += (pred_temp - FURNACE_TEMP_WARNING) / (FURNACE_TEMP_CRITICAL - FURNACE_TEMP_WARNING) * RISK_WEIGHT_TEMP
             
-        if has_coil_overheat:
-            # При прогаре змеевика П-1 риск стремительно нарастает в критическую зону (80-95%)
+        fuel_is_cut = (valves and valves.get("FUEL_P1") is False) or (k2_sensors and k2_sensors.get("Flame_P1") is False)
+        is_temp_safe = actual_temp <= 245.0 and setpoint_temp <= 245.0
+        is_overheat_localized = fuel_is_cut and is_temp_safe
+
+        if has_coil_overheat and not is_overheat_localized:
+            # При прогаре змеевика П-1 до локализации риск стремительно нарастает в критическую зону (80-95%)
             # за несколько секунд, позволяя наглядно продемонстрировать предиктивную реакцию ИИ
-            temp_excess = max(0.0, pred_temp - 260.0)
+            temp_excess = max(0.0, max(pred_temp, actual_temp) - 245.0)
             overheat_risk = 60.0 + min(35.0, (temp_excess / 60.0) * 35.0)
             risk = max(risk, overheat_risk)
             
@@ -223,6 +227,7 @@ class RiskPredictor:
             scenario_id == "column_shutdown"
             and risk_level > COLUMN_LEVEL_LOW_INTERLOCK
         )
+        has_defects = bool(defects and any(defects.values()))
         
         if risk_level > COLUMN_LEVEL_HIGH:
             risk += (risk_level - COLUMN_LEVEL_HIGH) / (COLUMN_LEVEL_HIGH_CRITICAL - COLUMN_LEVEL_HIGH) * RISK_WEIGHT_LEVEL
@@ -236,7 +241,7 @@ class RiskPredictor:
                         / max(1.0, ACCIDENT_STARTUP_MAX_TIME_SEC - STARTUP_FILLING_TIME_LIMIT_SEC)
                     )
                     risk += 15.0 + 60.0 * min(1.0, progress)
-                elif time_elapsed > VALVE_ACTION_TIMEOUT_SEC and window[-1, 0] < 0.5:
+                elif time_elapsed > VALVE_ACTION_TIMEOUT_SEC and window[-1, 0] < 0.5 and not has_defects:
                     # Пустая колонна при закрытой подаче — не штатный пуск.
                     risk += RISK_PENALTY_NO_FEED
             elif not is_startup_filling and not planned_column_shutdown_level:
@@ -246,9 +251,10 @@ class RiskPredictor:
                     risk += (COLUMN_LEVEL_LOW - risk_level) / (COLUMN_LEVEL_LOW - COLUMN_LEVEL_LOW_INTERLOCK) * 75.0
             elif (
                 not planned_column_shutdown_level
+                and not has_defects
                 and time_elapsed > VALVE_ACTION_TIMEOUT_SEC
                 and window[-1, 0] < 0.5
-            ):  # V-1 закрыт > 15с
+            ):  # V-1 закрыт > 15с без аварийных причин
                 risk += RISK_PENALTY_NO_FEED
 
         # 4. Вакуумный блок К-2 по фактическим показаниям
