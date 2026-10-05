@@ -372,7 +372,7 @@ class ELOUAVTSimulator:
             Q_cool = (T - 60.0) * 0.01 + ( (T - STARTUP_INITIAL_TEMP) * 0.02 if self.defects["power_fail"] else 0.0 )
 
         if self.defects["coil_overheat"] and fuel_p1:
-            Q_heat += 4.5
+            Q_heat += 12.0  # Прогар змеевика П-1: стремительный аварийный разогрев печи (12 °C/с) для демо и тренинга
         
         dT = Q_heat - Q_cool + (random.random() - 0.5) * 0.4
         next_T = T + dT

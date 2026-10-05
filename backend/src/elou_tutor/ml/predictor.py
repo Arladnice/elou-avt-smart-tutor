@@ -91,7 +91,8 @@ class RiskPredictor:
             return None, False
 
     def predict_risk(self, window_data, time_elapsed: int = 100, scenario_id: str = "shutdown",
-                     k2_sensors: dict = None, startup_k2_prefill: bool = False):
+                     k2_sensors: dict = None, startup_k2_prefill: bool = False,
+                     defects: dict = None):
         """
         Принимает window_data: список или numpy array размерности (30, 7):
         каждая строка — [valve_V1, valve_V2, valve_V3, furnaceTempSp,
@@ -177,8 +178,9 @@ class RiskPredictor:
         
         # При пуске (startup) или при штатном разогреве до уставки рост температуры — это ОЖИДАЕМОЕ поведение.
         # Не считаем температуру критической, если она не превышает уставку + 15°C
-        is_startup_heating = (scenario_id == "startup" and actual_temp < STARTUP_HEATING_THRESHOLD_TEMP)
-        is_normal_heating = (actual_temp <= setpoint_temp + 5.0 and setpoint_temp <= FURNACE_TEMP_WARNING)
+        has_coil_overheat = bool(defects and defects.get("coil_overheat"))
+        is_startup_heating = (scenario_id == "startup" and actual_temp < STARTUP_HEATING_THRESHOLD_TEMP and not has_coil_overheat)
+        is_normal_heating = (actual_temp <= setpoint_temp + 5.0 and setpoint_temp <= FURNACE_TEMP_WARNING and not has_coil_overheat)
         
         # 1. По температуре печи (предупреждение: FURNACE_TEMP_WARNING=340°C, авария: FURNACE_TEMP_CRITICAL=365°C)
         # ONNX видит резкий разгон холодной печи как продолжение тренда и на
@@ -190,6 +192,13 @@ class RiskPredictor:
             risk = 100.0
         elif pred_temp > FURNACE_TEMP_WARNING and not is_startup_heating and not is_normal_heating:
             risk += (pred_temp - FURNACE_TEMP_WARNING) / (FURNACE_TEMP_CRITICAL - FURNACE_TEMP_WARNING) * RISK_WEIGHT_TEMP
+            
+        if has_coil_overheat:
+            # При прогаре змеевика П-1 риск стремительно нарастает в критическую зону (80-95%)
+            # за несколько секунд, позволяя наглядно продемонстрировать предиктивную реакцию ИИ
+            temp_excess = max(0.0, pred_temp - 260.0)
+            overheat_risk = 60.0 + min(35.0, (temp_excess / 60.0) * 35.0)
+            risk = max(risk, overheat_risk)
             
         # 2. По давлению в колонне (предупреждение: COLUMN_PRES_WARNING=0.40 МПа, ПАЗ: COLUMN_PRES_ESD=0.48 МПа)
         if risk_pres > COLUMN_PRES_WARNING:

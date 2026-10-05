@@ -73,3 +73,22 @@ def test_column_shutdown_target_level_does_not_raise_artificial_risk():
     _, risk = predictor.predict_risk(window, time_elapsed=120, scenario_id="column_shutdown")
 
     assert risk == 0.0
+
+
+def test_coil_overheat_rapidly_escalates_risk_for_operator_demo():
+    """При прогаре змеевика П-1 риск стремительно выходит в критическую зону (>80%)."""
+    from elou_tutor.ml.predictor import RiskPredictor
+
+    predictor = RiskPredictor()
+    predictor.predict_parameters = lambda _window: ([330.0, 0.25, 50.0], True)
+    window = np.tile(np.array([1.0, 0.0, 1.0, 280.0, 310.0, 0.25, 50.0]), (30, 1))
+
+    _, risk = predictor.predict_risk(
+        window,
+        time_elapsed=20,
+        scenario_id="startup",
+        defects={"coil_overheat": True},
+    )
+
+    assert risk >= 80.0
+

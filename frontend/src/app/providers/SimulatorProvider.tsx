@@ -43,6 +43,7 @@ const DEFECT_SCENARIOS: DefectId[] = [
 ];
 
 const DEFECT_BASE_SCENARIOS: Partial<Record<DefectId, string>> = {
+  coil_overheat: 'shutdown',
   valve_jam: 'overpressure_relief',
   elou_desalt_fail: 'elou_salt_breakthrough',
   vt_vacuum_loss: 'vt_vacuum_failure',
@@ -612,13 +613,13 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Проверка аварийных пределов в mock-режиме
   useEffect(() => {
     if (isOnline || status !== 'running') return;
-    setRiskLevel(evaluateMockRisk(sensors, startupK2Prefill));
+    setRiskLevel(evaluateMockRisk(sensors, startupK2Prefill, defects));
     const reason = detectMockAccident(sensors);
     if (reason) {
       setStatus('accident');
       setAccidentReason(reason);
     }
-  }, [sensors, status, isOnline, startupK2Prefill]);
+  }, [sensors, status, isOnline, startupK2Prefill, defects]);
 
   useEffect(() => {
     if (!isOnline && scenarioId === 'startup' && startupK2Prefill && sensors.L_2 >= 20) {

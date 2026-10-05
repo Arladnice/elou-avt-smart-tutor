@@ -38,7 +38,7 @@ export const stepMockPhysics = (
   const Q_heat =
     (setpoints.T_1_Sp - nextTemp) * 0.15 +
     F_in * (setpoints.T_1_Sp - 60.0) * 0.06 +
-    (defects.coil_overheat ? 5.0 : 0.0);
+    (defects.coil_overheat ? 12.0 : 0.0);
   const Q_cool = F_in * (nextTemp - 60.0) * 0.06;
   nextTemp += Q_heat - Q_cool + (Math.random() - 0.5) * 0.5;
   const p3Flow = valves.V_P3_OUT && valves.V_P3_RETURN && pumps.N_3;
@@ -93,8 +93,16 @@ export const stepMockPhysics = (
 };
 
 /** Оценка риска аварии в демо-режиме (на сервере считает ИИ-модуль) */
-export const evaluateMockRisk = (sensors: Sensors, startupK2Prefill = false): number => {
+export const evaluateMockRisk = (
+  sensors: Sensors,
+  startupK2Prefill = false,
+  defects?: Defects,
+): number => {
   let risk = 5;
+  if (defects?.coil_overheat) {
+    const tempExcess = Math.max(0, sensors.T_1 - 260);
+    risk = Math.max(risk, 60 + Math.min(35, (tempExcess / 60) * 35));
+  }
   if (sensors.T_1 > 310) risk += 30;
   if (sensors.P_1 > PRES_WARNING) risk += 40;
   if (sensors.L_1 > LEVEL_HIGH || sensors.L_1 < LEVEL_LOW) risk += 25;
@@ -106,7 +114,7 @@ export const evaluateMockRisk = (sensors: Sensors, startupK2Prefill = false): nu
   ) {
     risk += 25;
   }
-  return Math.min(100, risk);
+  return Math.min(100, Math.round(risk));
 };
 
 /** Пределы, за которыми установка в демо-режиме переходит в аварию */

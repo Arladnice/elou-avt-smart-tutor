@@ -244,6 +244,7 @@ class SimulationSession:
             scenario_id=self.active_scenario,
             k2_sensors=sensors,
             startup_k2_prefill=sim_state["startupK2Prefill"],
+            defects=sim_state.get("defects"),
         )
         
         final_sensors = {**sensors, **sim_state.get("setpoints", {})}
