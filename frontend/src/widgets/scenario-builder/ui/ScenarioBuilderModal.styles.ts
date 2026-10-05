@@ -3,25 +3,34 @@ import { Modal, Card, Input } from 'antd';
 
 export const StyledModal = styled(Modal)`
   && {
+    top: 20px;
+    padding-bottom: 20px;
+    max-width: calc(100vw - 32px);
+
     .ant-modal-content {
       background-color: ${props => props.theme.colors.surface};
       border: 1px solid ${props => props.theme.colors.border};
       border-radius: 8px;
       box-shadow: 0 12px 36px ${props => props.theme.colors.shadow};
-      padding: 20px 24px;
+      padding: 18px 22px;
+      max-height: calc(100vh - 40px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .ant-modal-header {
       background-color: ${props => props.theme.colors.surface};
       border-bottom: 1px solid ${props => props.theme.colors.border};
-      padding-bottom: 14px;
-      margin-bottom: 18px;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
     }
 
     .ant-modal-close {
       color: ${props => props.theme.colors.textMuted};
-      top: 18px;
-      right: 20px;
+      top: 16px;
+      right: 18px;
 
       &:hover {
         color: ${props => props.theme.colors.text};
@@ -29,8 +38,31 @@ export const StyledModal = styled(Modal)`
       }
     }
 
+    .ant-modal-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 6px;
+      max-height: calc(100vh - 120px);
+
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      &::-webkit-scrollbar-thumb {
+        background: ${props => props.theme.colors.border};
+        border-radius: 3px;
+      }
+      &::-webkit-scrollbar-thumb:hover {
+        background: ${props => props.theme.colors.textMuted};
+      }
+    }
+
     .ant-tabs-nav {
       margin-bottom: 16px;
+      flex-shrink: 0;
 
       &::before {
         border-bottom-color: ${props => props.theme.colors.border};
@@ -192,9 +224,13 @@ export const ModalFooterActions = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 20px;
-  padding-top: 14px;
+  margin-top: 16px;
+  padding: 12px 0 4px;
   border-top: 1px solid ${props => props.theme.colors.border};
+  position: sticky;
+  bottom: 0;
+  background: ${props => props.theme.colors.surface};
+  z-index: 10;
 `;
 
 export const JsonControlsRow = styled.div`
@@ -216,6 +252,8 @@ export const JsonTextArea = styled(Input.TextArea)`
     border: 1px solid ${props => props.theme.colors.border};
     border-radius: 6px;
     padding: 10px 12px;
+    min-height: 240px;
+    max-height: calc(100vh - 280px);
 
     &:hover, &:focus {
       border-color: ${props => props.theme.colors.primary};
@@ -224,9 +262,20 @@ export const JsonTextArea = styled(Input.TextArea)`
 `;
 
 export const RegistryContainer = styled.div`
-  max-height: 420px;
+  max-height: calc(100vh - 220px);
   overflow-y: auto;
   padding-right: 4px;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.colors.border};
+    border-radius: 3px;
+  }
 `;
 
 export const RegistryCard = styled(Card)`

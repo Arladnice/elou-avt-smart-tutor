@@ -38,6 +38,16 @@ const SCENARIO_TITLES: Record<string, string> = {
   column_shutdown: 'Останов колонны К-1',
   overpressure_relief: 'Ликвидация роста давления',
   recirculation: 'Перевод установки на рециркуляцию',
+  pump_fail: 'Отказ сырьевого насоса Н-20',
+  coil_overheat: 'Прогар змеевика печи П-1',
+  valve_jam: 'Зависание клапана сброса V-2',
+  power_fail: 'Отказ электроснабжения установки',
+  air_fail: 'Отказ воздуха КИПиА',
+  steam_fail: 'Срыв подачи отпарного пара',
+  elou_desalt_fail: 'Нарушение обессоливания ЭЛОУ',
+  vt_vacuum_loss: 'Срыв вакуума блока ВТ',
+  vt_vacuum_failure: 'Срыв вакуума блока ВТ',
+  k2_pump_fail: 'Отказ насосов К-2 Н-4/Н-32',
 };
 
 interface RiskDriver {

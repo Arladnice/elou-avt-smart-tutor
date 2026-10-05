@@ -3,7 +3,8 @@ import { Button, Card } from 'antd';
 
 export const AssistantCard = styled(Card)<{ $severity: 'stable' | 'attention' | 'critical' }>`
   flex: 0 0 auto;
-  height: clamp(132px, 18vh, 158px);
+  min-height: 142px;
+  height: auto;
   background: ${props => props.theme.colors.surface};
   border-color: ${props => {
     if (props.$severity === 'critical') return props.theme.colors.danger;
@@ -24,7 +25,7 @@ export const AssistantCard = styled(Card)<{ $severity: 'stable' | 'attention' | 
 
   .ant-card-body {
     padding: 12px 14px;
-    overflow: auto;
+    overflow: visible;
   }
 
   @media (max-height: 950px) {
@@ -33,7 +34,7 @@ export const AssistantCard = styled(Card)<{ $severity: 'stable' | 'attention' | 
     }
 
     .ant-card-body {
-      padding: 8px 10px;
+      padding: 10px 12px;
     }
   }
 
@@ -71,7 +72,7 @@ export const TabButton = styled(Button)`
 export const InsightGrid = styled.div`
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.9fr);
-  gap: 12px;
+  gap: 14px;
 
   @media (max-width: 720px) {
     grid-template-columns: 1fr;
@@ -81,16 +82,16 @@ export const InsightGrid = styled.div`
 
 export const InsightBlock = styled.section`
   min-width: 0;
-  padding-left: 10px;
+  padding-left: 12px;
   border-left: 2px solid ${props => props.theme.colors.border};
 `;
 
 export const BlockLabel = styled.div`
-  margin-bottom: 3px;
+  margin-bottom: 4px;
   color: ${props => props.theme.colors.textMuted};
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
   text-transform: uppercase;
 `;
 
@@ -100,24 +101,33 @@ export const Summary = styled.div<{ $severity: 'stable' | 'attention' | 'critica
     if (props.$severity === 'attention') return props.theme.colors.warning;
     return props.theme.colors.success;
   }};
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  line-height: 1.3;
-`;
-
-export const Detail = styled.div`
-  margin-top: 3px;
-  color: ${props => props.theme.colors.text};
-  font-size: 10px;
   line-height: 1.35;
 `;
 
+export const Detail = styled.div`
+  margin-top: 4px;
+  color: ${props => props.theme.colors.text};
+  font-size: 12px;
+  line-height: 1.4;
+`;
+
 export const EvidenceList = styled.ul`
-  margin: 4px 0 0;
-  padding-left: 15px;
-  color: ${props => props.theme.colors.textMuted};
-  font-size: 9px;
-  line-height: 1.3;
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: ${props => props.theme.colors.text};
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+
+  li {
+    margin-bottom: 2px;
+  }
+
+  li::marker {
+    color: ${props => props.theme.colors.primary};
+  }
 `;
 
 export const MetricsGrid = styled.div`

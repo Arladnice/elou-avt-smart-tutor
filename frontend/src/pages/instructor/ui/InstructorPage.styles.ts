@@ -632,10 +632,36 @@ export const StyledTable = styled(Table)`
   &&& {
     background-color: ${props => props.theme.colors.surface};
     color: ${props => props.theme.colors.text};
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    .ant-spin-nested-loading {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .ant-spin-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
 
     .ant-table {
       background: transparent;
       color: ${props => props.theme.colors.text};
+    }
+
+    .ant-table-container {
+      border-bottom: 1px solid ${props => props.theme.colors.border};
+    }
+
+    .ant-pagination {
+      margin: 8px 16px 8px auto;
+      flex-shrink: 0;
     }
 
     .ant-table-cell {

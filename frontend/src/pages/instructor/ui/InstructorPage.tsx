@@ -77,7 +77,7 @@ const InstructorPage: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   // Оценка сработавших алармов инструктором (GAP-6: Closed Loop Feedback)
   const [feedbackStatus, setFeedbackStatus] = useState<Record<string, 'confirmed' | 'false_alarm'>>({});
-  const [pageSize, setPageSize] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,17 +88,18 @@ const InstructorPage: React.FC = () => {
       const tableHeader = container.querySelector('.ant-table-thead') as HTMLElement | null;
       const firstRow = container.querySelector('.ant-table-tbody > tr') as HTMLElement | null;
       const pagination = container.querySelector('.ant-pagination') as HTMLElement | null;
-      const headerHeight = tableHeader?.offsetHeight ?? 40;
-      const rowHeight = firstRow?.offsetHeight ?? 40;
+      const headerHeight = tableHeader?.offsetHeight ?? 38;
+      const rowHeight = firstRow?.offsetHeight ?? 38;
       const paginationStyle = pagination ? window.getComputedStyle(pagination) : null;
       const paginationHeight = pagination
         ? pagination.offsetHeight
           + Number.parseFloat(paginationStyle?.marginTop ?? '0')
           + Number.parseFloat(paginationStyle?.marginBottom ?? '0')
-        : 48;
-      const safetyGap = 10;
+        : 44;
+      const safetyGap = 8;
       const availableRowsHeight = container.clientHeight - headerHeight - paginationHeight - safetyGap;
-      const nextPageSize = Math.min(6, Math.max(1, Math.floor(availableRowsHeight / rowHeight)));
+      const calculatedRows = Math.floor(availableRowsHeight / rowHeight);
+      const nextPageSize = Math.max(4, Math.min(15, calculatedRows));
 
       setPageSize(current => current === nextPageSize ? current : nextPageSize);
     };
@@ -609,7 +610,13 @@ const InstructorPage: React.FC = () => {
                 dataSource={history}
                 columns={columns}
                 rowKey="id"
-                pagination={{ pageSize, showSizeChanger: false, hideOnSinglePage: true }}
+                pagination={{
+                  pageSize,
+                  showSizeChanger: history.length > pageSize,
+                  pageSizeOptions: ['6', '8', '10', '15'],
+                  hideOnSinglePage: true,
+                  size: 'small',
+                }}
                 tableLayout="fixed"
                 size="small"
                 onRow={(record) => {

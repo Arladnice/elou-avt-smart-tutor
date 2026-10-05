@@ -211,9 +211,10 @@ export const ScenarioBuilderModal: React.FC<ScenarioBuilderModalProps> = ({ visi
         onClose();
       }}
       footer={null}
-      width={820}
+      width={860}
+      centered={false}
+      style={{ top: 20 }}
       destroyOnHidden
-      centered
     >
       <Tabs
         activeKey={activeTab}
