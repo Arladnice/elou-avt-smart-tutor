@@ -236,6 +236,13 @@ class ELOUAVTSimulator:
         """Активация или деактивация неисправностей оборудования (инструктором)."""
         if defect_id in self.defects:
             self.defects[defect_id] = state
+            # Прогар змеевика: аварийное воспламенение и перегрев на работающей горячей печи
+            if defect_id == "coil_overheat" and state:
+                self.valves["FUEL_P1"] = True
+                self.valves["V_P1_IN"] = True
+                self.sensors["Flame_P1"] = True
+                self.sensors["T_1"] = max(self.sensors["T_1"], 285.0)
+                self.setpoints["T_1_Sp"] = max(self.setpoints["T_1_Sp"], 320.0)
             # Отказ электроснабжения: немедленно тушит горелки печи (уставка падает до 20°C)
             if defect_id == "power_fail" and state:
                 self.setpoints["T_1_Sp"] = 20.0

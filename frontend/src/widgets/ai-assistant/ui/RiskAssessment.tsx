@@ -29,9 +29,10 @@ const RiskAssessment: React.FC = () => {
 
     // 1. Приоритет: ликвидация аварии печи П-1 (прогар змеевика)
     if (defects?.coil_overheat) {
-      const isFuelCut = !valves?.FUEL_P1;
-      const isCooled = sensors.T_1 <= 245;
-      if (isFuelCut && isCooled) {
+      const fuelClosed = !valves?.FUEL_P1;
+      const coilIsolated = !valves?.V_P1_IN;
+      const isLocalized = fuelClosed && coilIsolated && sensors.T_1 <= 240;
+      if (isLocalized) {
         return `Аварийная ситуация локализована: подача топлива отсечена, змеевик изолирован, температура снижена до безопасного уровня (${sensors.T_1.toFixed(1)}°C).`;
       }
       return `АВАРИЙНАЯ СИТУАЦИЯ: Прогар змеевика П-1! Снизьте уставку Т-1, откройте сброс V-2 и отсеките подачу топлива FUEL_P1.`;
