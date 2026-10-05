@@ -96,13 +96,12 @@ const ScenarioChecklist: React.FC = () => {
     }
 
     if (defects?.coil_overheat) {
-      const limitTemp = scenarioId === 'startup' ? 240 : 245;
       if (!emergencyTasks.some(t => t.id === 'pump_fail_recovery')) {
         emergencyTasks.push({
           id: 'coil_overheat_temp',
           title: 'Локализация пожара печи П-1 (снижение нагрева)',
-          hint: `Понизьте уставку и дождитесь остывания фактической температуры Т-1 ниже ${limitTemp}°C (сейчас факт: ${sensors?.T_1?.toFixed(1) ?? '...'}°C, уставка: ${setpoints?.T_1_Sp ?? '...'}°C) для отсечки топлива.`,
-          isDone: (setpoints?.T_1_Sp ?? 280) < limitTemp && (sensors?.T_1 ?? 999) <= limitTemp,
+          hint: `Понизьте уставку температуры Т-1 ниже 200°C для снятия тепловой нагрузки (уставка сейчас: ${setpoints?.T_1_Sp ?? '...'}°C).`,
+          isDone: (setpoints?.T_1_Sp ?? 280) <= 200,
         });
       }
       emergencyTasks.push({

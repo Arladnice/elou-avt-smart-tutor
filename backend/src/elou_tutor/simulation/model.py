@@ -241,7 +241,7 @@ class ELOUAVTSimulator:
                 self.valves["FUEL_P1"] = True
                 self.valves["V_P1_IN"] = True
                 self.sensors["Flame_P1"] = True
-                self.sensors["T_1"] = max(self.sensors["T_1"], 285.0)
+                self.sensors["T_1"] = max(self.sensors["T_1"], 255.0)
                 self.setpoints["T_1_Sp"] = max(self.setpoints["T_1_Sp"], 320.0)
             # Отказ электроснабжения: немедленно тушит горелки печи (уставка падает до 20°C)
             if defect_id == "power_fail" and state:
@@ -376,10 +376,10 @@ class ELOUAVTSimulator:
             Q_cool = (T - 60.0) * 0.01
         else:
             Q_heat = 0.0
-            Q_cool = (T - 60.0) * 0.01 + ( (T - STARTUP_INITIAL_TEMP) * 0.02 if self.defects["power_fail"] else 0.0 )
+            Q_cool = (T - 60.0) * 0.05 + ( (T - STARTUP_INITIAL_TEMP) * 0.02 if self.defects["power_fail"] else 0.0 )
 
         if self.defects["coil_overheat"] and fuel_p1:
-            Q_heat += 12.0  # Прогар змеевика П-1: стремительный аварийный разогрев печи (12 °C/с) для демо и тренинга
+            Q_heat += 3.5  # Прогар змеевика П-1: стабильный наглядный рост (+3.5 °C/с), дающий ~30 с на регламентное парирование
         
         dT = Q_heat - Q_cool + (random.random() - 0.5) * 0.4
         next_T = T + dT

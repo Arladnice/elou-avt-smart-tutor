@@ -38,8 +38,8 @@ export const stepMockPhysics = (
   const Q_heat =
     (setpoints.T_1_Sp - nextTemp) * 0.15 +
     F_in * (setpoints.T_1_Sp - 60.0) * 0.06 +
-    (defects.coil_overheat ? 12.0 : 0.0);
-  const Q_cool = F_in * (nextTemp - 60.0) * 0.06;
+    (defects.coil_overheat && valves.FUEL_P1 ? 3.5 : 0.0);
+  const Q_cool = F_in * (nextTemp - 60.0) * 0.06 + (!valves.FUEL_P1 ? (nextTemp - 60.0) * 0.05 : 0.0);
   nextTemp += Q_heat - Q_cool + (Math.random() - 0.5) * 0.5;
   const p3Flow = valves.V_P3_OUT && valves.V_P3_RETURN && pumps.N_3;
   const p3Rate = p3Flow || valves.HC_P3 ? 0.12 : 0.04;

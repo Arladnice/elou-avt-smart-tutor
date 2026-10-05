@@ -342,7 +342,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const triggerDefect = useCallback((defectId: DefectId, state: boolean) => {
     if (defectId === 'coil_overheat' && state) {
       setValves(v => ({ ...v, FUEL_P1: true, V_P1_IN: true }));
-      setSensors(s => ({ ...s, T_1: Math.max(s.T_1, 285), Flame_P1: true }));
+      setSensors(s => ({ ...s, T_1: Math.max(s.T_1, 255), Flame_P1: true }));
       setSetpoints(sp => ({ ...sp, T_1_Sp: Math.max(sp.T_1_Sp, 320) }));
     }
     if (stateRef.current.isOnline) {
