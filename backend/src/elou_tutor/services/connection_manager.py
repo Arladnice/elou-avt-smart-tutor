@@ -246,13 +246,16 @@ class SimulationSession:
             startup_k2_prefill=sim_state["startupK2Prefill"],
         )
         
+        final_sensors = {**sensors, **sim_state.get("setpoints", {})}
         score, errors, recs, recommended_scenario_id = self.analyzer.evaluate_session(
             self.actions_taken,
             self.active_scenario,
             self.defects_triggered,
-            final_sensors=sensors,
+            final_sensors=final_sensors,
             time_elapsed=sim_state["timeElapsed"],
             timeline=self.action_timeline,
+            final_valves=sim_state.get("valves"),
+            final_pumps=sim_state.get("pumps"),
         )
         
         safety_grade = "A"

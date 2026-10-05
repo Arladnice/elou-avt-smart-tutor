@@ -97,7 +97,8 @@ class ErrorAnalyzer:
         return []
 
     def evaluate_session(self, actions, scenario_id, defects_triggered=None,
-                         final_sensors=None, time_elapsed=0, timeline=None):
+                         final_sensors=None, time_elapsed=0, timeline=None,
+                         final_valves=None, final_pumps=None):
         """
         Оценивает сессию оператора.
 
@@ -151,7 +152,9 @@ class ErrorAnalyzer:
         # Оценка парирования аварий (если были инъецированы дефекты)
         if defects_triggered:
             result = self._evaluate_defect_handling(performed_actions, defects_triggered,
-                                                    scenario_id, final_sensors)
+                                                    scenario_id, final_sensors,
+                                                    final_valves=final_valves,
+                                                    final_pumps=final_pumps)
             if result is not None:
                 score, errors, recs, rec_id = result
                 # Ошибки парирования аварий относятся к состоянию на конец сессии
@@ -230,7 +233,8 @@ class ErrorAnalyzer:
         return actions, times
 
     def _evaluate_defect_handling(self, actions, defects_triggered,
-                                  scenario_id, final_sensors):
+                                  scenario_id, final_sensors,
+                                  final_valves=None, final_pumps=None):
         """
         Оценивает действия оператора при ликвидации инъецированных неисправностей.
 
@@ -239,10 +243,32 @@ class ErrorAnalyzer:
         """
         # Прогар змеевика печи П-1
         if "coil_overheat" in defects_triggered:
-            required_isolation = {"FUEL_P1_CLOSE", "V_P1_IN_CLOSE", "V3_CLOSE"}
-            has_sp_down = "SP_DOWN" in actions
-            has_v2_open = "V2_OPEN" in actions
-            if has_sp_down and has_v2_open and required_isolation.issubset(actions):
+            fuel_p1_isolated = (
+                "FUEL_P1_CLOSE" in actions
+                or (final_valves is not None and not final_valves.get("FUEL_P1", True))
+                or (scenario_id == "startup" and "FUEL_P1_OPEN" not in actions)
+            )
+            v_p1_in_isolated = (
+                "V_P1_IN_CLOSE" in actions
+                or (final_valves is not None and not final_valves.get("V_P1_IN", True))
+            )
+            v3_isolated = (
+                "V3_CLOSE" in actions
+                or (final_valves is not None and not (final_valves.get("V_3", True) and final_valves.get("V3", True)))
+                or (scenario_id == "startup" and "V3_OPEN" not in actions)
+            )
+            is_isolated = fuel_p1_isolated and v_p1_in_isolated and v3_isolated
+
+            has_sp_down = (
+                "SP_DOWN" in actions
+                or (final_sensors is not None and final_sensors.get("T_1_Sp", 999) <= 240.0)
+            )
+            has_v2_open = (
+                "V2_OPEN" in actions
+                or (final_valves is not None and (final_valves.get("V_2") or final_valves.get("V2")))
+            )
+
+            if has_sp_down and has_v2_open and is_isolated:
                 return 100, [], [
                     "Поздравляем! Вы успешно локализовали неисправность 'Прогар змеевика П-1'.",
                     "Вы своевременно снизили температурную нагрузку на печь и открыли сброс "
@@ -266,7 +292,7 @@ class ErrorAnalyzer:
                             "открыть регулирующий клапан V-2 на факельную линию."
                 })
                 recs.append("При росте давления откройте клапан аварийного сброса V-2.")
-            if not required_isolation.issubset(actions):
+            if not is_isolated:
                 errors.append({
                     "clause": "Раздел 7.9.7",
                     "title": "Печь П-1 не изолирована после прогара",
@@ -281,12 +307,32 @@ class ErrorAnalyzer:
         if "pump_fail" in defects_triggered:
             # При отказе Н-20 уже остановлен самой неисправностью. Оператору
             # остаётся безопасно снять тепловую нагрузку и изолировать подачу.
+            v1_isolated = (
+                "V1_CLOSE" in actions
+                or (final_valves is not None and not final_valves.get("V_1", True))
+                or (scenario_id == "startup" and "V1_OPEN" not in actions)
+            )
+            has_sp_down = "SP_DOWN" in actions or (final_sensors is not None and final_sensors.get("T_1_Sp", 999) <= 240.0)
+            has_sp3_down = "SP3_DOWN" in actions or (final_sensors is not None and final_sensors.get("T_3_Sp", 999) <= 240.0)
+
             required_sequence = ("SP_DOWN", "SP3_DOWN", "V1_CLOSE")
             try:
                 action_positions = [actions.index(action) for action in required_sequence]
             except ValueError:
                 action_positions = []
-            if action_positions and action_positions == sorted(action_positions):
+
+            is_valid_order = action_positions and action_positions == sorted(action_positions)
+            is_valid_state = has_sp_down and has_sp3_down and v1_isolated
+
+            order_violation = False
+            if "V1_CLOSE" in actions:
+                v1_idx = actions.index("V1_CLOSE")
+                if "SP_DOWN" in actions and v1_idx < actions.index("SP_DOWN"):
+                    order_violation = True
+                if "SP3_DOWN" in actions and v1_idx < actions.index("SP3_DOWN"):
+                    order_violation = True
+
+            if not order_violation and (is_valid_order or is_valid_state):
                 return 100, [], [
                     "Поздравляем! Вы успешно локализовали отказ сырьевого насоса.",
                     "Вы снизили уставки обеих печей и после остановки Н-20 "
@@ -395,12 +441,30 @@ class ErrorAnalyzer:
         # Срыв вакуума в блоке ВТ (отказ пароэжекторной группы)
         if "vt_vacuum_loss" in defects_triggered:
             has_esd = "ESD" in actions
-            required = {
-                "SP_DOWN", "SP3_DOWN", "N_20_STOP", "V1_CLOSE", "V_STEAM_K2_CLOSE",
-                "HC_P1_OPEN", "HC_P3_OPEN",
-            }
-            relief_kept_closed = "V_K2_RELIEF_OPEN" not in actions
-            if has_esd or (required.issubset(actions) and relief_kept_closed):
+            has_sp = "SP_DOWN" in actions or (final_sensors is not None and final_sensors.get("T_1_Sp", 999) <= 240.0)
+            has_sp3 = "SP3_DOWN" in actions or (final_sensors is not None and final_sensors.get("T_3_Sp", 999) <= 240.0)
+            n20_stopped = (
+                "N_20_STOP" in actions
+                or (final_pumps is not None and not final_pumps.get("N_20", True))
+                or (scenario_id == "startup" and "N_20_START" not in actions)
+            )
+            v1_closed = (
+                "V1_CLOSE" in actions
+                or (final_valves is not None and not final_valves.get("V_1", True))
+                or (scenario_id == "startup" and "V1_OPEN" not in actions)
+            )
+            steam_k2_closed = (
+                "V_STEAM_K2_CLOSE" in actions
+                or (final_valves is not None and not final_valves.get("V_STEAM_K2", True))
+                or (scenario_id == "startup" and "V_STEAM_K2_OPEN" not in actions)
+            )
+            hc_open = ("HC_P1_OPEN" in actions and "HC_P3_OPEN" in actions) or (
+                final_valves is not None and final_valves.get("HC_P1") and final_valves.get("HC_P3")
+            )
+            relief_kept_closed = "V_K2_RELIEF_OPEN" not in actions and (
+                final_valves is None or not final_valves.get("V_K2_RELIEF")
+            )
+            if has_esd or (has_sp and has_sp3 and n20_stopped and v1_closed and steam_k2_closed and hc_open and relief_kept_closed):
                 return 100, [], [
                     "Поздравляем! Вы правильно отреагировали на срыв вакуума в блоке ВТ.",
                     "Вы снизили нагрузку обеих печей, прекратили подачу сырья, закрыли "
@@ -427,8 +491,22 @@ class ErrorAnalyzer:
             # feed_open = V_3 and not power_fail). Единственный способ
             # остановить заполнение куба — перекрыть этот приток.
             has_esd = "ESD" in actions
-            required = {"V3_CLOSE", "N_20_STOP", "V1_CLOSE"}
-            if has_esd or required.issubset(actions):
+            v3_closed = (
+                "V3_CLOSE" in actions
+                or (final_valves is not None and not (final_valves.get("V_3", True) and final_valves.get("V3", True)))
+                or (scenario_id == "startup" and "V3_OPEN" not in actions)
+            )
+            n20_stopped = (
+                "N_20_STOP" in actions
+                or (final_pumps is not None and not final_pumps.get("N_20", True))
+                or (scenario_id == "startup" and "N_20_START" not in actions)
+            )
+            v1_closed = (
+                "V1_CLOSE" in actions
+                or (final_valves is not None and not final_valves.get("V_1", True))
+                or (scenario_id == "startup" and "V1_OPEN" not in actions)
+            )
+            if has_esd or (v3_closed and n20_stopped and v1_closed):
                 return 100, [], [
                     "Поздравляем! Вы верно отработали отказ насосов откачки куба К-2 Н-4/Н-32.",
                     "Вы прекратили подачу кубового остатка из К-1, остановили Н-20 и "
@@ -456,10 +534,26 @@ class ErrorAnalyzer:
         # Нарушение электрообессоливания в ЭЛОУ (проскок солей и воды)
         if "elou_desalt_fail" in defects_triggered:
             has_esd = "ESD" in actions
-            required = {
-                "V_ELOU_CLOSE", "N_20_STOP", "V1_CLOSE", "HC_P1_OPEN", "HC_P3_OPEN",
-                "SP_DOWN", "SP3_DOWN",
-            }
+            v_elou_closed = (
+                "V_ELOU_CLOSE" in actions
+                or (final_valves is not None and not final_valves.get("V_ELOU", True))
+            )
+            n20_stopped = (
+                "N_20_STOP" in actions
+                or (final_pumps is not None and not final_pumps.get("N_20", True))
+                or (scenario_id == "startup" and "N_20_START" not in actions)
+            )
+            v1_closed = (
+                "V1_CLOSE" in actions
+                or (final_valves is not None and not final_valves.get("V_1", True))
+                or (scenario_id == "startup" and "V1_OPEN" not in actions)
+            )
+            hc_open = (
+                ("HC_P1_OPEN" in actions and "HC_P3_OPEN" in actions)
+                or (final_valves is not None and final_valves.get("HC_P1") and final_valves.get("HC_P3"))
+            )
+            has_sp = "SP_DOWN" in actions or (final_sensors is not None and final_sensors.get("T_1_Sp", 999) <= 200.0)
+            has_sp3 = "SP3_DOWN" in actions or (final_sensors is not None and final_sensors.get("T_3_Sp", 999) <= 200.0)
             # Уставка задаёт цель регулирования, но не означает, что печи уже
             # остыли. Для штатной ликвидации проскока ЭЛОУ ждём фактические
             # T-1/T-3 не выше 200°C; ESD остаётся отдельной немедленной ПАЗ.
@@ -467,7 +561,8 @@ class ErrorAnalyzer:
                 final_sensors.get("T_1", 999) <= 200.0
                 and final_sensors.get("T_3", 999) <= 200.0
             )
-            if has_esd or (required.issubset(actions) and has_actual_cooling):
+            required_ok = v_elou_closed and n20_stopped and v1_closed and hc_open and has_sp and has_sp3
+            if has_esd or (required_ok and has_actual_cooling):
                 return 100, [], [
                     "Поздравляем! Вы правильно отреагировали на проскок солей и воды из ЭЛОУ.",
                     "Вы изолировали ЭЛОУ, остановили Н-20, перевели К-1 на горячую "

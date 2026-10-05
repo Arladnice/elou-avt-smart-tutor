@@ -53,20 +53,25 @@ const PredictiveTrendChart: React.FC = () => {
   const currentValue = sensors[param.key];
 
   // Факт — история телеметрии; прогноз — пунктир от текущей точки к t+15с
-  const data: ChartPoint[] = telemetryHistory.map(point => ({
-    timeElapsed: point.timeElapsed,
-    fact: point[param.key],
-  }));
-
   const hasForecast = typeof predictedValue === 'number' && Number.isFinite(predictedValue);
-  if (data.length > 0 && hasForecast) {
-    // Линия прогноза стартует из последней фактической точки, чтобы не было разрыва
-    data[data.length - 1].forecast = data[data.length - 1].fact;
-    data.push({
-      timeElapsed: timeElapsed + FORECAST_HORIZON_SEC,
-      forecast: predictedValue,
-    });
-  }
+
+  const data = React.useMemo<ChartPoint[]>(() => {
+    const points: ChartPoint[] = telemetryHistory.map(point => ({
+      timeElapsed: point.timeElapsed,
+      fact: point[param.key],
+    }));
+
+    if (points.length > 0 && hasForecast) {
+      // Линия прогноза стартует из последней фактической точки для визуальной непрерывности
+      const lastPoint = points[points.length - 1];
+      lastPoint.forecast = lastPoint.fact;
+      points.push({
+        timeElapsed: (lastPoint.timeElapsed ?? timeElapsed) + FORECAST_HORIZON_SEC,
+        forecast: predictedValue,
+      });
+    }
+    return points;
+  }, [telemetryHistory, param.key, hasForecast, timeElapsed, predictedValue]);
 
   const delta = hasForecast ? predictedValue - currentValue : 0;
   const isApproachingLimit = hasForecast && predictedValue >= param.warningLevel;
@@ -74,17 +79,57 @@ const PredictiveTrendChart: React.FC = () => {
 
   const formatValue = (v: number) => v.toFixed(param.precision);
 
-  // Аварийный предел показываем только при подходе к нему: иначе он растягивает
-  // шкалу (напр. холодный пуск 40°C против предела 310°C) и тренд не читается.
-  const values = data.flatMap(p => [p.fact, p.forecast].filter((v): v is number => typeof v === 'number'));
-  const dataMax = values.length > 0 ? Math.max(...values) : 0;
-  const dataMin = values.length > 0 ? Math.min(...values) : 0;
-  const showLimitLine = dataMax >= param.warningLevel * 0.8;
-  const padding = Math.max((dataMax - dataMin) * 0.15, param.warningLevel * 0.02);
-  const yDomain: [number, number] = [
-    dataMin - padding,
-    Math.max(dataMax, showLimitLine ? param.warningLevel : dataMax) + padding,
-  ];
+  // Ступенчатое округление границ Y-оси, исключающее дрожание масштаба при секундных обновлениях
+  const yDomain = React.useMemo<[number, number]>(() => {
+    const values = data.flatMap(p => [p.fact, p.forecast].filter((v): v is number => typeof v === 'number'));
+    if (values.length === 0) return [0, 100];
+    const dataMax = Math.max(...values);
+    const dataMin = Math.min(...values);
+    const showLimit = dataMax >= param.warningLevel * 0.8;
+    const padding = Math.max((dataMax - dataMin) * 0.15, param.warningLevel * 0.02);
+    const rawMin = dataMin - padding;
+    const rawMax = Math.max(dataMax, showLimit ? param.warningLevel : dataMax) + padding;
+
+    const step = param.warningLevel > 100 ? 10 : param.warningLevel > 10 ? 2 : 0.05;
+    return [
+      Math.floor(rawMin / step) * step,
+      Math.ceil(rawMax / step) * step,
+    ];
+  }, [data, param.warningLevel]);
+
+  const showLimitLine = React.useMemo(() => {
+    const values = data.flatMap(p => [p.fact, p.forecast].filter((v): v is number => typeof v === 'number'));
+    return values.length > 0 && Math.max(...values) >= param.warningLevel * 0.8;
+  }, [data, param.warningLevel]);
+
+  // Стабильный тултип: строго 1 строка данных, исключает ложный «прогноз» в точке склейки и устраняет мерцание
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null;
+    const pointData = payload[0]?.payload as ChartPoint | undefined;
+    const hasFact = pointData && typeof pointData.fact === 'number';
+    const isFuturePoint = pointData && pointData.fact === undefined && typeof pointData.forecast === 'number';
+    const isCurrentPoint = hasFact && pointData?.forecast !== undefined;
+
+    return (
+      <S.TooltipBox>
+        <div className="time">
+          t = {label} с {isCurrentPoint ? '(сейчас)' : isFuturePoint ? `(+${FORECAST_HORIZON_SEC} с)` : ''}
+        </div>
+        {hasFact && (
+          <div className="item" style={{ color: paramColor }}>
+            <span>Факт:</span>
+            <strong>{formatValue(pointData.fact!)} {param.unit}</strong>
+          </div>
+        )}
+        {isFuturePoint && (
+          <div className="item" style={{ color: isApproachingLimit ? theme.colors.danger : theme.colors.accent }}>
+            <span>Прогноз LSTM:</span>
+            <strong>{formatValue(pointData.forecast!)} {param.unit}</strong>
+          </div>
+        )}
+      </S.TooltipBox>
+    );
+  };
 
   if (data.length < 2) {
     return (
@@ -138,18 +183,8 @@ const PredictiveTrendChart: React.FC = () => {
               tickFormatter={(v: number) => formatValue(v)}
             />
             <Tooltip
-              contentStyle={{
-                background: theme.colors.surface,
-                border: `1px solid ${theme.colors.border}`,
-                borderRadius: 4,
-                fontSize: 11,
-              }}
-              labelStyle={{ color: theme.colors.textMuted }}
-              labelFormatter={label => `t = ${label} с`}
-              formatter={(value, name) => [
-                `${formatValue(Number(value))} ${param.unit}`,
-                name === 'fact' ? 'Факт' : 'Прогноз',
-              ]}
+              isAnimationActive={false}
+              content={<CustomTooltip />}
             />
             {showLimitLine && (
               <ReferenceLine

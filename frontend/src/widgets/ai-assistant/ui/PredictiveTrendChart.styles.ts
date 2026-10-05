@@ -95,3 +95,31 @@ export const EmptyState = styled.div`
   text-align: center;
   padding: 8px;
 `;
+
+export const TooltipBox = styled.div`
+  background: ${props => props.theme.colors.surface};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 6px 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  min-width: 140px;
+
+  .time {
+    color: ${props => props.theme.colors.textMuted};
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    border-bottom: 1px solid ${props => props.theme.colors.border};
+    padding-bottom: 2px;
+  }
+
+  .item {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    line-height: 1.4;
+  }
+`;
+

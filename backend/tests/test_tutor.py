@@ -230,6 +230,20 @@ class TestKTKComponents(unittest.TestCase):
         self.assertEqual(len(errors), 0)
         self.assertTrue(any("прогар змеевика" in r.lower() for r in recs))
 
+    def test_coil_overheat_startup_with_initially_closed_valves(self):
+        """Прогар змеевика при пуске: топливо и V-3 уже закрыты, закрываем только вход V_P1_IN."""
+        actions = ["SP_DOWN", "V2_OPEN", "V_P1_IN_CLOSE"]
+        final_valves = {"FUEL_P1": False, "V_P1_IN": False, "V_3": False, "V_2": True}
+        score, errors, recs, _ = self.analyzer.evaluate_session(
+            actions,
+            "startup",
+            defects_triggered={"coil_overheat"},
+            final_valves=final_valves,
+        )
+        self.assertEqual(score, 100)
+        self.assertEqual(len(errors), 0)
+        self.assertTrue(any("прогар змеевика" in r.lower() for r in recs))
+
     def test_integration_testcase_6_power_fail_recovery(self):
         """Интеграционный тест: Тест-кейс 6 (Парирование отказа электроснабжения power_fail)"""
         actions = ["SP_DOWN", "V1_CLOSE"]
