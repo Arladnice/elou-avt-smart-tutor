@@ -87,7 +87,7 @@ const PredictiveTrendChart: React.FC = () => {
     const dataMin = Math.min(...values);
     const showLimit = dataMax >= param.warningLevel * 0.8;
     const padding = Math.max((dataMax - dataMin) * 0.15, param.warningLevel * 0.02);
-    const rawMin = dataMin - padding;
+    const rawMin = Math.max(0, dataMin - padding);
     const rawMax = Math.max(dataMax, showLimit ? param.warningLevel : dataMax) + padding;
 
     const step = param.warningLevel > 100 ? 10 : param.warningLevel > 10 ? 2 : 0.05;
@@ -105,26 +105,32 @@ const PredictiveTrendChart: React.FC = () => {
   // Стабильный тултип: строго 1 строка данных, исключает ложный «прогноз» в точке склейки и устраняет мерцание
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload || !payload.length) return null;
+
+    const factEntry = payload.find((p: any) => p.dataKey === 'fact' && typeof p.value === 'number');
+    const forecastEntry = payload.find((p: any) => p.dataKey === 'forecast' && typeof p.value === 'number');
     const pointData = payload[0]?.payload as ChartPoint | undefined;
-    const hasFact = pointData && typeof pointData.fact === 'number';
-    const isFuturePoint = pointData && pointData.fact === undefined && typeof pointData.forecast === 'number';
-    const isCurrentPoint = hasFact && pointData?.forecast !== undefined;
+
+    // Точка в будущем (прогноз LSTM на +15 с)
+    const isFuturePoint = (pointData && pointData.fact === undefined && typeof pointData.forecast === 'number')
+      || (typeof label === 'number' && label > timeElapsed);
+
+    const isCurrentPoint = !isFuturePoint && ((pointData && pointData.forecast !== undefined) || label === timeElapsed);
 
     return (
       <S.TooltipBox>
         <div className="time">
           t = {label} с {isCurrentPoint ? '(сейчас)' : isFuturePoint ? `(+${FORECAST_HORIZON_SEC} с)` : ''}
         </div>
-        {hasFact && (
+        {!isFuturePoint && (factEntry || pointData?.fact !== undefined) && (
           <div className="item" style={{ color: paramColor }}>
             <span>Факт:</span>
-            <strong>{formatValue(pointData.fact!)} {param.unit}</strong>
+            <strong>{formatValue(Number(factEntry?.value ?? pointData?.fact))} {param.unit}</strong>
           </div>
         )}
         {isFuturePoint && (
           <div className="item" style={{ color: isApproachingLimit ? theme.colors.danger : theme.colors.accent }}>
             <span>Прогноз LSTM:</span>
-            <strong>{formatValue(pointData.forecast!)} {param.unit}</strong>
+            <strong>{formatValue(Number(forecastEntry?.value ?? pointData?.forecast ?? predictedValue))} {param.unit}</strong>
           </div>
         )}
       </S.TooltipBox>
@@ -166,12 +172,13 @@ const PredictiveTrendChart: React.FC = () => {
 
       <S.ChartArea>
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+          <ComposedChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: -16 }}>
             <CartesianGrid stroke={theme.colors.border} strokeDasharray="2 4" />
             <XAxis
               dataKey="timeElapsed"
               type="number"
               domain={['dataMin', 'dataMax']}
+              allowDuplicatedCategory={false}
               tick={{ fill: theme.colors.textMuted, fontSize: 9 }}
               stroke={theme.colors.border}
               tickFormatter={(v: number) => `${v}с`}
@@ -202,6 +209,7 @@ const PredictiveTrendChart: React.FC = () => {
               stroke={paramColor}
               strokeWidth={2}
               dot={false}
+              activeDot={{ r: 4, stroke: paramColor, fill: theme.colors.surface, strokeWidth: 2 }}
               isAnimationActive={false}
               connectNulls
             />
@@ -213,6 +221,7 @@ const PredictiveTrendChart: React.FC = () => {
               strokeWidth={2}
               strokeDasharray="4 3"
               dot={{ r: 3, fill: isApproachingLimit ? theme.colors.danger : theme.colors.accent }}
+              activeDot={{ r: 5, stroke: isApproachingLimit ? theme.colors.danger : theme.colors.accent, fill: theme.colors.surface, strokeWidth: 2 }}
               isAnimationActive={false}
               connectNulls
             />

@@ -648,6 +648,11 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // Откат таймера = сброс сессии или смена сценария (в т.ч. со стороны сервера):
       // старые точки нельзя смешивать с новыми, иначе ось времени идёт вспять
       if (lastPoint && timeElapsed < lastPoint.timeElapsed) return [point];
+      // При получении свежего кадра на той же секунде (в т.ч. первый реальный кадр сценария на t=0)
+      // заменяем последнюю точку актуальными показаниями датчиков, чтобы не оставалось фиктивных значений инициализации
+      if (lastPoint?.timeElapsed === timeElapsed) {
+        return [...prev.slice(0, -1), point];
+      }
       return [...prev.slice(-(TELEMETRY_HISTORY_LIMIT - 1)), point];
     });
   }, [sensors, timeElapsed, status]);
