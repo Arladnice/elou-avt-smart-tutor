@@ -77,6 +77,29 @@ const weakestHistoricalScenario = (history: TrainingRecord[]): { id: string; sco
 };
 
 /**
+ * Проверяет, является ли запись лога реальным технологическим алармом/предупреждением.
+ * Исключает служебные события инструктора (пауза, снапшот, смена скорости),
+ * сообщения ИБ и операторские звонки.
+ */
+export const isProcessAlarm = (log: LogEntry): boolean => {
+  if (log.type === 'info') return false;
+  const msg = log.message;
+  if (
+    msg.startsWith('ИНСТРУКТОР:') ||
+    msg.startsWith('ИБ:') ||
+    msg.startsWith('Локальн') ||
+    msg.startsWith('Звонок') ||
+    msg.startsWith('Получено учебное разрешение') ||
+    msg.includes('Rate Limit') ||
+    msg.includes('Симуляция') ||
+    msg.includes('Скорость изменена')
+  ) {
+    return false;
+  }
+  return true;
+};
+
+/**
  * Формирует объяснимую поддержку решения инструктора из прогноза t+15,
  * технологических порогов, журнала тревог и результатов прошлых сессий.
  */
@@ -149,10 +172,19 @@ export const buildInstructorInsight = ({
   }
 
   const primaryDriver = drivers.sort((a, b) => severityRank[b.severity] - severityRank[a.severity])[0];
-  const recentAlarms = logs.slice(-20).filter(log => log.type !== 'info');
+  const processAlarms = logs.slice(-20).filter(isProcessAlarm);
+  const hasActiveRecentAlarm = logs.slice(-3).some(isProcessAlarm);
+
+  // Тревоги в истории логов требуют внимания инструктора, если:
+  // 1) прямо сейчас зафиксирован свежий технологический аларм (в последних 3 событиях) и риск не минимальный,
+  // 2) уровень риска повышен (>= 25%),
+  // 3) активен физический фактор отклонения параметров (primaryDriver).
+  // Если текущие параметры в норме, риск низкий (<25%) и свежих алармов нет — процесс стабилен.
+  const alarmsRequireAttention = processAlarms.length > 0 && (riskLevel >= 25 || hasActiveRecentAlarm);
+
   const riskSeverity: InsightSeverity = status === 'accident' || status === 'esd' || riskLevel >= 75
     ? 'critical'
-    : riskLevel >= 30 || recentAlarms.length > 0
+    : riskLevel >= 30 || alarmsRequireAttention
       ? 'attention'
       : 'stable';
   const severity = primaryDriver && severityRank[primaryDriver.severity] > severityRank[riskSeverity]
@@ -173,8 +205,8 @@ export const buildInstructorInsight = ({
   const evidence = primaryDriver ? [primaryDriver.evidence] : [
     `Риск аварии: ${riskLevel.toFixed(1)} %; Т-1 ${sensors.T_1.toFixed(1)} °C; P-1 ${sensors.P_1.toFixed(3)} МПа.`,
   ];
-  if (recentAlarms.length > 0) {
-    evidence.push(`За последние 20 событий: ${recentAlarms.length} предупреждений и аварийных сообщений.`);
+  if (processAlarms.length > 0 && severity !== 'stable') {
+    evidence.push(`За последние 20 событий: ${processAlarms.length} предупреждений и аварийных сообщений.`);
   }
 
   return {

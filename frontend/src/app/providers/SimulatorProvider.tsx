@@ -378,7 +378,7 @@ export const SimulatorProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (stateRef.current.isOnline) {
       sendWsAction({ type: 'load_state' });
     } else {
-      appendLog('warning', 'Локально: Произведен откат к снапшоту.');
+      appendLog('info', 'Локально: Произведен откат к снапшоту.');
     }
   }, [sendWsAction, appendLog]);
 

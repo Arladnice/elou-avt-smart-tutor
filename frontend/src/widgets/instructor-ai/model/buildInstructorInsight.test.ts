@@ -55,4 +55,47 @@ describe('buildInstructorInsight', () => {
     expect(insight.recommendedScenarioId).toBe('shutdown');
     expect(insight.recommendationReason).toContain('61');
   });
+
+  it('не переключает статус в attention при паузе и возобновлении симуляции', () => {
+    const insight = buildInstructorInsight({
+      ...baseInput,
+      logs: [
+        { id: '1', time: '00:05', type: 'warning', message: 'ИНСТРУКТОР: Симуляция ПРИОСТАНОВЛЕНА.' },
+        { id: '2', time: '00:08', type: 'info', message: 'ИНСТРУКТОР: Симуляция ВОЗОБНОВЛЕНА.' },
+      ],
+    });
+
+    expect(insight.severity).toBe('stable');
+    expect(insight.summary).toContain('стабилен');
+    expect(insight.evidence[0]).toContain('Риск аварии');
+  });
+
+  it('остаётся в stable, если параметры процесса в норме, несмотря на давние устранённые алармы', () => {
+    const insight = buildInstructorInsight({
+      ...baseInput,
+      riskLevel: 5,
+      logs: [
+        { id: '1', time: '00:02', type: 'warning', message: 'Предупреждение: Температура печи П-1 (365.5°C) выше нормы' },
+        { id: '2', time: '00:05', type: 'info', message: 'Оператор стабилизировал подачу топлива' },
+        { id: '3', time: '00:06', type: 'info', message: 'Клапан V-1 открыт на 100%' },
+        { id: '4', time: '00:07', type: 'info', message: 'Телеметрия стабильна' },
+      ],
+    });
+
+    expect(insight.severity).toBe('stable');
+    expect(insight.summary).toContain('стабилен');
+  });
+
+  it('реагирует вниманием, если технологический аларм произошёл только что', () => {
+    const insight = buildInstructorInsight({
+      ...baseInput,
+      riskLevel: 15,
+      logs: [
+        { id: '1', time: '00:05', type: 'warning', message: 'Предупреждение: Давление в колонне К-1 (0.450 МПа) приближается к предельному!' },
+      ],
+    });
+
+    expect(insight.severity).toBe('attention');
+    expect(insight.summary).toContain('отклонения');
+  });
 });

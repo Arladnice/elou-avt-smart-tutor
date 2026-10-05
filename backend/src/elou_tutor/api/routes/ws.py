@@ -229,7 +229,7 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
     elif action_type == "toggle_pause":
         paused = bool(cmd.get("paused", False))
         session.is_paused = paused
-        session.add_log("warning" if paused else "info", f"ИНСТРУКТОР: Симуляция {'ПРИОСТАНОВЛЕНА' if paused else 'ВОЗОБНОВЛЕНА'}.")
+        session.add_log("info", f"ИНСТРУКТОР: Симуляция {'ПРИОСТАНОВЛЕНА' if paused else 'ВОЗОБНОВЛЕНА'}.")
         await log_audit_event_async(username, "TOGGLE_PAUSE", f"Пауза -> {paused}")
 
     elif action_type == "save_state":
@@ -240,10 +240,10 @@ async def dispatch_command(session, cmd: dict, action_type: str, role: str,
     elif action_type == "load_state":
         if session.snapshot_data:
             session.simulator.load_snapshot(session.snapshot_data)
-            session.add_log("warning", "ИНСТРУКТОР: Произведен откат состояния процесса к снапшоту.")
+            session.add_log("info", "ИНСТРУКТОР: Произведен откат состояния процесса к снапшоту.")
             await log_audit_event_async(username, "LOAD_STATE", "Откат к снапшоту")
         else:
-            session.add_log("warning", "ИНСТРУКТОР: Невозможно выполнить откат (снапшот не найден).")
+            session.add_log("info", "ИНСТРУКТОР: Невозможно выполнить откат (снапшот не найден).")
 
     elif action_type == "configure_webhook":
         url = cmd.get("url", "")
