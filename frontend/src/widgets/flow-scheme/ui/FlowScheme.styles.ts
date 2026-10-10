@@ -10,6 +10,12 @@ export const SchemeContainer = styled.div`
   flex-direction: column;
   flex: 1;
   min-height: 0;
+
+  @media (max-width: 900px) {
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
 `;
 
 export const SchemeHeader = styled.div`
@@ -24,12 +30,23 @@ export const SchemeHeader = styled.div`
   color: ${props => props.theme.colors.textMuted};
   gap: 12px;
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    padding: 6px 10px;
+    gap: 8px;
+    font-size: 11px;
+  }
 `;
 
 export const HeaderLeftGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+
+  @media (max-width: 768px) {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
 `;
 
 export const PresetSelectorWrapper = styled.div`
@@ -38,6 +55,10 @@ export const PresetSelectorWrapper = styled.div`
   gap: 6px;
   font-size: 12px;
   font-weight: 500;
+
+  @media (max-width: 768px) {
+    font-size: 11px;
+  }
 `;
 
 export const SchemeViewport = styled.div`
@@ -46,6 +67,12 @@ export const SchemeViewport = styled.div`
   flex: 1;
   min-height: 380px;
   overflow: hidden;
+
+  @media (max-width: 900px) {
+    min-height: 240px;
+    height: 38vh;
+    max-height: 360px;
+  }
 `;
 
 export const SVGCanvas = styled.svg<{ $isPanning: boolean }>`
@@ -631,6 +658,12 @@ export const HeaderStatusContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 10px;
+  }
 `;
 
 export const OnlineBadge = styled.span<{ $isOnline: boolean }>`

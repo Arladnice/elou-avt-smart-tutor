@@ -10,18 +10,35 @@ export const GlobalStyle = createGlobalStyle<{ theme: ScadaThemeType }>`
 
   html {
     color-scheme: ${props => props.theme.mode};
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   body {
     width: 100%;
+    max-width: 100vw;
     height: 100vh;
     overflow: hidden;
+    overflow-x: hidden;
     color: ${props => props.theme.colors.text};
     background: ${props => props.theme.colors.background};
     font-family: ${props => props.theme.fonts.main};
     font-size: 14px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+
+    @media (max-width: 900px) {
+      height: auto;
+      min-height: 100vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
+  #root {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   ::selection {

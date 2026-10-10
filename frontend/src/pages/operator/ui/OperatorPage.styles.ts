@@ -7,10 +7,18 @@ export const GridContainer = styled.div`
   height: 100vh;
   width: 100%;
   min-width: 0;
+  max-width: 100vw;
   background-color: ${props => props.theme.colors.background};
 
   @media (max-height: 950px) {
     grid-template-rows: 48px 1fr;
+  }
+
+  @media (max-width: 900px) {
+    grid-template-rows: auto 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow-x: hidden;
   }
 `;
 
@@ -41,12 +49,16 @@ export const MainArea = styled.main`
   }
 
   @media (max-width: 900px) {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(520px, 62vh) auto;
-    overflow-y: auto;
-    height: 100%;
-    min-height: 0;
-    align-content: start;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100vw;
+    padding: 8px;
+    gap: 10px;
+    overflow-x: hidden;
+    overflow-y: visible;
+    height: auto;
+    min-height: auto;
   }
 `;
 
@@ -60,6 +72,19 @@ export const LeftColumn = styled.div`
 
   > div:last-child {
     flex: 0 0 clamp(180px, 24vh, 280px);
+  }
+
+  @media (max-width: 900px) {
+    height: auto;
+    overflow: visible;
+    width: 100%;
+    max-width: 100%;
+    gap: 10px;
+
+    > div:last-child {
+      flex: none;
+      height: 200px;
+    }
   }
 `;
 export const SidebarLogWrapper = styled.div`
@@ -100,7 +125,13 @@ export const Sidebar = styled.aside`
   @media (max-height: 950px) {
     gap: 6px;
   }
-  
+
+  @media (max-width: 900px) {
+    height: auto;
+    overflow: visible;
+    width: 100%;
+    max-width: 100%;
+  }
 `;
 
 export const SidebarStatusBar = styled.div<{ $hasCritical: boolean }>`
@@ -189,6 +220,18 @@ export const SidebarNavigation = styled.nav`
   border-radius: 5px;
   background-color: ${props => props.theme.colors.surface};
   flex-shrink: 0;
+
+  @media (max-width: 600px) {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+    padding: 6px;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
 `;
 
 export const SidebarTab = styled.button<{ $active: boolean }>`
@@ -215,9 +258,39 @@ export const SidebarTab = styled.button<{ $active: boolean }>`
     flex: 0 0 auto;
   }
 
+  @media (max-width: 600px) {
+    flex: 0 0 auto;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+
   &:hover {
     color: ${props => props.theme.colors.primary};
     background-color: ${props => props.theme.colors.primaryMuted};
+  }
+`;
+
+export const MobileOrientationNotice = styled.div`
+  display: none;
+
+  @media (max-width: 900px) and (orientation: portrait) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 7px 12px;
+    background: ${props => props.theme.colors.primaryMuted};
+    border: 1px dashed ${props => props.theme.colors.primary};
+    border-radius: 6px;
+    color: ${props => props.theme.colors.primary};
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 4px;
+
+    svg {
+      flex-shrink: 0;
+    }
   }
 `;
 

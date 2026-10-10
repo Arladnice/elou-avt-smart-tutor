@@ -9,10 +9,21 @@ export const HeaderContainer = styled.header`
   background: ${props => props.theme.colors.surface};
   border-bottom: 1px solid ${props => props.theme.colors.borderStrong};
   box-shadow: 0 1px 3px ${props => props.theme.colors.shadow};
+  max-width: 100vw;
+  box-sizing: border-box;
 
   @media (max-height: 950px) {
     gap: 10px;
     padding: 0 10px;
+  }
+
+  @media (max-width: 900px) {
+    height: auto;
+    min-height: 48px;
+    padding: 6px 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
   }
 `;
 
@@ -20,7 +31,7 @@ export const Title = styled.h1`
   display: flex;
   align-items: baseline;
   gap: 10px;
-  min-width: max-content;
+  min-width: 0;
   color: ${props => props.theme.colors.text};
   font-size: 15px;
   font-weight: 700;
@@ -32,6 +43,7 @@ export const Title = styled.h1`
     height: 18px;
     align-self: center;
     background: ${props => props.theme.colors.primary};
+    flex-shrink: 0;
   }
 
   span {
@@ -47,6 +59,14 @@ export const Title = styled.h1`
     span { font-size: 10px; }
     &::before { height: 14px; }
   }
+
+  @media (max-width: 900px) {
+    font-size: 13px;
+    gap: 6px;
+    span {
+      display: none;
+    }
+  }
 `;
 
 export const DemoBadge = styled.div`
@@ -61,6 +81,10 @@ export const DemoBadge = styled.div`
   font-size: 10px;
   font-weight: 600;
   white-space: nowrap;
+
+  @media (max-width: 900px) {
+    display: none;
+  }
 `;
 
 export const StatusIndicator = styled.div<{ $status: 'running' | 'paused' | 'esd' | 'accident' | 'success' }>`
@@ -92,6 +116,17 @@ export const StatusIndicator = styled.div<{ $status: 'running' | 'paused' | 'esd
     padding: 3px 7px;
     font-size: 9px;
   }
+
+  @media (max-width: 900px) {
+    padding: 3px 6px;
+    font-size: 10px;
+    gap: 4px;
+
+    &::before {
+      width: 6px;
+      height: 6px;
+    }
+  }
 `;
 
 export const InfoPanel = styled.div`
@@ -103,6 +138,10 @@ export const InfoPanel = styled.div`
   min-width: 0;
 
   @media (max-height: 950px) { gap: 10px; }
+
+  @media (max-width: 900px) {
+    display: none;
+  }
 `;
 
 export const InfoItem = styled.div`
@@ -134,6 +173,14 @@ export const Actions = styled.div`
   align-items: center;
   gap: 7px;
   min-width: max-content;
+
+  @media (max-width: 900px) {
+    min-width: 0;
+    gap: 4px;
+    margin-left: auto;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
 `;
 
 export const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' | 'success' }>`
@@ -186,5 +233,12 @@ export const Button = styled.button<{ $variant?: 'primary' | 'danger' | 'seconda
     min-height: 28px;
     padding: 4px 8px;
     font-size: 9px;
+  }
+
+  @media (max-width: 900px) {
+    min-height: 28px;
+    padding: 4px 7px;
+    font-size: 10px;
+    gap: 4px;
   }
 `;

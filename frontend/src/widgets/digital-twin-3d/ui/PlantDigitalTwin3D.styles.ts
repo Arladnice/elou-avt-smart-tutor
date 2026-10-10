@@ -25,6 +25,11 @@ export const TwinWrapper = styled.div`
   border-radius: 8px;
   border: 1px solid ${props => props.theme.colors.border};
   transition: background-color 0.25s ease;
+
+  @media (max-width: 900px) {
+    min-height: 300px;
+    height: 44vh;
+  }
 `;
 
 export const CanvasContainer = styled.div`
@@ -48,6 +53,13 @@ export const TopControlsBar = styled.div`
   pointer-events: none;
   z-index: 10;
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    gap: 6px;
+  }
 `;
 
 export const ControlGroup = styled.div`
@@ -61,6 +73,16 @@ export const ControlGroup = styled.div`
   border-radius: 6px;
   pointer-events: auto;
   box-shadow: 0 6px 20px ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)'};
+
+  @media (max-width: 768px) {
+    padding: 3px 6px;
+    gap: 4px;
+
+    button {
+      padding: 3px 6px;
+      font-size: 10px;
+    }
+  }
 `;
 
 export const ViewpointBtn = styled.button<{ $active?: boolean; $isCinematic?: boolean }>`
@@ -124,6 +146,15 @@ export const BottomBar = styled.div`
   align-items: flex-end;
   pointer-events: none;
   z-index: 10;
+
+  @media (max-width: 768px) {
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
 `;
 
 export const LegendContainer = styled.div`
@@ -138,6 +169,17 @@ export const LegendContainer = styled.div`
   pointer-events: auto;
   box-shadow: 0 6px 20px ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)'};
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    gap: 6px;
+    padding: 4px 8px;
+    justify-content: center;
+
+    button {
+      padding: 2px 5px;
+      font-size: 10px;
+    }
+  }
 `;
 
 export const LegendItem = styled.button<{ $color: string; $active?: boolean }>`

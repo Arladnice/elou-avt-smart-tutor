@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useMemo, useState } from 'react';
-import { Settings, ListTodo, Terminal, Brain, ShieldAlert, LineChart } from 'lucide-react';
+import { Settings, ListTodo, Terminal, Brain, ShieldAlert, LineChart, Smartphone } from 'lucide-react';
 import { useTelemetry, type LogEntry } from '@/entities/telemetry';
 import { useMnemoscheme } from '@/entities/mnemoscheme';
 import { CollapsibleCard, LazyFallback } from '@/shared/ui';
@@ -50,6 +50,10 @@ const OperatorPage: React.FC = () => {
       <S.GridContainer>
         <Header />
         <S.MainArea>
+          <S.MobileOrientationNotice>
+            <Smartphone size={14} />
+            <span>Для полного обзора мнемосхемы и 3D поверните телефон горизонтально (альбомная ориентация 🔄)</span>
+          </S.MobileOrientationNotice>
           <S.LeftColumn>
             <FlowScheme
               render3D={(onOpenEquipment, onFpsUpdate) => (
