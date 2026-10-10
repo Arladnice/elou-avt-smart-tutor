@@ -131,6 +131,7 @@ export const Sidebar = styled.aside`
     overflow: visible;
     width: 100%;
     max-width: 100%;
+    padding-bottom: 32px;
   }
 `;
 
@@ -181,6 +182,12 @@ export const FixedPanel = styled.section<{ $fill?: boolean }>`
   background-color: ${props => props.theme.colors.surface};
 
   ${props => props.$fill && `height: 100%;`}
+
+  @media (max-width: 900px) {
+    height: auto;
+    min-height: 360px;
+    overflow: visible;
+  }
 `;
 
 export const FixedPanelHeader = styled.div`
@@ -209,6 +216,12 @@ export const FixedPanelBody = styled.div<{ $fill?: boolean }>`
   @media (max-height: 950px) {
     padding: 6px 10px;
   }
+
+  @media (max-width: 900px) {
+    flex: none;
+    height: auto;
+    overflow: visible;
+  }
 `;
 
 export const SidebarNavigation = styled.nav`
@@ -221,16 +234,11 @@ export const SidebarNavigation = styled.nav`
   background-color: ${props => props.theme.colors.surface};
   flex-shrink: 0;
 
-  @media (max-width: 600px) {
+  @media (max-width: 900px) {
     display: flex;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    flex-wrap: wrap;
     gap: 6px;
     padding: 6px;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
   }
 `;
 
@@ -258,10 +266,11 @@ export const SidebarTab = styled.button<{ $active: boolean }>`
     flex: 0 0 auto;
   }
 
-  @media (max-width: 600px) {
-    flex: 0 0 auto;
-    padding: 6px 12px;
-    font-size: 11px;
+  @media (max-width: 900px) {
+    flex: 1 1 calc(33.333% - 6px);
+    min-height: 34px;
+    padding: 6px 6px;
+    font-size: 10.5px;
   }
 
   &:hover {
@@ -302,6 +311,13 @@ export const SidebarWorkspace = styled.div`
   flex-direction: column;
   gap: 8px;
 
+  @media (max-width: 900px) {
+    flex: none;
+    height: auto;
+    min-height: 380px;
+    overflow: visible;
+  }
+
   /* Кастомный тонкий скроллбар для SCADA-интерфейса */
   &::-webkit-scrollbar {
     width: 4px;
@@ -329,5 +345,16 @@ export const PersistedPanel = styled.div<{ $visible: boolean }>`
 
   > section {
     flex: 1;
+  }
+
+  @media (max-width: 900px) {
+    flex: none;
+    height: auto;
+    min-height: 380px;
+
+    > section {
+      height: auto;
+      min-height: 380px;
+    }
   }
 `;
