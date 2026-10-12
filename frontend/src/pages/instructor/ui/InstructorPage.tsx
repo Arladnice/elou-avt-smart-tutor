@@ -634,7 +634,7 @@ const InstructorPage: React.FC = () => {
 
         {/* Постоянно видимая зона тревог — не уходит ниже первого экрана. */}
         <S.InstructorLogCard
-          title="Мониторинг журнала событий и тревог"
+          title="Мониторинг журнала событий и алармов"
           extra={
             <S.AlarmSummary>
               <S.CriticalAlarmCount>Критические: {criticalAlarmCount}</S.CriticalAlarmCount>

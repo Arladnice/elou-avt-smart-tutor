@@ -65,7 +65,7 @@ const OperatorPage: React.FC = () => {
             />
             <S.SidebarLogWrapper>
               <S.FixedPanel $fill>
-                <S.FixedPanelHeader><Terminal size={14} /> Журнал событий и тревог</S.FixedPanelHeader>
+                <S.FixedPanelHeader><Terminal size={14} /> Журнал событий и алармов</S.FixedPanelHeader>
                 <S.FixedPanelBody $fill><AlarmLog /></S.FixedPanelBody>
               </S.FixedPanel>
             </S.SidebarLogWrapper>
