@@ -111,6 +111,7 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 .DS_Store
+~$*
 
 # Python
 __pycache__/
